@@ -1,0 +1,262 @@
+html body form}{
+
+}
+th.sorting_asc{
+	
+}
+th.sorting_desc{
+	
+}
+div.dt-searchPanes{
+	width:100%;
+}
+div.dt-searchPanes span.label{
+	color:black;
+}
+div.dt-searchPanes div.pane div.scroller{
+	position:relative;
+}
+.form-inline{
+	display:block;
+}
+div.dt-searchPanes{
+	height:unset;
+}
+div.dt-searchPanes div.pane div.scroller{
+	top:unset;
+}
+tr.green{
+	background-color:green;
+}
+tr.red{
+	background-color:red;
+}
+td div.btn-group.pull-right{
+	    width: 71px;
+    height: 29px;
+
+}
+input{
+	width: 100%;
+}
+html body div#legenda{
+	width:30%;
+}
+html body div#legenda table#editableTable.table.table-bordered thead.orig{
+	display:none;
+}
+
+ul{
+	padding: unset;
+	margin:3px 0 3px 0;
+	background-color:#aaa;
+	border:1px solid #333;
+	border-radius:4px;
+}
+
+ul li{
+	margin-right:2em;
+	list-style-type: none;
+	font-size: 10px;
+}
+.form-check-input{
+	position:relative;
+	width:unset;
+	margin:unset;
+	
+}
+input[type=radio] {
+    border: 0px;
+	width:2em;
+    height: 2em;
+	margin: 0 10px 10px 0;
+
+}
+div#folie{
+	
+}
+div#stroj{
+	width:8em;
+	overflow:hidden;
+
+}
+div#predano{
+	width:9em;
+	overflow:hidden;
+}
+div#produkt{
+	overflow:hidden;
+}
+div#ks{
+	
+	
+}
+div#ks input{
+	width:100%;
+}
+
+table#addBaleni label{
+	font-size:11px;
+}
+div#submenu{
+	margin:10px 0 10px 0;
+}
+table#addBaleni td.folie{
+	width:11em;
+}
+table#addBaleni  td.stroj{
+	width:8em;
+}
+table#addBaleni td.predano{
+	width:10em;
+}
+table#addBaleni td.produkt{
+	width:10em;
+	overflow:hidden;
+}
+table#addBaleni td.ks{
+	width:15em;
+}
+li.fid{
+	color:red;
+}
+li.fid:hover{
+	background-color:yellow;
+	
+}
+li.popis{
+	clear:left;
+	float:left;
+}
+li.right{
+	float:left;
+}
+div.produktV{
+background-color: #888;
+border-radius: 7px;
+padding: 1em 0em 1em 0em;
+border: 2px solid #555;
+font-size:11px;
+}
+button#addBaleni{
+	position: absolute;
+    top: 50px;
+    right: 20px;
+}
+div.znacky{
+	float:left;
+	width:30%;
+	
+}
+div.resultZ{
+	float:left;
+	width:70%;
+}
+button.buttons-excel{
+	color: #fff;
+	background-color: #449d44;
+	border-color: #398439;
+}
+input:required{
+	 border: 1px dashed red;
+	 border: 1px dashed red;
+}
+.form-inline .form-control{
+	width:100% !important;
+}
+label.parametry3 input.form-check-input{
+	width:33%;
+	
+}
+label.parametry3{
+	width:100%;
+	
+}
+label.parametry2 input.form-check-input{
+	width:50%;
+	
+}
+div#inert input.form-check-input{
+	width:47%;
+}
+label.parametry3{
+	width:100%;
+	
+}
+li.fid.right{
+	cursor:pointer;
+}
+td .input-sm {
+	padding:unset;
+}
+.table > thead > tr > th{
+	padding:3px;
+}
+tbody tr td.poznamka{
+
+overflow: hidden;
+text-overflow: ellipsis;
+display: -webkit-box;
+-webkit-line-clamp: 5;
+-webkit-box-orient: vertical;
+padding-bottom:unset;
+}
+
+ 
+.poznamka:hover, .poznamka:active{
+	
+	
+	overflow: unset;
+text-overflow: unset;
+display: block;
+-webkit-line-clamp: unset;
+-webkit-box-orient: unset;
+padding-bottom:unset;
+}
+
+th.rotate      { background-color: NavajoWhite; 
+          color: SaddleBrown; 
+          width:unset !important;
+		  padding-right:unset !important;
+          vertical-align: bottom; }
+th.rotate span { writing-mode: sideways-lr; /* +90°: use 'tb-rl' */
+          text-align: left;          /* +90°: use 'right' */
+          padding:10px 5px 0; }
+
+
+#editableTable{
+	width:unset !important;
+}
+#editableTable .folie{
+	background-color:#963 ;
+	color:white !important;
+}
+#editableTable .even .folie, #editableTable .even .produkt, #editableTable .even .stroj{
+  /*background:rgba(0,0,0,.75);*/
+	opacity: .9;
+ }
+ #editableTable .produkt{
+	background-color:#369 ;
+	color:white !important;
+}
+
+ #editableTable .stroj{
+	background-color:#936 ;
+	color:white !important;
+}
+
+ #editableTable thead tr th.rotate.produkt input{
+	 color:#369;
+ }
+ #editableTable thead tr th.rotate.folie input{
+	 color:#963;
+ }
+  #editableTable thead tr th.rotate.stroj input{
+	 color:#936;
+ }
+ td.produkt span.znacka, #editableTable td.stroj span.stroj, #editableTable td.folie span.dnazev, span.inert{
+	background: coral;
+	padding: 3px;
+	border-radius: 5px;
+ }
+ 
