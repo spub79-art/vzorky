@@ -121,15 +121,59 @@ if (empty($_SESSION["username"])) {
 
 <script>
     $(document).ready(function() {
-        if ($('#editableTable').length && !$.fn.DataTable.isDataTable('#editableTable')) {
-            $('#editableTable').DataTable({
-                "paging": false,
-                "fixedHeader": true,
-                "orderCellsTop": true,
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.19/i18n/Czech.json" }
-            });
-        }
+        // Pokud tabulka neexistuje, skript skončí, aby neházel chyby
+        if ($('#editableTable').length === 0) return;
+
+        $('#editableTable').SetEditable({
+            columnsEd: "1,2,3,4", // Sloupce, které chceš nechat editovat inline
+            onEdit: function(columnsEd) {
+                // Místo childNodes použijeme jQuery pro bezpečnější sběr dat
+                // Předpokládáme, že ID je v prvním sloupci nebo v data-id atributu
+                var row = $(columnsEd[0]).closest('tr');
+                var id = row.find('td:first').text();
+
+                // Tady posbíráme data - v budoucnu sem přidáme pole podle tabulky
+                var formData = {
+                    id: id,
+                    table: CURRENT_TABLE,
+                    action: 'edit_inline'
+                };
+
+                $.ajax({
+                    type: 'POST',
+                    url: "includes/update_logic.php", // Tvůj nový sjednocený skript
+                    data: formData,
+                    success: function(response) {
+                        console.log("Upraveno v tabulce: " + CURRENT_TABLE);
+                    }
+                });
+            },
+            onBeforeDelete: function(columnsEd) {
+                var row = $(columnsEd[0]).closest('tr');
+                var id = row.find('td:first').text().trim();
+
+                if (confirm('Opravdu chcete smazat záznam?')) {
+                    $.ajax({
+                        type: 'GET',
+                        url: "includes/delete_logic.php",
+                        data: { id: id, table: CURRENT_TABLE },
+                        success: function(response) {
+                            if (response.trim() === "OK") {
+                                row.fadeOut(400, function() { $(this).remove(); });
+                            } else {
+                                alert("Server nepovolil smazání: " + response);
+                            }
+                        },
+                        error: function() {
+                            alert('Chyba komunikace se serverem.');
+                        }
+                    });
+                }
+                return false; // Důležité: zastaví výchozí mazání knihovny
+            },
+        });
     });
 </script>
+
 </body>
 </html>

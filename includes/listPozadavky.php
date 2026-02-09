@@ -70,14 +70,18 @@ if (!$result) {
                         $today = date('Y-m-d');
                         $rowDate = (!empty($row['datumPozadavek'])) ? date('Y-m-d', strtotime($row['datumPozadavek'])) : '';
 
-                        if ($today === $rowDate): ?>
+                        // Získání role ze session (předpokládáme, že ji tam máš)
+                        $userRole = $_SESSION['role'] ?? 'user';
+
+                        // Logika: Smazat jde, pokud je to DNES NEBO pokud jsem ADMIN
+                        if ($today === $rowDate || $userRole === 'admin'): ?>
                             <a href="includes/delete_logic.php?id=<?= $row['id'] ?>&table=pozadavky"
-                               class="btn btn-outline-danger btn-sm"
-                               onclick="return confirm('Opravdu smazat?')">
+                               class="btn btn-outline-danger btn-sm btn-delete-ajax"
+                               onclick="return confirm('Opravdu smazat tento požadavek?')">
                                 <i class="fa fa-trash"></i>
                             </a>
                         <?php else: ?>
-                            <button class="btn btn-outline-secondary btn-sm" disabled title="Historii nelze mazat">
+                            <button class="btn btn-outline-secondary btn-sm" disabled title="Historii může mazat pouze admin">
                                 <i class="fa fa-lock"></i>
                             </button>
                         <?php endif; ?>

@@ -1,75 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d2a1b169-218d-47ab-bc4f-edf673a6648d" name="Default Changelist" comment="zacatek... uplnej... prvni upravy baleni na vzorky">
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vzorky.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/webServers.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/Uction.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/action.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/addPozadavek.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/addUser.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/addZakaznik.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/authLF.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/db_connect.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/delete_logic.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/listPozadavky.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/listUsers.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/listZakaznici.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/logout.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/paction.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/search_backend.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/vypis.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/index.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Bdittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Fdittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Pdittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Prdittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Sdittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Udittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/Zdittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/bootstable.min.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/edittable.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/jquery.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/jquery.tablesorter.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/local.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/prvniProdukty.sql" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/quirksmode.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/js/wgroup.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/Bction.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/Zction.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addBaleni.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addBalic.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addDodavatel.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addFolie.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addPredano.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addProdukt.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addStroj.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/addZnacka.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/backend-search.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/backend-search2.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/backend-searchZ.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/baleni.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/faction.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/listBaleni.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/listFolie.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/listPredano.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/listProdukty.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/listStroje.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/listZnacka.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/saction.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/search-form.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/search-form2.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/seznam tyčinek.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/tst.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/old/tst2.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/header_assets.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/header_assets.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles/vzorky.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles/vzorky.css" afterDir="false" />
+    <list default="true" id="d2a1b169-218d-47ab-bc4f-edf673a6648d" name="Default Changelist" comment="pozadavky... neco hotove..">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/includes/update_logic.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/Uction.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/action.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/delete_logic.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/delete_logic.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/listPozadavky.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listPozadavky.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/paction.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.php" beforeDir="false" afterPath="$PROJECT_DIR$/index.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Bdittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Fdittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Pdittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Prdittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Sdittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Udittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/Zdittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/bootstable.min.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/edittable.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/jquery.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/jquery.tablesorter.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/local.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/prvniProdukty.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/quirksmode.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/wgroup.js" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -149,6 +105,7 @@
       <workItem from="1770034296800" duration="627000" />
       <workItem from="1770034950683" duration="7114000" />
       <workItem from="1770100542218" duration="14922000" />
+      <workItem from="1770635418917" duration="3894000" />
     </task>
     <task id="LOCAL-00001" summary="zacatek... uplnej... prvni upravy baleni na vzorky">
       <created>1768998225821</created>
@@ -157,7 +114,14 @@
       <option name="project" value="LOCAL" />
       <updated>1768998225821</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="pozadavky... neco hotove..">
+      <created>1770635542630</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1770635542630</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -165,7 +129,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="zacatek... uplnej... prvni upravy baleni na vzorky" />
-    <option name="LAST_COMMIT_MESSAGE" value="zacatek... uplnej... prvni upravy baleni na vzorky" />
+    <MESSAGE value="pozadavky... neco hotove.." />
+    <option name="LAST_COMMIT_MESSAGE" value="pozadavky... neco hotove.." />
   </component>
   <component name="WindowStateProjectService">
     <state x="872" y="359" key="#Deployment" timestamp="1768908257233">
@@ -180,14 +145,15 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="1010" y="448" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1768992551015" />
-    <state x="905" y="295" key="CommitChangelistDialog2" timestamp="1768998266886">
+    <state x="905" y="295" key="CommitChangelistDialog2" timestamp="1770640181636">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
+    <state x="905" y="295" key="CommitChangelistDialog2/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770640181636" />
     <state x="905" y="295" key="CommitChangelistDialog2/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1768998266886" />
-    <state x="1114" y="624" key="NewPhpFileDialog" timestamp="1770116848466">
+    <state x="1114" y="624" key="NewPhpFileDialog" timestamp="1770639998356">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state x="1114" y="624" key="NewPhpFileDialog/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770043914043" />
+    <state x="1114" y="624" key="NewPhpFileDialog/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770639998356" />
     <state x="1114" y="624" key="NewPhpFileDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1770116848466" />
     <state x="1114" y="624" key="NewPhpFileDialog/2560.365.1920.1040/0.0.2560.1400/-1920.233.1920.1160@0.0.2560.1400" timestamp="1770112052765" />
     <state x="976" y="525" key="com.intellij.ide.util.TipDialog" timestamp="1770635419495">
@@ -209,10 +175,10 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="1113" y="431" key="ftp.server.browser/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1768908010019" />
-    <state x="1150" y="606" key="publish.login" timestamp="1770102020712">
+    <state x="1150" y="606" key="publish.login" timestamp="1770636553738">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state x="1150" y="606" key="publish.login/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770037013171" />
+    <state x="1150" y="606" key="publish.login/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770636553738" />
     <state x="1150" y="606" key="publish.login/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1769779346831" />
     <state x="1150" y="606" key="publish.login/2560.365.1920.1040/0.0.2560.1400/-1920.233.1920.1160@0.0.2560.1400" timestamp="1770102020712" />
     <state x="943" y="315" key="search.everywhere.popup" timestamp="1770108052801">
