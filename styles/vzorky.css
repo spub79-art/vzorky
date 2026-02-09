@@ -2,10 +2,10 @@ html body form}{
 
 }
 th.sorting_asc{
-	
+
 }
 th.sorting_desc{
-	
+
 }
 div.dt-searchPanes{
 	width:100%;
@@ -32,8 +32,8 @@ tr.red{
 	background-color:red;
 }
 td div.btn-group.pull-right{
-	    width: 71px;
-    height: 29px;
+	width: 71px;
+	height: 29px;
 
 }
 input{
@@ -63,17 +63,17 @@ ul li{
 	position:relative;
 	width:unset;
 	margin:unset;
-	
+
 }
 input[type=radio] {
-    border: 0px;
+	border: 0px;
 	width:2em;
-    height: 2em;
+	height: 2em;
 	margin: 0 10px 10px 0;
 
 }
 div#folie{
-	
+
 }
 div#stroj{
 	width:8em;
@@ -88,8 +88,8 @@ div#produkt{
 	overflow:hidden;
 }
 div#ks{
-	
-	
+
+
 }
 div#ks input{
 	width:100%;
@@ -122,7 +122,7 @@ li.fid{
 }
 li.fid:hover{
 	background-color:yellow;
-	
+
 }
 li.popis{
 	clear:left;
@@ -132,21 +132,21 @@ li.right{
 	float:left;
 }
 div.produktV{
-background-color: #888;
-border-radius: 7px;
-padding: 1em 0em 1em 0em;
-border: 2px solid #555;
-font-size:11px;
+	background-color: #888;
+	border-radius: 7px;
+	padding: 1em 0em 1em 0em;
+	border: 2px solid #555;
+	font-size:11px;
 }
 button#addBaleni{
 	position: absolute;
-    top: 50px;
-    right: 20px;
+	top: 50px;
+	right: 20px;
 }
 div.znacky{
 	float:left;
 	width:30%;
-	
+
 }
 div.resultZ{
 	float:left;
@@ -158,30 +158,30 @@ button.buttons-excel{
 	border-color: #398439;
 }
 input:required{
-	 border: 1px dashed red;
-	 border: 1px dashed red;
+	border: 1px dashed red;
+	border: 1px dashed red;
 }
 .form-inline .form-control{
 	width:100% !important;
 }
 label.parametry3 input.form-check-input{
 	width:33%;
-	
+
 }
 label.parametry3{
 	width:100%;
-	
+
 }
 label.parametry2 input.form-check-input{
 	width:50%;
-	
+
 }
 div#inert input.form-check-input{
 	width:47%;
 }
 label.parametry3{
 	width:100%;
-	
+
 }
 li.fid.right{
 	cursor:pointer;
@@ -194,34 +194,34 @@ td .input-sm {
 }
 tbody tr td.poznamka{
 
-overflow: hidden;
-text-overflow: ellipsis;
-display: -webkit-box;
--webkit-line-clamp: 5;
--webkit-box-orient: vertical;
-padding-bottom:unset;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 5;
+	-webkit-box-orient: vertical;
+	padding-bottom:unset;
 }
 
- 
+
 .poznamka:hover, .poznamka:active{
-	
-	
+
+
 	overflow: unset;
-text-overflow: unset;
-display: block;
--webkit-line-clamp: unset;
--webkit-box-orient: unset;
-padding-bottom:unset;
+	text-overflow: unset;
+	display: block;
+	-webkit-line-clamp: unset;
+	-webkit-box-orient: unset;
+	padding-bottom:unset;
 }
 
-th.rotate      { background-color: NavajoWhite; 
-          color: SaddleBrown; 
-          width:unset !important;
-		  padding-right:unset !important;
-          vertical-align: bottom; }
+th.rotate      { background-color: NavajoWhite;
+	color: SaddleBrown;
+	width:unset !important;
+	padding-right:unset !important;
+	vertical-align: bottom; }
 th.rotate span { writing-mode: sideways-lr; /* +90°: use 'tb-rl' */
-          text-align: left;          /* +90°: use 'right' */
-          padding:10px 5px 0; }
+	text-align: left;          /* +90°: use 'right' */
+	padding:10px 5px 0; }
 
 
 #editableTable{
@@ -232,31 +232,136 @@ th.rotate span { writing-mode: sideways-lr; /* +90°: use 'tb-rl' */
 	color:white !important;
 }
 #editableTable .even .folie, #editableTable .even .produkt, #editableTable .even .stroj{
-  /*background:rgba(0,0,0,.75);*/
+	/*background:rgba(0,0,0,.75);*/
 	opacity: .9;
- }
- #editableTable .produkt{
+}
+#editableTable .produkt{
 	background-color:#369 ;
 	color:white !important;
 }
 
- #editableTable .stroj{
+#editableTable .stroj{
 	background-color:#936 ;
 	color:white !important;
 }
 
- #editableTable thead tr th.rotate.produkt input{
-	 color:#369;
- }
- #editableTable thead tr th.rotate.folie input{
-	 color:#963;
- }
-  #editableTable thead tr th.rotate.stroj input{
-	 color:#936;
- }
- td.produkt span.znacka, #editableTable td.stroj span.stroj, #editableTable td.folie span.dnazev, span.inert{
+#editableTable thead tr th.rotate.produkt input{
+	color:#369;
+}
+#editableTable thead tr th.rotate.folie input{
+	color:#963;
+}
+#editableTable thead tr th.rotate.stroj input{
+	color:#936;
+}
+td.produkt span.znacka, #editableTable td.stroj span.stroj, #editableTable td.folie span.dnazev, span.inert{
 	background: coral;
 	padding: 3px;
 	border-radius: 5px;
- }
- 
+}
+.result-list {
+	top: 100%; /* Hned pod inputem */
+	left: 0;
+	right: 0;
+	background: white;
+	border: 1px solid #ddd;
+	max-height: 250px;
+	overflow-y: auto;
+	box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.result-list .list-group-item-action {
+	cursor: pointer;
+}
+.result-list .list-group-item-action:hover {
+	background-color: #f8f9fa;
+}
+/* Styly pro karty formuláře */
+.form-card {
+	background: #ffffff;
+	border: 1px solid #dee2e6;
+	border-radius: 0.5rem;
+	padding: 1.5rem;
+	margin-bottom: 1rem;
+}
+
+.form-card-title {
+	font-size: 1.1rem;
+	font-weight: bold;
+	border-bottom: 2px solid #f8f9fa;
+	padding-bottom: 0.75rem;
+	margin-bottom: 1.25rem;
+}
+
+/* AJAX našeptávač */
+.search-box {
+	position: relative;
+}
+
+.result-list {
+	position: absolute;
+	z-index: 1050;
+	width: 100%;
+	background: white;
+	border: 1px solid #ced4da;
+	border-radius: 0.25rem;
+	box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+/* Úpravy pro MJ a BIO */
+.mj-select {
+	max-width: 90px;
+	background-color: #f8f9fa !important;
+}
+
+.bio-switch-container {
+	display: inline-block;
+	padding-bottom: 5px;
+}
+
+.bio-switch {
+	scale: 1.4;
+	cursor: pointer;
+}
+
+.form-label {
+	font-weight: 600;
+}
+div.row.align-items-end{
+	margin-right: unset;
+	margin-left: unset;
+}
+/* Vynucení řádkového zobrazení v input-group pro starší verze */
+.input-group {
+	display: flex !important;
+	flex-wrap: nowrap !important;
+}
+
+.input-group .form-control {
+	width: auto !important; /* Zrušíme tu 100% šířku, co to rozbíjí */
+	flex-grow: 1;
+}
+
+.mj-select {
+	width: 90px !important;
+	flex: 0 0 90px !important;
+}
+div.row div.col-6{
+	padding:1.5rem;
+}
+.badge {
+	font-size: 0.7rem;
+	padding: 4px 6px;
+	border-radius: 4px;
+	font-weight: 500;
+	text-transform: uppercase;
+}
+
+.mr-1 {
+	margin-right: 4px;
+}
+
+.table td {
+	vertical-align: middle;
+}
