@@ -52,16 +52,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <link rel="stylesheet" type="text/css" href="styles/vzorky.css">
 
     <script>
-        // Zápis proměnné z PHP do JS
         var CURRENT_TABLE = "<?php echo $jsTableAction; ?>";
-
-        // POJISTKA: Pokud PHP selže, zkusíme detekci z URL
-        if (!CURRENT_TABLE || CURRENT_TABLE === "") {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('Suroviny')) CURRENT_TABLE = 'suroviny';
-            else if (urlParams.has('Zakaznik')) CURRENT_TABLE = 'zakaznik';
-            else if (urlParams.has('Pozadavek')) CURRENT_TABLE = 'pozadavky';
-        }
     </script>
 </head>
 <body>
@@ -123,61 +114,52 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
 
 <script>
     $(document).ready(function() {
-// Inicializace DataTable
-        $('.table-sjednocena, #editableTable').DataTable({
+        // Přidáme parametr retrieve: true
+        var table = $('.table-sjednocena, #editableTable').DataTable({
             "paging": false,
-            "autoWidth": false, // VYPNUTÍ AUTOMATICKÉ ŠÍŘKY
-            "order": [],
+            "autoWidth": false,
+            "retrieve": true, // <--- KLÍČOVÁ OPRAVA: Pokud už existuje, prostě ji načti
+            "order": [[0, "desc"]],
             "language": { "url": "//cdn.datatables.net/plug-ins/1.10.19/i18n/Czech.json" }
         });
 
-// Pokud používáš i ID #editableTable (pro editovatelné tabulky)
-        if ($.fn.DataTable.isDataTable('#editableTable')) {
-            $('#editableTable').DataTable().destroy(); // Zničíme předchozí instanci, pokud existuje
-        }
-
-        $('#editableTable').DataTable({
-            "paging": false,    // VYPNE STRÁNKOVÁNÍ
-            "order": [[0, "desc"]], // Seřadí od nejnovějšího
-            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.19/i18n/Czech.json" }
-        });
-// Oživení tlačítek se třídou .btn-delete-ajax
-        $(document).on('click', '.btn-delete-ajax', function(e) {
-            e.preventDefault();
-
-            var btn = $(this);
-            var id = btn.data('id');
-            var table = btn.data('table');
-            var row = btn.closest('tr');
-
+        // 2. Hlavní funkce pro mazání (AJAX)
+        function deleteRowAjax(id, tableName, rowElement) {
             if (confirm('Opravdu chcete smazat tento záznam (ID: ' + id + ')?')) {
                 $.ajax({
                     type: 'GET',
-                    url: "includes/delete_logic.php", // Zkus přidat / na začátek, pokud je index v rootu: "/includes/delete_logic.php"
-                    data: { id: id, table: table },
+                    url: "includes/delete_logic.php",
+                    data: { id: id, table: tableName },
                     success: function(response) {
                         if (response.trim() === "OK") {
-                            // Pokud používáš DataTables, smažeme to přes API, aby fungovalo vyhledávání
-                            var tableApi = $('#editableTable').DataTable();
-                            tableApi.row(row).remove().draw(false);
+                            // Smazání řádku z DataTables API
+                            var dt = $('.table-sjednocena, #editableTable').DataTable();
+                            dt.row(rowElement).remove().draw(false);
                         } else {
                             alert("Chyba: " + response);
                         }
                     },
-                    error: function() {
-                        alert("Chyba komunikace se serverem.");
+                    error: function(xhr) {
+                        alert("Chyba komunikace se serverem: " + xhr.status);
                     }
                 });
             }
-        });
-        if ($('#editableTable').length > 0) {
-            // Zjistíme název tabulky přímo z HTML atributu data-table
-            var tableRealName = $('#editableTable').attr('data-table');
+        }
 
-            // Pokud atribut chybí, zkusíme zálohu z PHP proměnné, kterou jsme si definovali dříve
-            if (!tableRealName) {
-                tableRealName = typeof CURRENT_TABLE !== 'undefined' ? CURRENT_TABLE : 'pozadavky';
-            }
+        // 3. Odchycení kliknutí na smazat (tlačítko v listPozadavky.php)
+        $(document).on('click', '.btn-delete-ajax', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var id = $(this).data('id');
+            var tableName = $(this).data('table') || CURRENT_TABLE;
+            var row = $(this).closest('tr');
+            deleteRowAjax(id, tableName, row);
+            return false;
+        });
+
+        // 4. Inline editace (Bootstable)
+        if ($('#editableTable').length > 0) {
+            var tableRealName = $('#editableTable').attr('data-table') || CURRENT_TABLE;
 
             $('#editableTable').SetEditable({
                 columnsEd: "1,2,3,4",
@@ -188,36 +170,14 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
                         type: 'POST',
                         url: "includes/update_logic.php",
                         data: { id: id, table: tableRealName, action: 'edit_inline' },
-                        success: function(r) { console.log("Edit: " + tableRealName); }
+                        success: function(r) { console.log("Editováno ID: " + id); }
                     });
                 },
                 onBeforeDelete: function(columnsEd) {
                     var row = $(columnsEd[0]).closest('tr');
                     var id = row.find('td:first').text().trim();
-
-                    if (confirm('Opravdu smazat ID ' + id + ' z tabulky ' + tableRealName + '?')) {
-                        $.ajax({
-                            type: 'GET',
-                            url: "includes/delete_logic.php",
-                            data: { id: id, table: tableRealName },
-                            success: function(response) {
-                                if (response.trim() === "OK") {
-                                    if ($.fn.DataTable.isDataTable('#editableTable')) {
-                                        $('#editableTable').DataTable().row(row).remove().draw(false);
-                                    } else {
-                                        row.fadeOut();
-                                    }
-                                } else {
-                                    // Tady už UVIDÍŠ název tabulky, pokud to znovu selže
-                                    alert("Server vrátil chybu: " + response);
-                                }
-                            },
-                            error: function(xhr) {
-                                alert('Chyba serveru. Status: ' + xhr.status);
-                            }
-                        });
-                    }
-                    return false;
+                    deleteRowAjax(id, tableRealName, row);
+                    return false; // Bootstable samo řádek nesmaže, udělá to náš AJAX success
                 }
             });
         }
