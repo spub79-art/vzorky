@@ -1,46 +1,64 @@
 <?php
 session_start();
-error_reporting(E_ALL);
 ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-// Připojení k DB - skript je v includes/, db_connect v rootu
-include_once("../db_connect.php");
+include_once("db_connect.php");
+header('Content-Type: text/html; charset=utf-8');
 
-if (isset($_GET['id']) && isset($_GET['table'])) {
-    $id = (int)$_GET['id'];
-    $table = mysqli_real_escape_string($conn, $_GET['table']);
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$table_raw = isset($_GET['table']) ? $_GET['table'] : '';
+$table = strtolower(trim($table_raw));
+$redirect_param = isset($_GET['redirect']) ? $_GET['redirect'] : '';
 
-    // Tvoje role z authLF.php
-    $is_admin = !empty($_SESSION['adm']);
+if (!$conn) { die("Chyba: Databáze není připojena."); }
+$table = mysqli_real_escape_string($conn, $table);
+$is_adm = (isset($_SESSION['adm']) && $_SESSION['adm'] == 1);
 
-    $allowed_tables = ['pozadavky', 'zakaznik', 'users'];
-    if (!in_array($table, $allowed_tables)) { die("Nepovolená tabulka."); }
+// --- LOGIKA PRO POŽADAVKY ---
+if ($table === 'pozadavky') {
+    $res = mysqli_query($conn, "SELECT id_surovina, datumPozadavek FROM pozadavky WHERE id = $id");
+    $row = mysqli_fetch_assoc($res);
 
-    // Logika pro ZÁKAZNÍKY (admin + kontrola vazeb)
-    if ($table === 'zakaznik') {
-        if (!$is_admin) { die("Chyba: Pouze admin maže zákazníky."); }
+    if ($row) {
+        $id_surovin_ke_kontrole = (int)$row['id_surovina'];
 
-        $check = mysqli_query($conn, "SELECT id FROM pozadavky WHERE id_zakaznik = $id LIMIT 1");
-        if (mysqli_num_rows($check) > 0) {
-            die("Chyba: Zákazník má aktivní požadavky.");
-        }
-    }
-
-    // Logika pro POŽADAVKY (admin nebo dnes)
-    if ($table === 'pozadavky') {
-        $res = mysqli_query($conn, "SELECT datumPozadavek FROM pozadavky WHERE id = $id");
-        $row = mysqli_fetch_assoc($res);
+        // Ochrana historie
         $isToday = (date('Y-m-d') === date('Y-m-d', strtotime($row['datumPozadavek'])));
+        if (!$is_adm && !$isToday) { die("Historické záznamy smí mazat pouze administrátor."); }
 
-        if (!$is_admin && !$isToday) {
-            die("Chyba: Historii maže jen admin.");
+        if (mysqli_query($conn, "DELETE FROM pozadavky WHERE id = $id")) {
+            if ($id_surovin_ke_kontrole > 0) {
+                $checkNext = mysqli_query($conn, "SELECT id FROM pozadavky WHERE id_surovina = $id_surovin_ke_kontrole LIMIT 1");
+                if (mysqli_num_rows($checkNext) === 0) {
+                    mysqli_query($conn, "DELETE FROM suroviny WHERE id = $id_surovin_ke_kontrole");
+                }
+            }
+            echo "OK";
+            exit;
         }
-    }
-
-    $sql = "DELETE FROM $table WHERE id = $id";
-    if (mysqli_query($conn, $sql)) {
-        echo "OK";
-    } else {
-        echo "Chyba DB: " . mysqli_error($conn);
     }
 }
+// --- LOGIKA PRO OSTATNÍ TABULKY (Zákazníci atd.) ---
+else if (!empty($table) && $id > 0) {
+    // Bezpečnostní pojistka: zákazníka smažeme jen když nemá požadavky
+    if ($table === 'zakaznik') {
+        $check = mysqli_query($conn, "SELECT id FROM pozadavky WHERE id_zakaznik = $id LIMIT 1");
+        if (mysqli_num_rows($check) > 0) {
+            die("Nelze smazat zákazníka s aktivními požadavky.");
+        }
+    }
+
+    if (mysqli_query($conn, "DELETE FROM `$table` WHERE id = $id")) {
+        // Pokud máme parametr pro přesměrování, vrátíme se na index
+        if (!empty($redirect_param)) {
+            header("Location: ../index.php?$redirect_param=1");
+            exit;
+        }
+        echo "OK";
+        exit;
+    }
+}
+
+echo "Chyba při zpracování požadavku.";
+?>

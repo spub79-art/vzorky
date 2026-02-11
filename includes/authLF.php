@@ -1,5 +1,8 @@
 <?php
-include_once("./db_connect.php");
+set_include_path($_SERVER['DOCUMENT_ROOT'] . 'includes/');
+include_once("db_connect.php");
+
+
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }

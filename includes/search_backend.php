@@ -1,47 +1,47 @@
 <?php
-include_once("./db_connect.php");
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+if (file_exists("db_connect.php")) {
+    include_once("db_connect.php");
+} elseif (file_exists("../db_connect.php")) {
+    include_once("../db_connect.php");
+} else {
+    die(json_encode(["error" => "db_connect.php nenalezen"]));
+}
+
+mysqli_set_charset($conn, "utf8mb4");
 
 $term = isset($_GET['term']) ? mysqli_real_escape_string($conn, $_GET['term']) : '';
 $table = isset($_GET['table']) ? mysqli_real_escape_string($conn, $_GET['table']) : '';
 
 $allowed_tables = ['zakaznik', 'stroje', 'folie', 'suroviny'];
 
-if (!in_array($table, $allowed_tables)) {
-    die("");
+if (!in_array($table, $allowed_tables) || empty($term)) {
+    header('Content-Type: application/json');
+    echo json_encode([]);
+    exit;
 }
 
-if (!empty($term)) {
-    // Trik pro ignorování diakritiky: Převedeme oba porovnávané řetězce do ASCII
-    // a nahradíme znaky s háčky/čárkami jejich základem.
-    // Pro MySQL je nejjednodušší použít porovnávání (Collation) 'utf8mb4_general_ci'
-    // nebo 'utf8_general_ci', které diakritiku při hledání ignoruje samo o sobě.
+// JEDNODUCHÁ LOGIKA: Hledáme už jen v číselnících,
+// protože v pozadavcích už textové názvy nemáme.
+$query = "SELECT id, nazev FROM `$table` 
+          WHERE nazev LIKE '%$term%' 
+          ORDER BY nazev ASC 
+          LIMIT 10";
 
-    if ($table === 'suroviny') {
-        $query = "SELECT DISTINCT nazev FROM (
-                    SELECT nazev FROM suroviny 
-                    WHERE nazev COLLATE utf8mb4_general_ci LIKE '%$term%'
-                    UNION
-                    SELECT nazev FROM pozadavky 
-                    WHERE nazev COLLATE utf8mb4_general_ci LIKE '%$term%'
-                  ) AS kombinace 
-                  ORDER BY nazev ASC 
-                  LIMIT 10";
-    } else {
-        $query = "SELECT nazev FROM $table 
-                  WHERE nazev COLLATE utf8mb4_general_ci LIKE '%$term%' 
-                  ORDER BY nazev ASC 
-                  LIMIT 10";
-    }
+$res = mysqli_query($conn, $query);
+$results = [];
 
-    $res = mysqli_query($conn, $query);
-
-    if ($res && mysqli_num_rows($res) > 0) {
-        while ($row = mysqli_fetch_assoc($res)) {
-            $name = htmlspecialchars($row['nazev']);
-            echo "<a href='#' class='list-group-item list-group-item-action'>{$name}</a>";
-        }
-    } else {
-        echo "<div class='list-group-item text-muted small'>Nová položka: '" . htmlspecialchars($term) . "'</div>";
+if ($res) {
+    while ($row = mysqli_fetch_assoc($res)) {
+        $results[] = [
+            'id'    => $row['id'],    // Skutečné ID z databáze
+            'label' => $row['nazev'], // Text pro zobrazení v našeptávači
+            'value' => $row['nazev']  // Text pro vložení do inputu
+        ];
     }
 }
-?>
+
+header('Content-Type: application/json');
+echo json_encode($results);

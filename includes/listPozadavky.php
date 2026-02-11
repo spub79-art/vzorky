@@ -1,94 +1,95 @@
 <?php
-// TOTO DOČASNĚ ZAPNE VÝPIS CHYB, ABYCHOM VIDĚLI PŘESNÝ ŘÁDEK
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Načtení dat přímo v souboru, aby proměnná $result vždy existovala
+include_once("includes/db_connect.php");
 
-include_once("./db_connect.php");
-
-// SQL dotaz s JOINem - zkontroluj, zda se tabulky a sloupce jmenují přesně takto
-$sql = "SELECT p.*, z.nazev AS zakaznik_nazev 
+$sql = "SELECT p.*, 
+               z.nazev AS zakaznik_nazev, 
+               s.nazev AS surovina_nazev 
         FROM pozadavky p 
         LEFT JOIN zakaznik z ON p.id_zakaznik = z.id 
+        LEFT JOIN suroviny s ON p.id_surovina = s.id 
         ORDER BY p.datumPozadavek DESC";
 
 $result = mysqli_query($conn, $sql);
 
-// Pokud selže SQL, vypíše to přesně proč (např. neznámý sloupec)
 if (!$result) {
     die("Chyba v SQL dotazu: " . mysqli_error($conn));
 }
+
+// Kontrola admina pro zobrazení tlačítek
+$is_admin_session = (!empty($_SESSION['adm']) && $_SESSION['adm'] == 1);
 ?>
 
-<div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Přehled požadavků</h3>
-        <a href="index.php?addPozadavek=1" class="btn btn-success btn-sm">Nový požadavek</a>
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 text-dark">
+        <h2 class="mb-0">Správa požadavků</h2>
+        <a href="index.php?add_Pozadavek=1" class="btn btn-primary">
+            <i class="fa fa-plus"></i> Nový požadavek
+        </a>
     </div>
 
-    <table id="editableTable" class="table table-bordered table-hover shadow-sm bg-white">
-        <thead class="table-light">
-        <tr>
-            <th>Datum</th>
-            <th>Surovina</th>
-            <th>Vlastnosti</th>
-            <th>Zákazník</th>
-            <th>Množství</th>
-            <th class="text-end">Akce</th>
-        </tr>
-        </thead>
-        <tbody>
-        <?php
-        // Použijeme fetch_assoc v cyklu
-        while($row = mysqli_fetch_assoc($result)):
-            // Ošetření datumu, aby nezpůsobilo chybu, pokud je špatně zapsán
-            $datum = (!empty($row['datumPozadavek'])) ? date('d.m.Y', strtotime($row['datumPozadavek'])) : '-';
-            ?>
+    <div class="table-responsive shadow-sm">
+        <table id="editableTable" data-table="pozadavky" class="table table-bordered table-striped align-middle bg-white table-sjednocena">
+            <thead class="table-dark text-nowrap">
             <tr>
-                <td><?= $datum ?></td>
-                <td><strong><?= htmlspecialchars($row['nazev'] ?? '') ?></strong></td>
-                <td>
-                    <div class="d-flex gap-1">
-                        <?php if(!empty($row['bio'])): ?><span class="badge bg-success">BIO</span><?php endif; ?>
-                        <?php if(!empty($row['bezlepek'])): ?><span class="badge bg-warning text-dark">BL</span><?php endif; ?>
-                        <?php if(!empty($row['vegan'])): ?><span class="badge bg-info">V</span><?php endif; ?>
-                        <?php if(!empty($row['kosher'])): ?><span class="badge bg-secondary">K</span><?php endif; ?>
-                    </div>
-                </td>
-                <td><?= htmlspecialchars($row['zakaznik_nazev'] ?? 'Neznámý') ?></td>
-                <td>
-                    <?= number_format((float)($row['Mnozstvi'] ?? 0), 2, ',', ' ') ?>
-                    <?= htmlspecialchars($row['mj'] ?? '') ?>
-                </td>
-                <td class="text-end">
-                    <div class="btn-group">
-                        <a href="index.php?editPozadavek=<?= $row['id'] ?>" class="btn btn-outline-primary btn-sm">
-                            <i class="fa fa-edit"></i>
-                        </a>
-
-                        <?php
-                        $today = date('Y-m-d');
-                        $rowDate = (!empty($row['datumPozadavek'])) ? date('Y-m-d', strtotime($row['datumPozadavek'])) : '';
-
-                        // Získání role ze session (předpokládáme, že ji tam máš)
-                        $userRole = $_SESSION['role'] ?? 'user';
-
-                        // Logika: Smazat jde, pokud je to DNES NEBO pokud jsem ADMIN
-                        if ($today === $rowDate || $userRole === 'admin'): ?>
-                            <a href="includes/delete_logic.php?id=<?= $row['id'] ?>&table=pozadavky"
-                               class="btn btn-outline-danger btn-sm btn-delete-ajax"
-                               onclick="return confirm('Opravdu smazat tento požadavek?')">
-                                <i class="fa fa-trash"></i>
-                            </a>
-                        <?php else: ?>
-                            <button class="btn btn-outline-secondary btn-sm" disabled title="Historii může mazat pouze admin">
-                                <i class="fa fa-lock"></i>
-                            </button>
-                        <?php endif; ?>
-                    </div>
-                </td>
+                <th style="width: 50px;">ID</th>
+                <th>Datum</th>
+                <th>Surovina</th>
+                <th>Vlastnosti</th>
+                <th>Zákazník</th>
+                <th>Množství</th>
+                <th class="text-center" style="width: 120px;">Akce</th>
             </tr>
-        <?php endwhile; ?>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            <?php while ($row = mysqli_fetch_assoc($result)):
+                $datumRaw = $row['datumPozadavek'];
+                $is_today = (date('Y-m-d') === date('Y-m-d', strtotime($datumRaw)));
+                // Admin může vše, uživatel jen dnešní záznamy
+                $can_modify = ($is_admin_session || $is_today);
+                ?>
+                <tr>
+                    <td class="text-center text-muted small"><?= $row['id'] ?></td>
+                    <td data-sort="<?= $datumRaw ?>">
+                        <?= (!empty($datumRaw)) ? date('d.m.Y', strtotime($datumRaw)) : '-' ?>
+                    </td>
+                    <td><strong><?= htmlspecialchars($row['surovina_nazev'] ?? 'Neznámá surovina') ?></strong></td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <?php if(!empty($row['bio'])): ?><span class="badge bg-success">BIO</span><?php endif; ?>
+                            <?php if(!empty($row['vegan'])): ?><span class="badge bg-info">VGN</span><?php endif; ?>
+                            <?php if(!empty($row['bezlepek'])): ?><span class="badge bg-warning text-dark">BL</span><?php endif; ?>
+                        </div>
+                    </td>
+                    <td><?= htmlspecialchars($row['zakaznik_nazev'] ?? 'Neznámý') ?></td>
+                    <td data-sort="<?= $row['Mnozstvi'] ?>">
+                        <?= number_format((float)($row['Mnozstvi'] ?? 0), 2, ',', ' ') ?> <?= htmlspecialchars($row['mj'] ?? '') ?>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group">
+                          <!--  <a href="index.php?add_Pozadavek=1&edit_id=<?= $row['id'] ?>"
+                               class="btn btn-success btn-sm" title="Editovat">
+                                <i class="fa fa-save"> Uložit</i>
+                            </a>-->
+
+                            <?php if ($can_modify): ?>
+                                <a href="javascript:void(0);"
+                                   class="btn btn-danger btn-sm btn-delete-ajax"
+                                   data-id="<?= $row['id'] ?>"
+                                   data-table="pozadavky"
+                                   title="Smazat">
+                                    <i class="fa fa-trash">X</i>
+                                </a>
+                            <?php else: ?>
+                                <button class="btn btn-secondary btn-sm" disabled title="Historii maže jen admin">
+                                    <i class="fa fa-lock"> Zamčeno</i>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+            </tbody>
+        </table>
+    </div>
 </div>

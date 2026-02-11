@@ -1,6 +1,6 @@
 <?php
 session_start();
-include_once("../db_connect.php");
+include_once("includes/db_connect.php");
 
 // Tato logika obslouží SetEditable z indexu
 if (isset($_POST['action']) && $_POST['action'] == 'edit_inline') {

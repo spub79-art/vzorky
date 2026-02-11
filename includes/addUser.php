@@ -1,5 +1,5 @@
 <?php
-include_once("./db_connect.php");
+include_once("includes/db_connect.php");
 
 if (isset($_POST['save_user'])) {
     $jmeno   = mysqli_real_escape_string($conn, $_POST['jmeno']);

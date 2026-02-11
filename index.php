@@ -1,6 +1,6 @@
 <?php
-include("./authLF.php");
-include("./db_connect.php");
+include("includes/authLF.php");
+include("includes/db_connect.php");
 
 // 1. Role
 $is_adm     = !empty($_SESSION['adm']);
@@ -10,8 +10,8 @@ $is_kvalita = !empty($_SESSION['kvalita']);
 
 $has_internal_access = ($is_adm || $is_vyvoj || $is_orders || $is_kvalita);
 
-// 2. Detekce stránky (Sjednoceno na nové prvky)
-$page = 'Pozadavek'; // Výchozí stránka po přihlášení
+// 2. Detekce stránky
+$page = 'Pozadavek';
 if (isset($_GET['Pozadavek']))     $page = 'Pozadavek';
 if (isset($_GET['add_Pozadavek'])) $page = 'add_Pozadavek';
 if (isset($_GET['Vzorek']))        $page = 'Vzorek';
@@ -21,6 +21,7 @@ if (isset($_GET['add_Produkt']))   $page = 'add_Produkt';
 if (isset($_GET['Zakaznik']))      $page = 'Zakaznik';
 if (isset($_GET['Users']))         $page = 'Users';
 if (isset($_GET['add_User']))      $page = 'add_User';
+if (isset($_GET['Suroviny']))      $page = 'Suroviny';
 
 function btnActive($current, $targetArray) {
     return in_array($current, $targetArray) ? ' active' : '';
@@ -29,6 +30,18 @@ function btnActive($current, $targetArray) {
 if (empty($_SESSION["username"])) {
     exit();
 }
+
+// --- MAPOVÁNÍ PRO DATABÁZI ---
+$mapping = [
+    'Pozadavek'     => 'pozadavky',
+    'add_Pozadavek' => 'pozadavky',
+    'Zakaznik'      => 'zakaznik',
+    'Suroviny'      => 'suroviny',
+    'Users'         => 'users',
+    'Vzorek'        => 'vzorky',
+    'Produkt'       => 'produkt'
+];
+$jsTableAction = $mapping[$page] ?? strtolower($page);
 ?>
 <!DOCTYPE html>
 <html lang="cs">
@@ -38,29 +51,26 @@ if (empty($_SESSION["username"])) {
     <?php include("./includes/header_assets.php"); ?>
     <link rel="stylesheet" type="text/css" href="styles/vzorky.css">
 
-    <?php
-    // ... tvůj switch pro include stránek ...
-    $jsTableAction = "pozadavky"; // výchozí
-
-    if (isset($_GET['listZakaznik'])) {
-        $jsTableAction = "zakaznik";
-    } elseif (isset($_GET['listPozadavky'])) {
-        $jsTableAction = "pozadavky";
-    }
-    ?>
-
     <script>
-        const CURRENT_TABLE = "<?= $jsTableAction ?>";
+        // Zápis proměnné z PHP do JS
+        var CURRENT_TABLE = "<?php echo $jsTableAction; ?>";
+
+        // POJISTKA: Pokud PHP selže, zkusíme detekci z URL
+        if (!CURRENT_TABLE || CURRENT_TABLE === "") {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('Suroviny')) CURRENT_TABLE = 'suroviny';
+            else if (urlParams.has('Zakaznik')) CURRENT_TABLE = 'zakaznik';
+            else if (urlParams.has('Pozadavek')) CURRENT_TABLE = 'pozadavky';
+        }
     </script>
 </head>
 <body>
 <div id="maincontainer" class="container-fluid">
 
     <div id="buttons" class="row" style="padding: 15px;">
-        <a class="btn btn-primary<?php echo btnActive($page, ['Pozadavek', 'add_Pozadavek', 'Zakaznik']); ?>" href="./index.php?Pozadavek=1">Požadavek</a>
+        <a class="btn btn-primary<?php echo btnActive($page, ['Pozadavek', 'add_Pozadavek', 'Zakaznik', 'Suroviny']); ?>" href="./index.php?Pozadavek=1">Požadavek</a>
         <a class="btn btn-primary<?php echo btnActive($page, ['Vzorek', 'add_Vzorek']); ?>" href="./index.php?Vzorek=1">Vzorek</a>
         <a class="btn btn-primary<?php echo btnActive($page, ['Produkt', 'add_Produkt']); ?>" href="./index.php?Produkt=1">Produkt</a>
-        <!--<a class="btn btn-primary<?php echo btnActive($page, ['Zakaznik', 'add_Zakaznik']); ?>" href="./index.php?Zakaznik=1">Zákazník</a>-->
 
         <div class="pull-right">
             <?php if ($is_adm || $is_kvalita): ?>
@@ -73,17 +83,14 @@ if (empty($_SESSION["username"])) {
     </div>
 
     <div id="submenu" style="margin: 10px 0;">
-        <?php if (in_array($page, ['Pozadavek', 'add_Pozadavek', 'Zakaznik'])): ?>
+        <?php if (in_array($page, ['Pozadavek', 'add_Pozadavek', 'Zakaznik', 'Suroviny'])): ?>
             <a href="index.php?add_Pozadavek=1" class="btn btn-sm btn-warning">Nový požadavek</a>
             <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Zakaznik']); ?>" href="./index.php?Zakaznik=1">Zákazník</a>
+            <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Suroviny']); ?>" href="./index.php?Suroviny=1">Suroviny</a>
         <?php elseif ($page == 'Vzorek'): ?>
             <a href="index.php?add_Vzorek=1" class="btn btn-sm btn-warning">Nový vzorek</a>
         <?php elseif ($page == 'Produkt'): ?>
             <a href="index.php?add_Produkt=1" class="btn btn-sm btn-warning">Nový produkt</a>
-        <?php elseif ($page == 'Zakaznik'): ?>
-
-        <?php elseif ($page == 'Users'): ?>
-            <!--<a href="index.php?add_User=1" class="btn btn-sm btn-warning">Přidat uživatele</a>-->
         <?php endif; ?>
     </div>
 
@@ -94,19 +101,14 @@ if (empty($_SESSION["username"])) {
         switch ($page) {
             case 'Pozadavek':     include("includes/listPozadavky.php"); break;
             case 'add_Pozadavek': include("includes/addPozadavek.php"); break;
-
             case 'Vzorek':        include("includes/listVzorky.php"); break;
             case 'add_Vzorek':    include("includes/addVzorek.php"); break;
-
             case 'Produkt':       include("includes/listProdukty.php"); break;
             case 'add_Produkt':   include("includes/addProdukt.php"); break;
-
             case 'Zakaznik':      include("includes/listZakaznici.php"); break;
-
-
             case 'Users':         include("includes/listUsers.php"); break;
             case 'add_User':      include("includes/addUser.php"); break;
-
+            case 'Suroviny':      include("includes/listSuroviny.php"); break;
             default:              include("includes/listPozadavky.php"); break;
         }
         ?>
@@ -121,59 +123,105 @@ if (empty($_SESSION["username"])) {
 
 <script>
     $(document).ready(function() {
-        // Pokud tabulka neexistuje, skript skončí, aby neházel chyby
-        if ($('#editableTable').length === 0) return;
+// Inicializace DataTable
+        $('.table-sjednocena, #editableTable').DataTable({
+            "paging": false,
+            "autoWidth": false, // VYPNUTÍ AUTOMATICKÉ ŠÍŘKY
+            "order": [],
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.19/i18n/Czech.json" }
+        });
 
-        $('#editableTable').SetEditable({
-            columnsEd: "1,2,3,4", // Sloupce, které chceš nechat editovat inline
-            onEdit: function(columnsEd) {
-                // Místo childNodes použijeme jQuery pro bezpečnější sběr dat
-                // Předpokládáme, že ID je v prvním sloupci nebo v data-id atributu
-                var row = $(columnsEd[0]).closest('tr');
-                var id = row.find('td:first').text();
+// Pokud používáš i ID #editableTable (pro editovatelné tabulky)
+        if ($.fn.DataTable.isDataTable('#editableTable')) {
+            $('#editableTable').DataTable().destroy(); // Zničíme předchozí instanci, pokud existuje
+        }
 
-                // Tady posbíráme data - v budoucnu sem přidáme pole podle tabulky
-                var formData = {
-                    id: id,
-                    table: CURRENT_TABLE,
-                    action: 'edit_inline'
-                };
+        $('#editableTable').DataTable({
+            "paging": false,    // VYPNE STRÁNKOVÁNÍ
+            "order": [[0, "desc"]], // Seřadí od nejnovějšího
+            "language": { "url": "//cdn.datatables.net/plug-ins/1.10.19/i18n/Czech.json" }
+        });
+// Oživení tlačítek se třídou .btn-delete-ajax
+        $(document).on('click', '.btn-delete-ajax', function(e) {
+            e.preventDefault();
 
+            var btn = $(this);
+            var id = btn.data('id');
+            var table = btn.data('table');
+            var row = btn.closest('tr');
+
+            if (confirm('Opravdu chcete smazat tento záznam (ID: ' + id + ')?')) {
                 $.ajax({
-                    type: 'POST',
-                    url: "includes/update_logic.php", // Tvůj nový sjednocený skript
-                    data: formData,
+                    type: 'GET',
+                    url: "includes/delete_logic.php", // Zkus přidat / na začátek, pokud je index v rootu: "/includes/delete_logic.php"
+                    data: { id: id, table: table },
                     success: function(response) {
-                        console.log("Upraveno v tabulce: " + CURRENT_TABLE);
+                        if (response.trim() === "OK") {
+                            // Pokud používáš DataTables, smažeme to přes API, aby fungovalo vyhledávání
+                            var tableApi = $('#editableTable').DataTable();
+                            tableApi.row(row).remove().draw(false);
+                        } else {
+                            alert("Chyba: " + response);
+                        }
+                    },
+                    error: function() {
+                        alert("Chyba komunikace se serverem.");
                     }
                 });
-            },
-            onBeforeDelete: function(columnsEd) {
-                var row = $(columnsEd[0]).closest('tr');
-                var id = row.find('td:first').text().trim();
-
-                if (confirm('Opravdu chcete smazat záznam?')) {
-                    $.ajax({
-                        type: 'GET',
-                        url: "includes/delete_logic.php",
-                        data: { id: id, table: CURRENT_TABLE },
-                        success: function(response) {
-                            if (response.trim() === "OK") {
-                                row.fadeOut(400, function() { $(this).remove(); });
-                            } else {
-                                alert("Server nepovolil smazání: " + response);
-                            }
-                        },
-                        error: function() {
-                            alert('Chyba komunikace se serverem.');
-                        }
-                    });
-                }
-                return false; // Důležité: zastaví výchozí mazání knihovny
-            },
+            }
         });
+        if ($('#editableTable').length > 0) {
+            // Zjistíme název tabulky přímo z HTML atributu data-table
+            var tableRealName = $('#editableTable').attr('data-table');
+
+            // Pokud atribut chybí, zkusíme zálohu z PHP proměnné, kterou jsme si definovali dříve
+            if (!tableRealName) {
+                tableRealName = typeof CURRENT_TABLE !== 'undefined' ? CURRENT_TABLE : 'pozadavky';
+            }
+
+            $('#editableTable').SetEditable({
+                columnsEd: "1,2,3,4",
+                onEdit: function(columnsEd) {
+                    var row = $(columnsEd[0]).closest('tr');
+                    var id = row.find('td:first').text().trim();
+                    $.ajax({
+                        type: 'POST',
+                        url: "includes/update_logic.php",
+                        data: { id: id, table: tableRealName, action: 'edit_inline' },
+                        success: function(r) { console.log("Edit: " + tableRealName); }
+                    });
+                },
+                onBeforeDelete: function(columnsEd) {
+                    var row = $(columnsEd[0]).closest('tr');
+                    var id = row.find('td:first').text().trim();
+
+                    if (confirm('Opravdu smazat ID ' + id + ' z tabulky ' + tableRealName + '?')) {
+                        $.ajax({
+                            type: 'GET',
+                            url: "includes/delete_logic.php",
+                            data: { id: id, table: tableRealName },
+                            success: function(response) {
+                                if (response.trim() === "OK") {
+                                    if ($.fn.DataTable.isDataTable('#editableTable')) {
+                                        $('#editableTable').DataTable().row(row).remove().draw(false);
+                                    } else {
+                                        row.fadeOut();
+                                    }
+                                } else {
+                                    // Tady už UVIDÍŠ název tabulky, pokud to znovu selže
+                                    alert("Server vrátil chybu: " + response);
+                                }
+                            },
+                            error: function(xhr) {
+                                alert('Chyba serveru. Status: ' + xhr.status);
+                            }
+                        });
+                    }
+                    return false;
+                }
+            });
+        }
     });
 </script>
-
 </body>
 </html>

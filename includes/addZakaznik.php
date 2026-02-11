@@ -1,5 +1,5 @@
 <?php
-include_once("./db_connect.php");
+include_once("includes/db_connect.php");
 
 // Konfigurace pro tabulku zakaznici
 $fields = [

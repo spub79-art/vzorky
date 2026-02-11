@@ -1,11 +1,13 @@
 <?php
-include_once("./db_connect.php");
-// Načtení seznamu zákazníků pro radio list
+include_once("includes/db_connect.php");
+
 $queryZakaznici = mysqli_query($conn, "SELECT id, nazev FROM zakaznik ORDER BY nazev ASC");
 $zakazniciList = mysqli_fetch_all($queryZakaznici, MYSQLI_ASSOC);
+
 $fields = [
-    'nazev'          => ['label' => 'Název suroviny', 'type' => 'ajax', 'source' => 'suroviny'],
-    'id_zakaznik'    => ['label' => 'Zákazník',       'type' => 'ajax', 'source' => 'zakaznik'],
+    'typ'            => ['label' => 'Typ',           'type' => 'text'],
+    'id_surovina'    => ['label' => 'Surovina',       'type' => 'hidden'],
+    'id_zakaznik'    => ['label' => 'Zákazník',       'type' => 'radio'],
     'bio'            => ['label' => 'BIO',            'type' => 'checkbox'],
     'bezlepek'       => ['label' => 'Bezlepkové',     'type' => 'checkbox'],
     'vegan'          => ['label' => 'Vegan',          'type' => 'checkbox'],
@@ -16,22 +18,31 @@ $fields = [
 ];
 
 if (isset($_POST['save_user'])) {
-    $data = [];
-
-    // 1. Získání názvu suroviny z TEXTOVÉHO pole
-    $surovina_nazev = mysqli_real_escape_string($conn, $_POST['nazev_text'] ?? '');
+    $surovina_nazev = trim(mysqli_real_escape_string($conn, $_POST['nazev_text'] ?? ''));
+    $typ = $_POST['typ'] ?? 'vyvoj';
+    $id_surovina = 0;
 
     if (!empty($surovina_nazev)) {
-        mysqli_query($conn, "INSERT IGNORE INTO suroviny (nazev) VALUES ('$surovina_nazev')");
+        $checkSurovina = mysqli_query($conn, "SELECT id FROM suroviny WHERE TRIM(LOWER(nazev)) = TRIM(LOWER('$surovina_nazev')) LIMIT 1");
+        if (mysqli_num_rows($checkSurovina) > 0) {
+            $sRow = mysqli_fetch_assoc($checkSurovina);
+            $id_surovina = $sRow['id'];
+        } else {
+            mysqli_query($conn, "INSERT INTO suroviny (nazev) VALUES ('$surovina_nazev')");
+            $id_surovina = mysqli_insert_id($conn);
+        }
     }
 
-    // 2. Sběr dat pro INSERT
+    $data = [];
     foreach ($fields as $col => $info) {
         if ($info['type'] === 'checkbox') {
             $data[$col] = isset($_POST[$col]) ? 1 : 0;
-        } elseif ($col === 'nazev') {
-            // ZDE JE OPRAVA: Místo $_POST['nazev'] bereme $surovina_nazev
-            $data[$col] = $surovina_nazev;
+        } elseif ($col === 'id_surovina') {
+            $data[$col] = $id_surovina;
+        } elseif ($col === 'id_zakaznik') {
+            $data[$col] = ($typ === 'poptavka') ? 0 : (int)($_POST['id_zakaznik'] ?? 0);
+        } elseif ($col === 'Mnozstvi' && $typ === 'poptavka') {
+            $data[$col] = 0;
         } else {
             $val = $_POST[$col] ?? '';
             $data[$col] = mysqli_real_escape_string($conn, $val);
@@ -43,150 +54,141 @@ if (isset($_POST['save_user'])) {
     $sql = "INSERT INTO pozadavky ($cols) VALUES ($vals)";
 
     if (mysqli_query($conn, $sql)) {
-        echo "<div class='alert alert-success shadow'>Požadavek úspěšně uložen!</div>";
+        echo "<div class='alert alert-success'>Uloženo</div>";
         echo "<script>setTimeout(() => { window.location.href='index.php?Pozadavek=1'; }, 1000);</script>";
-    } else {
-        // Pomocník pro debugování - pokud to stále nepíše, tohle ti řekne proč
-        echo "<div class='alert alert-danger'>Chyba: " . mysqli_error($conn) . "</div>";
     }
 }
 ?>
+
 <script>
     $(document).ready(function(){
-        // Vyhledávání surovin - reaguje pouze na pole s data-source="suroviny"
-        $(document).on("keyup input", '.ajax-search[data-source="suroviny"]', function(){
-            let inputField = $(this);
-            let container = inputField.closest(".search-box");
-            let query = inputField.val();
-            let sourceTable = inputField.data("source");
+        function toggleMode() {
+            let mode = $('input[name="typ"]:checked').val();
+            if (mode === 'poptavka') {
+                $('.customer-section, .amount-section').hide();
+                $('input[name="id_zakaznik"], input[name="Mnozstvi"]').prop('required', false);
+            } else {
+                $('.customer-section, .amount-section').show();
+                $('input[name="id_zakaznik"], input[name="Mnozstvi"]').prop('required', true);
+            }
+        }
 
-            if(query.length >= 2){ // Hledáme až od 2 znaků (např. "Ma")
+        $(document).on('change', 'input[name="typ"]', toggleMode);
+        toggleMode();
+
+        $('.customer-list .list-group-item').on('click', function() {
+            $(this).find('input[type="radio"]').prop('checked', true);
+            $('.customer-list .list-group-item').removeClass('active-selection');
+            $(this).addClass('active-selection');
+        });
+
+        $(document).on("keyup input", '.ajax-search', function(){
+            let container = $(this).closest(".search-box");
+            let query = $(this).val();
+            if(query.length >= 2){
                 $.ajax({
                     url: "includes/search_backend.php",
                     method: "GET",
-                    data: { term: query, table: sourceTable },
+                    data: { term: query, table: "suroviny" },
+                    dataType: "json",
                     success: function(data){
-                        console.log("AJAX data přijata:", data); // Debug v konzoli
-                        container.find(".result-list").html(data).show();
+                        let html = "";
+                        $.each(data, function(i, item){
+                            html += '<a href="#" class="list-group-item list-group-item-action result-item" data-id="'+item.id+'">' + item.label + '</a>';
+                        });
+                        container.find(".result-list").html(html).show();
                     }
                 });
             } else {
-                container.find(".result-list").empty().hide();
+                container.find(".result-list").hide();
             }
         });
 
-        // Výběr suroviny ze seznamu
-        $(document).on("click", '.result-list .list-group-item-action', function(e){
+        $(document).on("click", '.result-item', function(e){
             e.preventDefault();
-            let text = $(this).text().trim();
-            let container = $(this).closest(".search-box");
-
-            container.find(".ajax-search").val(text);
-            container.find(".result-list").empty().hide();
-        });
-
-        // Zavření při kliknutí mimo
-        $(document).click(function(e) {
-            if (!$(e.target).closest('.search-box').length) {
-                $(".result-list").empty().hide();
-            }
+            let box = $(this).closest(".search-box");
+            box.find(".ajax-search").val($(this).text().trim());
+            box.find("input[name='id_surovina']").val($(this).data("id"));
+            $(".result-list").hide();
         });
     });
 </script>
 
 <div class="container-fluid">
     <form method="post" action="">
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="typ" id="typ_poptavka" value="poptavka" autocomplete="off">
+                    <label class="btn btn-outline-primary py-3" for="typ_poptavka">
+                        <i class="fa fa-search-dollar"></i> 1. DOTAZ NA CENU
+                    </label>
+
+                    <input type="radio" class="btn-check" name="typ" id="typ_vyvoj" value="vyvoj" autocomplete="off" checked>
+                    <label class="btn btn-outline-success py-3" for="typ_vyvoj">
+                        <i class="fa fa-flask"></i> 2. VÝVOJ RECEPTURY
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-md-6">
-                <div class="form-card shadow-sm h-100">
-                    <h5 class="form-card-title text-primary">Informace o surovině</h5>
-
+                <div class="card p-3">
                     <div class="search-box mb-3">
-                        <label class="form-label">Název suroviny:</label>
-                        <input type="text" name="nazev_text" class="form-control ajax-search"
-                               placeholder="Hledat surovinu..." data-source="suroviny" autocomplete="off" required>
-                        <input type="hidden" name="nazev" class="target-id">
-                        <div class="result-list list-group"></div>
+                        <label>Název suroviny</label>
+                        <input type="text" name="nazev_text" class="form-control ajax-search" autocomplete="off" required>
+                        <input type="hidden" name="id_surovina">
+                        <div class="result-list list-group" style="position:absolute; width:100%; z-index:100;"></div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Množství a jednotka:</label>
-                        <div class="input-group flex-nowrap">
-                            <input type="number" name="Mnozstvi" class="form-control" placeholder="0.00" step="any" required>
-                            <select name="mj" class="form-select mj-select">
-                                <option value="Kg">Kg</option>
-                                <option value="l">l</option>
-                                <option value="ml">ml</option>
-                                <option value="g">g</option>
-                                <option value="ks">ks</option>
+                    <div class="amount-section mb-3">
+                        <label>Množství</label>
+                        <div class="input-group">
+                            <input type="number" name="Mnozstvi" class="form-control" step="any">
+                            <select name="mj" class="form-select">
+                                <option value="Kg">Kg</option><option value="l">l</option><option value="g">g</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="row g-2 mt-2">
-                        <div class="col-6 col-sm-3">
-                            <div class="form-check form-switch bio-switch-container">
-                                <input class="form-check-input bio-switch" type="checkbox" name="bio" id="bioS">
-                                <label class="form-check-label" for="bioS">BIO</label>
+                    <label class="fw-bold mb-2">Požadovaná kvalita</label>
+                    <div class="d-flex flex-wrap gap-3 p-2 border rounded bg-light">
+                        <?php foreach(['bio'=>'BIO','bezlepek'=>'Bezlepkové','vegan'=>'Vegan','kosher'=>'Kosher'] as $n=>$l): ?>
+                            <div class="form-check form-switch d-flex align-items-center mb-0">
+                                <input class="form-check-input" type="checkbox" name="<?=$n?>" id="<?=$n?>S">
+                                <label class="form-check-label ms-2" for="<?=$n?>S"><?=$l?></label>
                             </div>
-                        </div>
-                        <div class="col-6 col-sm-3">
-                            <div class="form-check form-switch bio-switch-container">
-                                <input class="form-check-input bio-switch" type="checkbox" name="bezlepek" id="bezlepekS">
-                                <label class="form-check-label" for="bezlepekS">Bezlepkové</label>
-                            </div>
-                        </div>
-                        <div class="col-6 col-sm-3">
-                            <div class="form-check form-switch bio-switch-container">
-                                <input class="form-check-input bio-switch" type="checkbox" name="vegan" id="veganS">
-                                <label class="form-check-label" for="veganS">Vegan</label>
-                            </div>
-                        </div>
-                        <div class="col-6 col-sm-3">
-                            <div class="form-check form-switch bio-switch-container">
-                                <input class="form-check-input bio-switch" type="checkbox" name="kosher" id="kosherS">
-                                <label class="form-check-label" for="kosherS">Kosher</label>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="form-card shadow-sm h-100">
-                    <h5 class="form-card-title text-success">Zákazník a termín</h5>
-
-                    <label class="form-label">Vyberte zákazníka:</label>
-                    <div class="customer-select-container border rounded mb-3" style="max-height: 200px; overflow-y: auto; background: #fff;">
-                        <ul class="list-group list-group-flush">
+            <div class="col-md-6 customer-section">
+                <div class="card p-3">
+                    <label class="fw-bold mb-2">Vyberte zákazníka</label>
+                    <div class="customer-list border rounded mb-3" style="max-height: 250px; overflow-y: auto;">
+                        <div class="list-group list-group-flush">
                             <?php foreach ($zakazniciList as $z): ?>
-                                <li class="list-group-item">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="id_zakaznik"
-                                               id="zak_<?= $z['id'] ?>" value="<?= $z['id'] ?>" required>
-                                        <label class="form-check-label d-block cursor-pointer" for="zak_<?= $z['id'] ?>">
-                                            <?= htmlspecialchars($z['nazev']) ?>
-                                        </label>
-                                    </div>
-                                </li>
+                                <div class="list-group-item">
+                                    <input class="btn-check" type="radio" name="id_zakaznik" id="z<?=$z['id']?>" value="<?=$z['id']?>">
+                                    <label class="form-check-label w-100 cursor-pointer" for="z<?=$z['id']?>">
+                                        <?=$z['nazev']?>
+                                    </label>
+                                </div>
                             <?php endforeach; ?>
-                        </ul>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-12">
-                            <label class="form-label">Datum požadavku:</label>
-                            <input type="date" name="datumPozadavek" class="form-control" value="<?= date('Y-m-d') ?>">
                         </div>
                     </div>
+
+                    <label>Datum požadavku</label>
+                    <input type="date" name="datumPozadavek" class="form-control" value="<?=date('Y-m-d')?>">
                 </div>
             </div>
         </div>
 
         <div class="text-center mt-4">
-            <button type="submit" name="save_user" class="btn btn-primary btn-lg px-5 shadow">
-                <i class="fa fa-save"></i> Uložit požadavek
-            </button>
+            <button type="submit" name="save_user" class="btn btn-success btn-lg">Uložit požadavek</button>
         </div>
     </form>
 </div>

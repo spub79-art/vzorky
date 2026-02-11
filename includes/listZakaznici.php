@@ -1,122 +1,92 @@
 <?php
-include_once("./db_connect.php");
-
+include_once("includes/db_connect.php");
 $current_page_url = "index.php?Zakaznik=1";
 
-// --- 1. ZPRACOVÁNÍ AKCÍ ---
-
-// PŘIDÁNÍ
+// --- LOGIKA ZPRACOVÁNÍ (INSERT/UPDATE) ---
 if (isset($_POST['save_customer'])) {
-    $nazev = mysqli_real_escape_string($conn, $_POST['nazev_novy'] ?? '');
-    if (!empty($nazev)) {
-        $sql = "INSERT INTO zakaznik (nazev) VALUES ('$nazev')";
-        mysqli_query($conn, $sql);
-        echo "<script>window.location.href='$current_page_url';</script>";
-        exit;
-    }
-}
-
-// EDITACE (přidána kontrola, zda není zákazník použit)
-if (isset($_POST['update_zakaznik'])) {
-    $id = intval($_POST['id']);
-    $novy_nazev = mysqli_real_escape_string($conn, $_POST['nazev']);
-
-    // Kontrola pro jistotu i na straně PHP
-    $check = mysqli_query($conn, "SELECT id FROM pozadavky WHERE id_zakaznik = $id LIMIT 1");
-    if (mysqli_num_rows($check) == 0) {
-        mysqli_query($conn, "UPDATE zakaznik SET nazev = '$novy_nazev' WHERE id = $id");
-    }
-}
-
-// SMAZÁNÍ
-if (isset($_GET['delete_id'])) {
-    $id = intval($_GET['delete_id']);
-
-    // Kontrola před smazáním
-    $check = mysqli_query($conn, "SELECT id FROM pozadavky WHERE id_zakaznik = $id LIMIT 1");
-    if (mysqli_num_rows($check) == 0) {
-        mysqli_query($conn, "DELETE FROM zakaznik WHERE id = $id");
-    }
+    $nazev = mysqli_real_escape_string($conn, $_POST['nazev_novy']);
+    mysqli_query($conn, "INSERT INTO zakaznik (nazev) VALUES ('$nazev')");
     echo "<script>window.location.href='$current_page_url';</script>";
-    exit;
 }
 
-// --- 2. NAČTENÍ DAT (včetně kontroly vazeb) ---
-// Pomocí LEFT JOIN zjistíme, kolik požadavků má který zákazník
-$query = "SELECT z.*, COUNT(p.id) as pocet_pozadavku 
-          FROM zakaznik z 
-          LEFT JOIN pozadavky p ON z.id = p.id_zakaznik 
-          GROUP BY z.id 
-          ORDER BY z.id DESC";
+if (isset($_POST['update_zakaznik'])) {
+    $id = (int)$_POST['id'];
+    $nazev = mysqli_real_escape_string($conn, $_POST['nazev']);
+    mysqli_query($conn, "UPDATE zakaznik SET nazev = '$nazev' WHERE id = $id");
+    echo "<script>window.location.href='$current_page_url';</script>";
+}
+
+$query = "SELECT z.*, COUNT(p.id) as pocet_pozadavku FROM zakaznik z LEFT JOIN pozadavky p ON z.id = p.id_zakaznik GROUP BY z.id ORDER BY z.id DESC";
 $result = mysqli_query($conn, $query);
 ?>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Seznam zákazníků</h2>
-        <button type="button" class="btn btn-primary" onclick="toggleAddRow()">
-            <i class="fa fa-plus"></i> Přidat zákazníka
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 bg-light p-3 rounded shadow-sm">
+        <h2 class="mb-0"><i class="fa fa-users text-primary me-2"></i>Správa zákazníků</h2>
+        <button type="button" class="btn btn-primary btn-lg shadow" onclick="toggleAddRow()">
+            <i class="fa fa-plus-circle me-1"></i> Nový zákazník
         </button>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+    <div class="table-responsive shadow-sm border rounded">
+        <table class="table table-hover align-middle bg-white mb-0">
             <thead class="table-dark">
             <tr>
-                <th style="width: 80px;">ID</th>
+                <th style="width: 80px;" class="text-center">ID</th>
                 <th>Název zákazníka</th>
-                <th style="width: 180px;" class="text-center">Akce</th>
+                <th class="text-center" style="width: 200px;">Akce</th>
             </tr>
             </thead>
             <tbody>
             <tr id="addRow" style="display: none; background-color: #f0fdf4;">
-                <td class="text-center"><span class="badge bg-success">Nový</span></td>
-                <form method="post" action="<?= $current_page_url ?>">
-                    <td>
-                        <input type="text" name="nazev_novy" class="form-control form-control-sm" placeholder="Jméno nového zákazníka..." required>
-                    </td>
-                    <td class="text-center">
-                        <button type="submit" name="save_customer" class="btn btn-success btn-sm">
-                            <i class="fa fa-check"></i> Uložit
+                <td class="text-center"><span class="badge bg-success">NEW</span></td>
+                <form id="form_new" method="post" action="<?= $current_page_url ?>"></form>
+                <td>
+                    <input type="text" form="form_new" name="nazev_novy" class="form-control" required placeholder="Napište název zákazníka...">
+                </td>
+                <td class="text-center">
+                    <div class="btn-group">
+                        <button type="submit" form="form_new" name="save_customer" class="btn btn-success">
+                            <i class="fa fa-save me-1"></i> Uložit
                         </button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAddRow()">
+                        <button type="button" class="btn btn-secondary" onclick="toggleAddRow()">
                             <i class="fa fa-times"></i>
                         </button>
-                    </td>
-                </form>
+                    </div>
+                </td>
             </tr>
 
-            <?php while ($row = mysqli_fetch_assoc($result)):
-                $is_locked = ($row['pocet_pozadavku'] > 0);
-                ?>
+            <?php while ($row = mysqli_fetch_assoc($result)): $is_locked = ($row['pocet_pozadavku'] > 0); ?>
                 <tr>
-                    <td class="text-center text-muted small"><?= $row['id'] ?></td>
-                    <form method="post" action="<?= $current_page_url ?>">
-                        <td>
-                            <input type="hidden" name="id" value="<?= $row['id'] ?>">
-                            <input type="text" name="nazev"
-                                   class="form-control form-control-sm <?= $is_locked ? 'bg-light' : '' ?>"
-                                   value="<?= htmlspecialchars($row['nazev']) ?>"
-                                   required
-                                   <?= $is_locked ? 'readonly title="Zákazník je použit v požadavcích"' : '' ?>>
-                        </td>
-                        <td class="text-center">
+                    <td class="text-center text-muted"><?= $row['id'] ?></td>
+
+                    <form id="form_edit_<?= $row['id'] ?>" method="post" action="<?= $current_page_url ?>">
+                        <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                    </form>
+
+                    <td>
+                        <input type="text" form="form_edit_<?= $row['id'] ?>" name="nazev"
+                               class="form-control <?= $is_locked ? 'bg-light border-0 shadow-none' : '' ?>"
+                               value="<?= htmlspecialchars($row['nazev']) ?>"
+                               required <?= $is_locked ? 'readonly' : '' ?>>
+                    </td>
+
+                    <td class="text-center">
+                        <div class="btn-group">
                             <?php if (!$is_locked): ?>
-                                <button type="submit" name="update_zakaznik" class="btn btn-sm btn-success">
+                                <button type="submit" form="form_edit_<?= $row['id'] ?>" name="update_zakaznik" class="btn btn-outline-success btn-sm">
                                     <i class="fa fa-save"></i> Uložit
                                 </button>
-                                <a href="<?= $current_page_url ?>&delete_id=<?= $row['id'] ?>"
-                                   class="btn btn-sm btn-danger"
-                                   onclick="return confirm('Opravdu smazat?')">
-                                    <i class="fa fa-trash"></i> Smazat
+                                <a href="includes/delete_logic.php?table=zakaznik&id=<?= $row['id'] ?>&redirect=Zakaznik"
+                                   class="btn btn-danger btn-sm btn-delete-ajax"
+                                   onclick="return confirm('Opravdu smazat zákazníka <?= htmlspecialchars($row['nazev']) ?>?')">
+                                    <i class="fa fa-trash">X</i>
                                 </a>
                             <?php else: ?>
-                                <span class="badge bg-secondary" title="Nelze měnit - použit v požadavcích">
-                                    <i class="fa fa-lock"></i> Uzamčeno
-                                </span>
+                                <span class="badge bg-light text-dark border"><i class="fa fa-lock me-1"></i> Aktivní (<?= $row['pocet_pozadavku'] ?>×)</span>
                             <?php endif; ?>
-                        </td>
-                    </form>
+                        </div>
+                    </td>
                 </tr>
             <?php endwhile; ?>
             </tbody>
@@ -126,12 +96,12 @@ $result = mysqli_query($conn, $query);
 
 <script>
     function toggleAddRow() {
-        var row = document.getElementById("addRow");
-        if (row.style.display === "none") {
-            row.style.display = "table-row";
-            row.querySelector('input[name="nazev_novy"]').focus();
+        var x = document.getElementById("addRow");
+        if (x.style.display === "none") {
+            x.style.display = "table-row";
+            setTimeout(function() { x.querySelector('input[name="nazev_novy"]').focus(); }, 100);
         } else {
-            row.style.display = "none";
+            x.style.display = "none";
         }
     }
 </script>

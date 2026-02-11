@@ -1,6 +1,6 @@
 <?php
 // Pokud db_connect includuješ už v indexu, můžeš tento řádek zakomentovat
-include_once("./db_connect.php");
+include_once("includes/db_connect.php");
 
 $current_page_url = "index.php?Users=1";
 
@@ -93,9 +93,11 @@ if (!$resUsers) {
                     <td class="text-center"><input type="checkbox" name="vyvoj_novy"></td>
                     <td class="text-center"><input type="checkbox" name="orders_novy"></td>
                     <td class="text-center"><input type="checkbox" name="kvalita_novy"></td>
-                    <td class="text-center text-nowrap">
-                        <button type="submit" name="save_user" class="btn btn-success btn-sm"><i class="fa fa-check"></i></button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAddRow()"><i class="fa fa-times"></i></button>
+                    <td class="text-center">
+                        <div class="btn-group">
+                        <button type="submit" name="save_user" class="btn btn-success btn-sm"><i class="fa fa-check">Uložit</i></button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="toggleAddRow()"><i class="fa fa-times">X</i></button>
+                        </div>
                     </td>
                 </form>
             </tr>
