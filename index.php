@@ -168,7 +168,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
         };
         initDataTable();
 
-        // 2. MODÁL: Editace nabídky (Delegovaný event pro funkčnost po AJAXu)
+        // 2. MODÁL: Editace nabídky
         $(document).off('click', '.btn-edit-offer').on('click', '.btn-edit-offer', function(e) {
             e.preventDefault();
             var id = $(this).data('id');
@@ -185,7 +185,36 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
             });
         });
 
-        // 3. SMAZÁNÍ: AJAX smazání (Univerzální)
+        // 3. VÝVOJ: Změna statusu nabídky (Schválení/Zamítnutí ceny)
+        $(document).off('click', '.btn-status-change').on('click', '.btn-status-change', function(e) {
+            e.preventDefault();
+            var nabidkaId = $(this).data('id');
+            var novyStatus = $(this).data('status');
+
+            console.log("Status change triggered: ID=" + nabidkaId + ", Status=" + novyStatus);
+
+            if (confirm('Opravdu chcete změnit stav této nabídky?')) {
+                $.ajax({
+                    url: 'includes/update_status_nabidka.php',
+                    type: 'POST',
+                    data: { id: nabidkaId, status: novyStatus },
+                    success: function(response) {
+                        console.log("Server response: " + response);
+                        if (response.trim() === "OK") {
+                            location.reload();
+                        } else {
+                            alert("Chyba: " + response);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert("Chyba komunikace se serverem.");
+                        console.log(xhr);
+                    }
+                });
+            }
+        });
+
+        // 4. SMAZÁNÍ: AJAX smazání
         $(document).off('click', '.btn-delete-ajax').on('click', '.btn-delete-ajax', function(e) {
             e.preventDefault();
             var id = $(this).data('id');

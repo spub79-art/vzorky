@@ -2,15 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d2a1b169-218d-47ab-bc4f-edf673a6648d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/includes/addNabidka.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/archivPozadavky.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/editNabidka.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/formDodavatel.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/listDodavatele.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/includes/update_status_nabidka.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/includes/listPozadavky.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listPozadavky.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/index.php" beforeDir="false" afterPath="$PROJECT_DIR$/index.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles/vzorky.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles/vzorky.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +88,7 @@
       <workItem from="1770635418917" duration="3894000" />
       <workItem from="1770796021190" duration="17147000" />
       <workItem from="1770883590045" duration="8545000" />
-      <workItem from="1770912021170" duration="3541000" />
+      <workItem from="1770912021170" duration="7477000" />
     </task>
     <task id="LOCAL-00001" summary="zacatek... uplnej... prvni upravy baleni na vzorky">
       <created>1768998225821</created>
@@ -123,7 +118,14 @@
       <option name="project" value="LOCAL" />
       <updated>1770821416483</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="docela slusnej posun, tak si radsi aktualni verzi schvalim">
+      <created>1770977384766</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1770977384766</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -152,7 +154,8 @@
     <MESSAGE value="pozadavky... neco hotove.." />
     <MESSAGE value="no.. nejak to jede" />
     <MESSAGE value="no.. a ted o neco lepe" />
-    <option name="LAST_COMMIT_MESSAGE" value="no.. a ted o neco lepe" />
+    <MESSAGE value="docela slusnej posun, tak si radsi aktualni verzi schvalim" />
+    <option name="LAST_COMMIT_MESSAGE" value="docela slusnej posun, tak si radsi aktualni verzi schvalim" />
   </component>
   <component name="WindowStateProjectService">
     <state x="872" y="359" key="#Deployment" timestamp="1768908257233">
@@ -167,9 +170,10 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="1010" y="448" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1768992551015" />
-    <state x="3239" y="584" key="CommitChangelistDialog2" timestamp="1770821415786">
-      <screen x="2560" y="365" width="1920" height="1040" />
+    <state x="905" y="295" key="CommitChangelistDialog2" timestamp="1770977383903">
+      <screen x="0" y="0" width="2560" height="1400" />
     </state>
+    <state x="905" y="295" key="CommitChangelistDialog2/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1770977383903" />
     <state x="3239" y="584" key="CommitChangelistDialog2/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@2560.365.1920.1040" timestamp="1770817312103" />
     <state x="3239" y="584" key="CommitChangelistDialog2/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@2560.365.1920.1040" timestamp="1770821415786" />
     <state x="905" y="295" key="CommitChangelistDialog2/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770640181636" />
@@ -178,10 +182,11 @@
       <screen x="2560" y="365" width="1920" height="1040" />
     </state>
     <state x="2652" y="457" width="1736" height="856" key="DiffContextDialog/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@2560.365.1920.1040" timestamp="1770817294590" />
-    <state x="836" y="464" key="NewPhpFileDialog" timestamp="1770914908929">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="1115" y="625" key="NewPhpFileDialog" timestamp="1770990540338">
+      <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="1114" y="624" key="NewPhpFileDialog/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1770818447281" />
+    <state x="1115" y="625" key="NewPhpFileDialog/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770990540338" />
     <state x="1114" y="624" key="NewPhpFileDialog/-1920.365.1920.1040/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1770902442822" />
     <state x="1114" y="624" key="NewPhpFileDialog/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770895449864" />
     <state x="836" y="464" key="NewPhpFileDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1770914908929" />
