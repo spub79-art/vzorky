@@ -174,3 +174,9 @@ div.produktV {
 	font-size: 11px;
 	color: white;
 }
+.btn-group-xs > .btn, .btn-xs {
+	padding: unset;
+	font-size: 12px;
+	line-height: 1.5;
+	border-radius: 3px;
+}

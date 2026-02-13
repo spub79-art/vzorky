@@ -83,7 +83,7 @@ $sql = "SELECT p.*,
         LEFT JOIN dodavatele d ON pn.id_dodavatel = d.id
         LEFT JOIN ciselnik_statusu cs ON pn.id_status = cs.id
         GROUP BY p.id
-        HAVING p.id_status < 5  -- TADY JE TA ZMĚNA: Skryje schválené/zamítnuté (status 5+)
+        HAVING p.id_status >= 5  -- V archivu uvidíš jen ty hotové
         ORDER BY p.datumPozadavek DESC";
 
 $result = mysqli_query($conn, $sql);
