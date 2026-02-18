@@ -1,39 +1,44 @@
 <?php
-session_start();
-include("db_connect.php");
-
-if (empty($_SESSION['vyvoj']) && empty($_SESSION['adm']) && empty($_SESSION['orders']) && empty($_SESSION['kvalita'])) {
-    die("Nepovolený přístup.");
-}
+include_once("db_connect.php");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = (int)$_POST['id'];
-    $status = (int)$_POST['status'];
-    $poznamka = (isset($_POST['poznamka']) && $_POST['poznamka'] !== 'undefined') ? mysqli_real_escape_string($conn, $_POST['poznamka']) : '';
-    $datum_objednani = isset($_POST['datum_objednani']) ? mysqli_real_escape_string($conn, $_POST['datum_objednani']) : null;
+    $id_nabidka = mysqli_real_escape_string($conn, $_POST['id']);
+    $new_status = mysqli_real_escape_string($conn, $_POST['status']);
+    $poznamka   = mysqli_real_escape_string($conn, $_POST['poznamka']);
+    $qty        = mysqli_real_escape_string($conn, $_POST['qty']);
 
-    if ($id > 0 && $status > 0) {
-        if ($status === 4) {
-            $sql = "UPDATE pozadavky_nabidky SET id_status = 4, vzorek_objednan = '$datum_objednani', poznamka_vzorek = '$poznamka', updated_at = NOW() WHERE id = $id";
-        } elseif ($status === 7) {
-            $sql = "UPDATE pozadavky_nabidky SET id_status = 7, poznamka_cena = '$poznamka', updated_at = NOW() WHERE id = $id";
-        } else {
-            $sql = "UPDATE pozadavky_nabidky SET id_status = $status, poznamka_vzorek = '$poznamka', updated_at = NOW() WHERE id = $id";
-        }
+    // 1. Najdeme ID hlavního požadavku
+    $res_p = mysqli_query($conn, "SELECT id_pozadavek FROM pozadavky_nabidky WHERE id = '$id_nabidka'");
+    $row_p = mysqli_fetch_assoc($res_p);
+    $id_pozadavek = $row_p['id_pozadavek'];
 
-        if (mysqli_query($conn, $sql)) {
-            $res = mysqli_query($conn, "SELECT id_pozadavek FROM pozadavky_nabidky WHERE id = $id");
-            $row = mysqli_fetch_assoc($res);
-            $id_hlavni = $row ? (int)$row['id_pozadavek'] : 0;
+    if (!$id_pozadavek) { echo "Chyba: Požadavek nenalezen"; exit; }
 
-            if ($id_hlavni > 0) {
-                if (in_array($status, [3, 4, 8, 6])) {
-                    mysqli_query($conn, "UPDATE pozadavky SET id_status = $status WHERE id = $id_hlavni");
-                }
-            }
-            echo "OK";
-        } else {
-            echo "Chyba DB: " . mysqli_error($conn);
-        }
+    // 2. Update nabídky
+    if ($new_status !== 'no_change') {
+        $sql = "UPDATE pozadavky_nabidky SET 
+                id_status = '$new_status', 
+                poznamka_vzorek = CONCAT(IFNULL(poznamka_vzorek,''), '\n', '$poznamka'),
+                vzorek_dorazil = CASE WHEN '$qty' != '' THEN '$qty' ELSE vzorek_dorazil END,
+                updated_at = NOW() 
+                WHERE id = '$id_nabidka'";
+    } else {
+        $sql = "UPDATE pozadavky_nabidky SET 
+                poznamka_vzorek = CONCAT(IFNULL(poznamka_vzorek,''), '\n', '$poznamka'),
+                updated_at = NOW() 
+                WHERE id = '$id_nabidka'";
     }
+    mysqli_query($conn, $sql);
+
+    // 3. SYNCHRONIZACE: Posuneme hlavní požadavek do správné fáze (sloupce)
+    $main_st = 1; // Výchozí: Fáze 1 (Cena)
+    if (in_array($new_status, [3, 8, 9])) $main_st = 3;  // Posun do Fáze 2 (Dokumenty)
+    if ($new_status == 10)               $main_st = 10; // Posun do Fáze 3 (Testování)
+    if ($new_status == 11)               $main_st = 11; // Archivace
+
+    if ($new_status !== 'no_change') {
+        mysqli_query($conn, "UPDATE pozadavky SET id_status = '$main_st' WHERE id = '$id_pozadavek'");
+    }
+
+    echo "OK";
 }
