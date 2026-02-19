@@ -1,44 +1,88 @@
 <?php
-include_once("db_connect.php");
+ob_start();
+session_start();
+include("db_connect.php");
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id_nabidka = mysqli_real_escape_string($conn, $_POST['id']);
-    $new_status = mysqli_real_escape_string($conn, $_POST['status']);
-    $poznamka   = mysqli_real_escape_string($conn, $_POST['poznamka']);
-    $qty        = mysqli_real_escape_string($conn, $_POST['qty']);
+$id = intval($_POST['id']); // ID nabídky (pozadavky_nabidky)
+$status = $_POST['status'];
+$poznamka = mysqli_real_escape_string($conn, $_POST['poznamka']);
+$qty = isset($_POST['qty']) ? mysqli_real_escape_string($conn, $_POST['qty']) : '';
+$sarze = isset($_POST['sarze']) ? mysqli_real_escape_string($conn, $_POST['sarze']) : '';
 
-    // 1. Najdeme ID hlavního požadavku
-    $res_p = mysqli_query($conn, "SELECT id_pozadavek FROM pozadavky_nabidky WHERE id = '$id_nabidka'");
-    $row_p = mysqli_fetch_assoc($res_p);
-    $id_pozadavek = $row_p['id_pozadavek'];
+// NOVÉ: Kódy pro Informační systém (přichází při statusu 6)
+$skupzbo = isset($_POST['skupzbo']) ? mysqli_real_escape_string($conn, $_POST['skupzbo']) : '';
+$regcis = isset($_POST['regcis']) ? mysqli_real_escape_string($conn, $_POST['regcis']) : '';
 
-    if (!$id_pozadavek) { echo "Chyba: Požadavek nenalezen"; exit; }
+if ($id > 0) {
+    // Nejdříve zjistíme vazby: ID požadavku a následně ID suroviny
+    $res_info = mysqli_query($conn, "SELECT id_pozadavek FROM pozadavky_nabidky WHERE id = $id");
+    $row_info = mysqli_fetch_assoc($res_info);
+    $id_pozadavek = $row_info['id_pozadavek'];
 
-    // 2. Update nabídky
-    if ($new_status !== 'no_change') {
+    $id_surovina = 0;
+    if ($id_pozadavek) {
+        $res_sur = mysqli_query($conn, "SELECT id_surovina FROM pozadavky WHERE id = $id_pozadavek");
+        $row_sur = mysqli_fetch_assoc($res_sur);
+        $id_surovina = $row_sur['id_surovina'];
+    }
+
+    // 1. AKTUALIZACE NABÍDKY
+    if ($status === 'no_change') {
         $sql = "UPDATE pozadavky_nabidky SET 
-                id_status = '$new_status', 
-                poznamka_vzorek = CONCAT(IFNULL(poznamka_vzorek,''), '\n', '$poznamka'),
-                vzorek_dorazil = CASE WHEN '$qty' != '' THEN '$qty' ELSE vzorek_dorazil END,
+                poznamka_cena = '$poznamka', 
+                sarze = '$sarze',
                 updated_at = NOW() 
-                WHERE id = '$id_nabidka'";
+                WHERE id = $id";
+    } elseif ($status == 9) {
+        // Při vyžádání doplnění dokumentace
+        $sql = "UPDATE pozadavky_nabidky SET 
+                id_status = 9, 
+                poznamka_cena = '$poznamka', 
+                updated_at = NOW() WHERE id = $id";
     } else {
+        // Standardní změna stavu (včetně posunu zpět na 8 pro velký vzorek nebo finálního 6)
         $sql = "UPDATE pozadavky_nabidky SET 
-                poznamka_vzorek = CONCAT(IFNULL(poznamka_vzorek,''), '\n', '$poznamka'),
+                id_status = " . intval($status) . ", 
+                poznamka_cena = '$poznamka', 
+                pozadovane_mnozstvi = IF('$qty' != '', '$qty', pozadovane_mnozstvi),
+                sarze = IF('$sarze' != '', '$sarze', sarze),
                 updated_at = NOW() 
-                WHERE id = '$id_nabidka'";
+                WHERE id = $id";
     }
     mysqli_query($conn, $sql);
 
-    // 3. SYNCHRONIZACE: Posuneme hlavní požadavek do správné fáze (sloupce)
-    $main_st = 1; // Výchozí: Fáze 1 (Cena)
-    if (in_array($new_status, [3, 8, 9])) $main_st = 3;  // Posun do Fáze 2 (Dokumenty)
-    if ($new_status == 10)               $main_st = 10; // Posun do Fáze 3 (Testování)
-    if ($new_status == 11)               $main_st = 11; // Archivace
-
-    if ($new_status !== 'no_change') {
-        mysqli_query($conn, "UPDATE pozadavky SET id_status = '$main_st' WHERE id = '$id_pozadavek'");
+    // 2. ZÁPIS KÓDŮ DO IS (Jen při finálním schválení - status 6)
+    if (intval($status) == 6 && $id_surovina > 0) {
+        mysqli_query($conn, "UPDATE suroviny SET 
+                             skupzbo = '$skupzbo', 
+                             regcis = '$regcis' 
+                             WHERE id = $id_surovina");
     }
 
+    // 3. SYNCHRONIZACE HLAVNÍHO STATUSU POŽADAVKU
+    $s = (int)$status;
+    $new_main_status = null;
+
+    // Fáze 2: Dokumenty a objednávání (včetně re-objednávky velkého vzorku)
+    if (in_array($s, [3, 8, 9, 11])) {
+        $new_main_status = 3;
+    }
+    // Fáze 3: Testování
+    elseif (in_array($s, [10, 4])) {
+        $new_main_status = 10;
+    }
+    // Hotovo: Surovina schválena pro výrobu
+    elseif ($s == 6) {
+        $new_main_status = 6;
+    }
+
+    if ($new_main_status !== null && $id_pozadavek) {
+        mysqli_query($conn, "UPDATE pozadavky SET id_status = $new_main_status WHERE id = $id_pozadavek");
+    }
+
+    // Zápis času poslední změny pro auto-refresh ostatních uživatelů
+    file_put_contents('last_change.txt', time());
     echo "OK";
 }
+ob_end_flush();
+?>

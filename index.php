@@ -8,49 +8,27 @@ $is_vyvoj   = !empty($_SESSION['vyvoj']);
 $is_orders  = !empty($_SESSION['orders']);
 $is_kvalita = !empty($_SESSION['kvalita']);
 
-$has_internal_access = ($is_adm || $is_vyvoj || $is_orders || $is_kvalita);
-
 // 2. Detekce aktuální stránky
 $page = 'Pozadavek';
 if (isset($_GET['Pozadavek']))     $page = 'Pozadavek';
 if (isset($_GET['Archiv']))        $page = 'Archiv';
-if (isset($_GET['add_Pozadavek'])) $page = 'add_Pozadavek';
-if (isset($_GET['Vzorek']))        $page = 'Vzorek';
-if (isset($_GET['add_Vzorek']))    $page = 'add_Vzorek';
-if (isset($_GET['Produkt']))       $page = 'Produkt';
-if (isset($_GET['add_Produkt']))   $page = 'add_Produkt';
-if (isset($_GET['Zakaznik']))      $page = 'Zakaznik';
-if (isset($_GET['Users']))         $page = 'Users';
-if (isset($_GET['add_User']))      $page = 'add_User';
 if (isset($_GET['Suroviny']))      $page = 'Suroviny';
 if (isset($_GET['Dodavatele']))    $page = 'Dodavatele';
-if (isset($_GET['add_Dodavatel'])) $page = 'add_Dodavatel';
-if (isset($_GET['add_Nabidka']))   $page = 'add_Nabidka';
-if (isset($_GET['edit_Nabidka']))  $page = 'edit_Nabidka';
+if (isset($_GET['Zakaznik']))      $page = 'Zakaznik';
+if (isset($_GET['Users']))         $page = 'Users';
+if (isset($_GET['Vzorek']))        $page = 'Vzorek';
+if (isset($_GET['Produkt']))       $page = 'Produkt';
 
-// Funkce pro aktivní třídu tlačítek
 function btnActive($current, $targetArray) {
     return in_array($current, $targetArray) ? ' active' : '';
 }
 
-if (empty($_SESSION["username"])) {
-    exit();
-}
+if (empty($_SESSION["username"])) exit();
 
-// --- MAPOVÁNÍ PRO DATABÁZI (pro AJAX akce) ---
 $mapping = [
-    'Pozadavek'     => 'pozadavky',
-    'Archiv'        => 'pozadavky',
-    'add_Pozadavek' => 'pozadavky',
-    'Zakaznik'      => 'zakaznik',
-    'Suroviny'      => 'suroviny',
-    'Users'         => 'users',
-    'Vzorek'        => 'vzorky',
-    'Produkt'       => 'produkt',
-    'Dodavatele'    => 'dodavatele',
-    'add_Dodavatel' => 'dodavatele',
-    'add_Nabidka'   => 'pozadavky_nabidky',
-    'edit_Nabidka'  => 'pozadavky_nabidky'
+    'Pozadavek' => 'pozadavky', 'Archiv' => 'pozadavky',
+    'Zakaznik' => 'zakaznik', 'Suroviny' => 'suroviny', 'Users' => 'users',
+    'Vzorek' => 'vzorky', 'Produkt' => 'produkt', 'Dodavatele' => 'dodavatele'
 ];
 $jsTableAction = $mapping[$page] ?? strtolower($page);
 ?>
@@ -62,29 +40,56 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <?php include("./includes/header_assets.php"); ?>
     <link rel="stylesheet" type="text/css" href="styles/vzorky.css">
     <script>var CURRENT_TABLE = "<?php echo $jsTableAction; ?>";</script>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .spinning { animation: spin 1s infinite linear; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .select2-container { z-index: 99999; }
+        .checkbox-inline { margin-right: 15px; font-weight: bold; cursor: pointer; }
+        body { background-color: #fcfcfc; }
+        #buttons .btn-primary { margin-right: 5px; font-weight: bold; }
+    </style>
 </head>
 <body>
 <div id="maincontainer" class="container-fluid">
 
-    <div id="buttons" class="row" style="padding: 15px;">
-        <a class="btn btn-primary<?php echo btnActive($page, ['Pozadavek', 'Archiv', 'add_Pozadavek', 'Zakaznik', 'Suroviny', 'Dodavatele', 'add_Dodavatel', 'add_Nabidka', 'edit_Nabidka']); ?>" href="./index.php?Pozadavek=1">Požadavek</a>
-        <a class="btn btn-primary<?php echo btnActive($page, ['Vzorek', 'add_Vzorek']); ?>" href="./index.php?Vzorek=1">Vzorek</a>
-        <a class="btn btn-primary<?php echo btnActive($page, ['Produkt', 'add_Produkt']); ?>" href="./index.php?Produkt=1">Produkt</a>
-
-        <div class="pull-right">
-            <?php if ($is_adm || $is_kvalita): ?>
-                <a class="btn btn-info<?php echo btnActive($page, ['Users', 'add_User']); ?>" href="./index.php?Users=1">Uživatelé</a>
-            <?php endif; ?>
-            <a class="btn btn-danger" href="includes/logout.php">
-                Odhlásit (<?php echo is_array($_SESSION['username']) ? $_SESSION['username'][0] : $_SESSION['username']; ?>)
+    <div id="buttons" class="row" style="padding: 15px; background: #fff; border-bottom: 1px solid #ddd; margin-bottom: 10px;">
+        <div class="col-md-12">
+            <a class="btn btn-primary<?php echo btnActive($page, ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik']); ?>" href="./index.php?Pozadavek=1">
+                <i class="glyphicon glyphicon-tasks"></i> Požadavky & Nákup
             </a>
+            <a class="btn btn-primary<?php echo btnActive($page, ['Vzorek']); ?>" href="./index.php?Vzorek=1">
+                <i class="glyphicon glyphicon-compressed"></i> Vzorky k testování
+            </a>
+            <a class="btn btn-primary<?php echo btnActive($page, ['Produkt']); ?>" href="./index.php?Produkt=1">
+                <i class="glyphicon glyphicon-th-list"></i> Produkty (Katalog)
+            </a>
+
+            <div class="pull-right">
+                <?php if ($is_adm || $is_kvalita): ?>
+                    <a class="btn btn-info<?php echo btnActive($page, ['Users']); ?>" href="./index.php?Users=1">Uživatelé</a>
+                <?php endif; ?>
+                <a class="btn btn-danger" href="includes/logout.php">
+                    Odhlásit (<?php echo is_array($_SESSION['username']) ? $_SESSION['username'][0] : $_SESSION['username']; ?>)
+                </a>
+            </div>
         </div>
     </div>
 
-    <div id="submenu" style="margin: 10px 0;">
-        <?php
-        $nakup_pages = ['Pozadavek', 'Archiv', 'add_Pozadavek', 'Zakaznik', 'Suroviny', 'Dodavatele', 'add_Dodavatel', 'add_Nabidka', 'edit_Nabidka'];
-        if (in_array($page, $nakup_pages)): ?>
+    <?php
+    $nakup_pages = ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik'];
+    if (in_array($page, $nakup_pages)): ?>
+        <div id="submenu" style="margin: 10px 0; padding-left: 15px;">
             <a href="index.php?Pozadavek=1" class="btn btn-sm btn-success<?php echo btnActive($page, ['Pozadavek']); ?>" style="background-color: #28a745; border-color: #218838;">
                 <i class="glyphicon glyphicon-list-alt"></i> Správa požadavků
             </a>
@@ -92,148 +97,124 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
                 <i class="glyphicon glyphicon-folder-close"></i> Archiv
             </a>
             <span style="margin: 0 10px; color: #ccc;">|</span>
-            <a href="index.php?add_Pozadavek=1" class="btn btn-sm btn-warning">Nový požadavek</a>
+
+            <button class="btn btn-sm btn-warning btn-new-req"><i class="glyphicon glyphicon-plus"></i> Nový požadavek</button>
+
             <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Zakaznik']); ?>" href="./index.php?Zakaznik=1">Zákazník</a>
             <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Suroviny']); ?>" href="./index.php?Suroviny=1">Suroviny</a>
             <?php if ($is_adm || $is_orders): ?>
-                <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Dodavatele', 'add_Dodavatel']); ?>" href="./index.php?Dodavatele=1">Dodavatelé</a>
+                <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Dodavatele']); ?>" href="./index.php?Dodavatele=1">Dodavatelé</a>
             <?php endif; ?>
-        <?php endif; ?>
-    </div>
+        </div>
+    <?php endif; ?>
 
-    <hr>
-
-    <div id="main-content">
+    <div id="main-content" style="padding: 15px;">
         <?php
         switch ($page) {
             case 'Pozadavek':     include("includes/listPozadavky.php"); break;
             case 'Archiv':        include("includes/archivPozadavky.php"); break;
-            case 'add_Pozadavek': include("includes/addPozadavek.php"); break;
-            case 'add_Nabidka':
-                if ($is_adm || $is_orders) include("includes/addNabidka.php");
-                break;
-            case 'edit_Nabidka':
-                if ($is_adm || $is_orders) include("includes/editNabidka.php");
-                break;
-            case 'Dodavatele':
-                if ($is_adm || $is_orders) include("includes/listDodavatele.php");
-                break;
-            case 'add_Dodavatel':
-                if ($is_adm || $is_orders) include("includes/addDodavatel.php");
-                break;
+            case 'Dodavatele':    if ($is_adm || $is_orders) include("includes/listDodavatele.php"); break;
             case 'Zakaznik':      include("includes/listZakaznici.php"); break;
             case 'Suroviny':      include("includes/listSuroviny.php"); break;
             case 'Vzorek':        include("includes/listVzorky.php"); break;
-            case 'add_Vzorek':    include("includes/addVzorek.php"); break;
             case 'Produkt':       include("includes/listProdukty.php"); break;
-            case 'add_Produkt':   include("includes/addProdukt.php"); break;
             case 'Users':         if ($is_adm || $is_kvalita) include("includes/listUsers.php"); break;
-            case 'add_User':      if ($is_adm || $is_kvalita) include("includes/addUser.php"); break;
             default:              include("includes/listPozadavky.php"); break;
         }
         ?>
     </div>
 </div>
 
-<div class="modal fade" id="remoteModal" tabindex="-1" role="dialog" aria-labelledby="remoteModalLabel">
-    <div class="modal-dialog modal-lg" role="document">
+<div class="modal fade" id="mNR" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div id="modal-loader" class="text-center" style="padding: 30px; display: none;">
-                <i class="glyphicon glyphicon-refresh spinning" style="font-size: 2em;"></i><br>Načítám...
+            <div class="modal-header" style="background:#f0ad4e; color:#fff;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Nový požadavek na surovinu</h4>
             </div>
-            <div id="modal-dynamic-content">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Surovina:</label>
+                    <select id="mNRSur" class="form-control select2-sur" style="width:100%;">
+                        <option value="">-- Vyberte surovinu --</option>
+                        <?php
+                        $s_res = mysqli_query($conn, "SELECT id, nazev FROM suroviny ORDER BY nazev ASC");
+                        while($s = mysqli_fetch_assoc($s_res)) echo "<option value='".$s['id']."'>".htmlspecialchars($s['nazev'])."</option>";
+                        ?>
+                    </select>
+                </div>
+
+                <div class="form-group" style="background:#f9f9f9; padding:10px; border:1px solid #eee; border-radius:4px;">
+                    <label style="display:block; margin-bottom:5px;">Požadované certifikáty:</label>
+                    <label class="checkbox-inline"><input type="checkbox" id="mNRBio" checked> BIO</label>
+                    <label class="checkbox-inline"><input type="checkbox" id="mNRVegan"> Vegan</label>
+                    <label class="checkbox-inline"><input type="checkbox" id="mNRBezlepek"> Bezlepek</label>
+                    <label class="checkbox-inline"><input type="checkbox" id="mNRKosher"> Kosher</label>
+                    <label class="checkbox-inline"><input type="checkbox" id="mNRHalal"> Halal</label>
+                </div>
+
+                <div class="form-group">
+                    <label>Priorita:</label>
+                    <select id="mNRPrio" class="form-control">
+                        <option value="0">Normální</option>
+                        <option value="1">Urgentní</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Poznámka (např. očekávané množství, specifikace):</label>
+                    <textarea id="mNRNote" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="mNRSave">Vytvořit požadavek</button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap.min.js"></script>
-<script src="./bootstable.min.js"></script>
-
 <script>
     $(document).ready(function() {
-        // 1. DataTables inicializace
-        var initDataTable = function() {
-            if ($('.table-sjednocena').length > 0) {
-                $('.table-sjednocena').DataTable({
-                    "paging": false,
-                    "retrieve": true,
-                    "order": [[0, "desc"]],
-                    "language": { "url": "//cdn.datatables.net/plug-ins/1.10.19/i18n/Czech.json" }
-                });
+        // Inicializace Select2 s podporou tagů (pro nové suroviny)
+        $('.select2-sur').select2({
+            dropdownParent: $('#mNR'),
+            tags: true,
+            createTag: function (params) {
+                return {
+                    id: params.term,
+                    text: params.term,
+                    newTag: true
+                }
             }
-        };
-        initDataTable();
+        });
 
-        // 2. MODÁL: Editace nabídky
-        $(document).off('click', '.btn-edit-offer').on('click', '.btn-edit-offer', function(e) {
-            e.preventDefault();
-            var id = $(this).data('id');
+        // Obsluha uložení nového požadavku
+        $('#mNRSave').on('click', function() {
+            var sur = $('#mNRSur').val();
+            if(!sur) { alert("Vyberte surovinu!"); return; }
 
-            $('#modal-dynamic-content').html('');
-            $('#modal-loader').show();
-            $('#remoteModal').modal('show');
-
-            $('#modal-dynamic-content').load('includes/editNabidka.php?id=' + id, function(response, status, xhr) {
-                $('#modal-loader').hide();
-                if (status == "error") {
-                    alert("Chyba při načítání formuláře: " + xhr.status + " " + xhr.statusText);
+            $.post('includes/ajax_add_request.php', {
+                id_surovina: sur,
+                poznamka: $('#mNRNote').val(),
+                priorita: $('#mNRPrio').val(),
+                bio: $('#mNRBio').is(':checked') ? 1 : 0,
+                vegan: $('#mNRVegan').is(':checked') ? 1 : 0,
+                bezlepek: $('#mNRBezlepek').is(':checked') ? 1 : 0,
+                kosher: $('#mNRKosher').is(':checked') ? 1 : 0,
+                halal: $('#mNRHalal').is(':checked') ? 1 : 0
+            }, function(r) {
+                if(r.trim() == "OK") {
+                    $('#mNR').modal('hide');
+                    if (typeof safeReload === "function") safeReload();
+                    else window.location.reload();
+                } else {
+                    alert(r);
                 }
             });
         });
 
-        // 3. VÝVOJ: Změna statusu nabídky (Schválení/Zamítnutí ceny)
-        $(document).off('click', '.btn-status-change').on('click', '.btn-status-change', function(e) {
+        $(document).on('click', '.btn-new-req', function(e) {
             e.preventDefault();
-            var nabidkaId = $(this).data('id');
-            var novyStatus = $(this).data('status');
-
-            console.log("Status change triggered: ID=" + nabidkaId + ", Status=" + novyStatus);
-
-            if (confirm('Opravdu chcete změnit stav této nabídky?')) {
-                $.ajax({
-                    url: 'includes/update_status_nabidka.php',
-                    type: 'POST',
-                    data: { id: nabidkaId, status: novyStatus },
-                    success: function(response) {
-                        console.log("Server response: " + response);
-                        if (response.trim() === "OK") {
-                            location.reload();
-                        } else {
-                            alert("Chyba: " + response);
-                        }
-                    },
-                    error: function(xhr) {
-                        alert("Chyba komunikace se serverem.");
-                        console.log(xhr);
-                    }
-                });
-            }
-        });
-
-        // 4. SMAZÁNÍ: AJAX smazání
-        $(document).off('click', '.btn-delete-ajax').on('click', '.btn-delete-ajax', function(e) {
-            e.preventDefault();
-            var id = $(this).data('id');
-            var tableName = $(this).data('table');
-            var $btn = $(this);
-
-            if (confirm('Opravdu smazat záznam ID ' + id + '?')) {
-                $.get("includes/delete_logic.php", { id: id, table: tableName }, function(response) {
-                    if (response.trim() === "OK") {
-                        if (tableName === 'pozadavky_nabidky') {
-                            $btn.closest('div[style*="border-bottom"]').fadeOut();
-                        } else {
-                            $btn.closest('tr').fadeOut();
-                        }
-                    } else {
-                        alert("Chyba: " + response);
-                    }
-                });
-            }
+            $('#mNR').modal('show');
         });
     });
 </script>
