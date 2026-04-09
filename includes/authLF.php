@@ -2,17 +2,17 @@
 set_include_path($_SERVER['DOCUMENT_ROOT'] . 'includes/');
 include_once("db_connect.php");
 
-
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
+$error_msg = "";
 
 if(isset($_POST['username']) && isset($_POST['password'])){
 
     $myusername = mysqli_real_escape_string($conn, $_POST['username']);
     $mypassword = mysqli_real_escape_string($conn, $_POST['password']);
 
-    // Přidány nové sloupce do SELECTu
     $sql = "SELECT id, jmeno, login, heslo, admin, vyvoj, orders, kvalita 
             FROM users 
             WHERE login = '$myusername' AND heslo = '$mypassword' 
@@ -26,42 +26,83 @@ if(isset($_POST['username']) && isset($_POST['password'])){
         $_SESSION["username"] = $row['jmeno'];
         $_SESSION["loginname"] = $row['login'];
 
-        // Uložení rolí (přetypování na boolean/int pro snazší práci)
+        // Uložení rolí
         $_SESSION["adm"] = (int)$row['admin'];
         $_SESSION["vyvoj"] = (int)$row['vyvoj'];
         $_SESSION["orders"] = (int)$row['orders'];
         $_SESSION["kvalita"] = (int)$row['kvalita'];
+        $_SESSION['cumil'] = $row['cumil'];
 
         header("Location: index.php");
         exit();
     } else {
-        echo "<div class='alert alert-danger'>Neplatné jméno nebo heslo!</div>";
+        $error_msg = "Neplatné přihlašovací jméno nebo heslo!";
     }
+}
 
-} elseif (!empty($_SESSION["username"])){
-    // Zobrazení stavu přihlášení
-    echo "<p>Přihlášený uživatel: <strong> " . $_SESSION["username"] ."</strong></p>";
-
-    $roles = array();
-    if(!empty($_SESSION["adm"])) $roles[] = "Admin";
-    if(!empty($_SESSION["vyvoj"])) $roles[] = "Vývoj";
-    if(!empty($_SESSION["orders"])) $roles[] = "Orders";
-    if(!empty($_SESSION["kvalita"])) $roles[] = "Kvalita";
-
-    if(!empty($roles)){
-        echo "Role: <strong style='color:red;'>" . implode(", ", $roles) . "</strong>";
-    }
-} else {
+// ======================================================================
+// POKUD UŽIVATEL NENÍ PŘIHLÁŠENÝ: Vykreslíme plnohodnotnou stránku a STOP
+// ======================================================================
+if (empty($_SESSION["username"])) {
     ?>
-    <form action="#" method="POST" class="login-form">
-        <div class="form-group">
-            <label for="username">Přihlašovací jméno:</label>
-            <input id="username" type="text" name="username" class="form-control" />
+    <!DOCTYPE html>
+    <html lang="cs">
+    <head>
+        <meta charset="utf-8">
+        <title>Přihlášení | Lifefood</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="styles/vzorky.css">
+    </head>
+    <body style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); height: 100vh; margin: 0; display: flex; flex-direction: column;">
+
+    <?php if (defined('IS_DEV') && IS_DEV): ?>
+        <div style="background-color: #d9534f; color: #fff; text-align: center; padding: 10px; font-weight: bold; font-size: 14px; letter-spacing: 2px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); width: 100%;">
+            <i class="glyphicon glyphicon-warning-sign"></i> POZOR: VÝVOJOVÉ PROSTŘEDÍ (DEV) — POUZE PRO TESTOVÁNÍ <i class="glyphicon glyphicon-warning-sign"></i>
         </div>
-        <div class="form-group">
-            <label for="password">Heslo:</label>
-            <input id="password" type="password" name="password" class="form-control" />
+    <?php endif; ?>
+
+    <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+        <div class="lf-login-container"> <div class="lf-login-header">
+                <h2><i class="glyphicon glyphicon-leaf"></i> Nákup & Vývoj</h2>
+                <p>Přihlášení do systému</p>
+            </div>
+
+            <?php if(!empty($error_msg)): ?>
+                <div class="alert alert-danger" style="border-radius: 6px; font-size: 13px; text-align: center; padding: 10px;">
+                    <i class="glyphicon glyphicon-exclamation-sign"></i> <?= $error_msg ?>
+                </div>
+            <?php endif; ?>
+
+            <form action="" method="POST" class="login-form">
+                <div class="form-group">
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="glyphicon glyphicon-user"></i></span>
+                        <input id="username" type="text" name="username" class="form-control" placeholder="Přihlašovací jméno" required autofocus />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="glyphicon glyphicon-lock"></i></span>
+                        <input id="password" type="password" name="password" class="form-control" placeholder="Heslo" required />
+                    </div>
+                </div>
+
+                <button type="submit" name="submit" class="btn btn-primary btn-block btn-login">Přihlásit se</button>
+            </form>
         </div>
-        <input type="submit" name="submit" value="Přihlásit se" class="btn btn-primary" />
-    </form>
-<?php } ?>
+    </div>
+    </body>
+    </html>
+    <?php
+    // ZÁSADNÍ: Tímto se zastaví vykonávání. index.php už se vůbec nenačte.
+    exit();
+}
+
+// ======================================================================
+// POKUD JE PŘIHLÁŠENÝ: Skript tiše skončí a index.php normálně pokračuje.
+// ======================================================================
+// Poznámka: Záměrně jsem odstranil to staré echo "Přihlášený uživatel...",
+// protože by se vypsalo ÚPLNĚ NAHOŘE nad <!DOCTYPE html>, což rozbíjelo web.
+// Tvoje jméno se stejně správně ukazuje vpravo nahoře v červeném tlačítku Odhlásit.
+?>

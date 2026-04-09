@@ -1,7 +1,12 @@
 <?php
 // Pomocné funkce pro vizualizaci nástěnky
 
-function getUniqueColor($id) {
+// Přidali jsme parametr $is_spread (ve výchozím stavu true, abychom nic nerozbili, než to propojíme)
+function getUniqueColor($id, $is_spread = true) {
+    if (!$is_spread) {
+        return '#e2e6ea'; // Neutrální jemná šedá pro nabídky, co jsou poslušně v jedné fázi
+    }
+
     $hash = md5('salt_lf_' . $id);
     return sprintf("#%02x%02x%02x",
         (int)((hexdec(substr($hash, 0, 2)) + 255) / 2),
@@ -23,3 +28,4 @@ function renderBadges($row) { ?>
         <?php if(!empty($row['priorita']) && $row['priorita'] == 1): ?><span class="badge" style="background-color:#d9534f; font-size:8px; padding: 2px 4px;">URGENT</span><?php endif; ?>
     </div>
 <?php }
+?>

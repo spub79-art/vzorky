@@ -11,13 +11,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $login = mysqli_real_escape_string($conn, $_POST['login_novy']);
         $heslo = mysqli_real_escape_string($conn, $_POST['heslo_novy']);
 
-        $admin   = isset($_POST['admin_novy']) ? 1 : 0;
-        $vyvoj   = isset($_POST['vyvoj_novy']) ? 1 : 0;
-        $orders  = isset($_POST['orders_novy']) ? 1 : 0;
-        $kvalita = isset($_POST['kvalita_novy']) ? 1 : 0;
+        // Zjistíme, který radio button uživatel zaklikl (pokud žádný, defaultně je to čumil)
+        $role_novy = $_POST['role_novy'] ?? 'cumil';
 
-        $sqlIn = "INSERT INTO users (jmeno, login, heslo, admin, vyvoj, orders, kvalita) 
-                  VALUES ('$jmeno', '$login', '$heslo', $admin, $vyvoj, $orders, $kvalita)";
+        $admin   = ($role_novy === 'admin') ? 1 : 0;
+        $vyvoj   = ($role_novy === 'vyvoj') ? 1 : 0;
+        $orders  = ($role_novy === 'orders') ? 1 : 0;
+        $kvalita = ($role_novy === 'kvalita') ? 1 : 0;
+        $cumil   = ($role_novy === 'cumil') ? 1 : 0;
+
+        $sqlIn = "INSERT INTO users (jmeno, login, heslo, admin, vyvoj, orders, kvalita, cumil) 
+                  VALUES ('$jmeno', '$login', '$heslo', $admin, $vyvoj, $orders, $kvalita, $cumil)";
         if(mysqli_query($conn, $sqlIn)) {
             echo "<script>window.location.href='$current_page_url';</script>";
             exit;
@@ -32,13 +36,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $login = mysqli_real_escape_string($conn, $_POST['login']);
         $heslo = mysqli_real_escape_string($conn, $_POST['heslo']);
 
-        $admin   = isset($_POST['admin']) ? 1 : 0;
-        $vyvoj   = isset($_POST['vyvoj']) ? 1 : 0;
-        $orders  = isset($_POST['orders']) ? 1 : 0;
-        $kvalita = isset($_POST['kvalita']) ? 1 : 0;
+        // Zjistíme, který radio button je vybraný při úpravě
+        $role = $_POST['role'] ?? 'cumil';
+
+        $admin   = ($role === 'admin') ? 1 : 0;
+        $vyvoj   = ($role === 'vyvoj') ? 1 : 0;
+        $orders  = ($role === 'orders') ? 1 : 0;
+        $kvalita = ($role === 'kvalita') ? 1 : 0;
+        $cumil   = ($role === 'cumil') ? 1 : 0;
 
         $sqlUpdate = "UPDATE users SET jmeno='$jmeno', login='$login', heslo='$heslo', 
-                      admin=$admin, vyvoj=$vyvoj, orders=$orders, kvalita=$kvalita WHERE id=$id";
+                      admin=$admin, vyvoj=$vyvoj, orders=$orders, kvalita=$kvalita, cumil=$cumil WHERE id=$id";
         mysqli_query($conn, $sqlUpdate);
     }
 }
@@ -79,6 +87,7 @@ if (!$resUsers) {
                 <th class="text-center" title="Vývoj">Výv</th>
                 <th class="text-center" title="Orders">Ord</th>
                 <th class="text-center" title="Kvalita">Kva</th>
+                <th class="text-center" title="Čumil">Čum</th>
                 <th class="text-center" style="width: 120px;">Akce</th>
             </tr>
             </thead>
@@ -89,14 +98,14 @@ if (!$resUsers) {
                     <td><input type="text" name="jmeno_novy" class="form-control form-control-sm" required></td>
                     <td><input type="text" name="login_novy" class="form-control form-control-sm" required></td>
                     <td><input type="text" name="heslo_novy" class="form-control form-control-sm"></td>
-                    <td class="text-center"><input type="checkbox" name="admin_novy"></td>
-                    <td class="text-center"><input type="checkbox" name="vyvoj_novy"></td>
-                    <td class="text-center"><input type="checkbox" name="orders_novy"></td>
-                    <td class="text-center"><input type="checkbox" name="kvalita_novy"></td>
-                    <td class="text-center">
+                    <td class="text-center"><input type="radio" name="role_novy" value="admin"></td>
+                    <td class="text-center"><input type="radio" name="role_novy" value="vyvoj"></td>
+                    <td class="text-center"><input type="radio" name="role_novy" value="orders"></td>
+                    <td class="text-center"><input type="radio" name="role_novy" value="kvalita"></td>
+                    <td class="text-center"><input type="radio" name="role_novy" value="cumil" checked></td> <td class="text-center">
                         <div class="btn-group">
-                        <button type="submit" name="save_user" class="btn btn-success btn-sm"><i class="fa fa-check">Uložit</i></button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="toggleAddRow()"><i class="fa fa-times">X</i></button>
+                            <button type="submit" name="save_user" class="btn btn-success btn-sm"><i class="fa fa-check">Uložit</i></button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="toggleAddRow()"><i class="fa fa-times">X</i></button>
                         </div>
                     </td>
                 </form>
@@ -110,10 +119,11 @@ if (!$resUsers) {
                         <td><input type="text" name="jmeno" class="form-control form-control-sm" value="<?= htmlspecialchars($u['jmeno']) ?>" required></td>
                         <td><input type="text" name="login" class="form-control form-control-sm" value="<?= htmlspecialchars($u['login']) ?>" required></td>
                         <td><input type="text" name="heslo" class="form-control form-control-sm" value="<?= htmlspecialchars($u['heslo']) ?>"></td>
-                        <td class="text-center"><input type="checkbox" name="admin" <?= $u['admin'] ? 'checked' : '' ?>></td>
-                        <td class="text-center"><input type="checkbox" name="vyvoj" <?= $u['vyvoj'] ? 'checked' : '' ?>></td>
-                        <td class="text-center"><input type="checkbox" name="orders" <?= $u['orders'] ? 'checked' : '' ?>></td>
-                        <td class="text-center"><input type="checkbox" name="kvalita" <?= $u['kvalita'] ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="radio" name="role" value="admin" <?= $u['admin'] ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="radio" name="role" value="vyvoj" <?= $u['vyvoj'] ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="radio" name="role" value="orders" <?= $u['orders'] ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="radio" name="role" value="kvalita" <?= $u['kvalita'] ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="radio" name="role" value="cumil" <?= (isset($u['cumil']) && $u['cumil']) ? 'checked' : '' ?>></td>
                         <td class="text-center">
                             <div class="btn-group">
                                 <button type="submit" name="update_user" class="btn btn-success btn-sm"><i class="fa fa-save">Uložit</i></button>

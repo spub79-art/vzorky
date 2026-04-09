@@ -10,6 +10,14 @@
           <option name="port" value="22" />
         </fileTransfer>
       </webServer>
+      <webServer id="5df247b3-c153-4a1a-a4d9-902e91c8f768" name="dev-www3" url="http://docs.lifefood.eu/dev-vzorky">
+        <fileTransfer host="www3.life.local" port="22" rootFolder="/DATA/docs/dev-vzorky" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
     </option>
   </component>
 </project>
