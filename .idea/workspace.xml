@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="d2a1b169-218d-47ab-bc4f-edf673a6648d" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/boardModals.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/boardModals.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/main.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -131,7 +130,7 @@
       <workItem from="1777009948082" duration="674000" />
       <workItem from="1777031939589" duration="5687000" />
       <workItem from="1777280593465" duration="9105000" />
-      <workItem from="1777356771725" duration="11088000" />
+      <workItem from="1777356771725" duration="11183000" />
     </task>
     <task id="LOCAL-00001" summary="zacatek... uplnej... prvni upravy baleni na vzorky">
       <created>1768998225821</created>
@@ -259,7 +258,14 @@
       <option name="project" value="LOCAL" />
       <updated>1777373823486</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="po uklidu, js, styly atp...">
+      <created>1777374072302</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1777374072302</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -314,12 +320,12 @@
     </state>
     <state x="758" y="333" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1771517014755" />
     <state x="1010" y="448" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1768992551015" />
-    <state x="905" y="140" width="843" height="964" key="CommitChangelistDialog2" timestamp="1777373822888">
+    <state x="905" y="140" width="843" height="964" key="CommitChangelistDialog2" timestamp="1777374071605">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="905" y="295" key="CommitChangelistDialog2/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1771254444232" />
     <state x="3239" y="584" key="CommitChangelistDialog2/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@2560.365.1920.1040" timestamp="1770817312103" />
-    <state x="905" y="140" width="843" height="964" key="CommitChangelistDialog2/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1777373822888" />
+    <state x="905" y="140" width="843" height="964" key="CommitChangelistDialog2/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1777374071605" />
     <state x="3239" y="584" key="CommitChangelistDialog2/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@2560.365.1920.1040" timestamp="1770821415786" />
     <state x="905" y="295" key="CommitChangelistDialog2/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770640181636" />
     <state x="905" y="295" width="1450" height="1028" key="CommitChangelistDialog2/0.0.2560.1400/-1920.233.1920.1160/2560.365.1920.1040@0.0.2560.1400" timestamp="1772615173050" />
