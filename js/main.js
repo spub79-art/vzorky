@@ -1,7 +1,30 @@
 // ==========================================
 // GLOBÁLNÍ SYSTÉMOVÉ HLÁŠKY (Náhrada alert / confirm)
 // ==========================================
-window.sysAlert = function(message, type = 'danger') {
+
+// Funkce, která zajistí, že modál vždy existuje, ať jsme na jakékoliv stránce
+function ensureSystemModal() {
+    if ($('#mSystemAlert').length === 0) {
+        $('body').append(
+            '<div class="modal fade" id="mSystemAlert" tabindex="-1" role="dialog" style="z-index: 100000;">' +
+            '<div class="modal-dialog modal-sm" role="document" style="margin-top: 15vh;">' +
+            '<div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 15px 35px rgba(0,0,0,0.3);">' +
+            '<div class="modal-header" id="mSystemAlertHeader" style="border-radius: 12px 12px 0 0; padding: 15px 20px; background-color: #337ab7;">' +
+            '<button type="button" class="close text-white" data-dismiss="modal" style="opacity: 0.8; color: white;">&times;</button>' +
+            '<h4 class="modal-title" id="mSystemAlertTitle" style="font-weight: bold; color: white;"></h4>' +
+            '</div>' +
+            '<div class="modal-body" id="mSystemAlertBody" style="padding: 25px 20px; font-size: 15px; text-align: center; color: #444;"></div>' +
+            '<div class="modal-footer" id="mSystemAlertFooter" style="border-top: 1px solid #f0f0f0; padding: 15px; text-align: center;"></div>' +
+            '</div>' +
+            '</div>' +
+            '</div>'
+        );
+    }
+}
+
+window.sysAlert = function(message, type) {
+    if (type === undefined) type = 'danger';
+    ensureSystemModal();
     var bg = '#337ab7'; var icon = 'fa-info-circle'; var title = 'Upozornění';
     if (type === 'danger') { bg = '#d9534f'; icon = 'fa-exclamation-triangle'; title = 'Chyba'; }
     else if (type === 'warning') { bg = '#f0ad4e'; icon = 'fa-exclamation-circle'; title = 'Pozor'; }
@@ -15,6 +38,7 @@ window.sysAlert = function(message, type = 'danger') {
 };
 
 window.sysConfirm = function(message, callback) {
+    ensureSystemModal();
     $('#mSystemAlertHeader').css('background-color', '#d9534f');
     $('#mSystemAlertTitle').html('<i class="fa fa-question-circle"></i> Potvrzení akce');
     $('#mSystemAlertBody').html('<strong>' + message + '</strong>');
@@ -31,6 +55,7 @@ window.sysConfirm = function(message, callback) {
         if (typeof callback === 'function') callback();
     });
 };
+
 
 $(document).ready(function() {
 
@@ -129,7 +154,7 @@ $(document).ready(function() {
         });
     });
 
-    // ==========================================
+// ==========================================
     // 4. GLOBÁLNÍ HLADKÉ MAZÁNÍ (AJAX)
     // ==========================================
     $(document).on('click', '.btn-delete-ajax', function(e) {
@@ -138,7 +163,10 @@ $(document).ready(function() {
         var btn = $(this);
         var row = btn.closest('tr');
 
-        var confirmText = "Opravdu chcete tuto položku smazat?";
+        // Zkusíme najít text v atributu data-confirm, jinak dáme výchozí
+        var confirmText = btn.data('confirm') || "Opravdu chcete tuto položku smazat?";
+
+        // (Pojistka pro stará tlačítka, kdyby tam někde onclick ještě zůstal)
         var onclickAttr = btn.attr('onclick');
         if (onclickAttr && onclickAttr.indexOf("confirm('") !== -1) {
             confirmText = onclickAttr.split("confirm('")[1].split("')")[0];

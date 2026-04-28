@@ -86,7 +86,7 @@ if (!$result) {
                                 </button>
                                 <a href="includes/delete_logic.php?table=zakaznici&id=<?= $row['id'] ?>&redirect=Zakaznik"
                                    class="btn btn-danger btn-sm btn-delete-ajax"
-                                   onclick="return confirm('Opravdu smazat zákazníka <?= htmlspecialchars($row['nazev']) ?>?')">
+                                   data-confirm="Opravdu smazat zákazníka <?= htmlspecialchars($row['nazev']) ?>?">
                                     <i class="fa fa-trash">X</i>
                                 </a>
                             <?php else: ?>
