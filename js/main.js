@@ -62,6 +62,10 @@ $(document).ready(function() {
     // ==========================================
     // 1. KNIHOVNA SUROVIN
     // ==========================================
+    // Zobrazení tlačítka pro uložení surovin při jakékoliv změně v inputech
+    $(document).on('input change', '.table-suroviny input', function() {
+        $('#saveSurovinyContainer').slideDown(300);
+    });
     $(document).on('click', '.btn-save-all-translations', function() {
         var data = [];
         $('.table-suroviny tbody tr').each(function() {
@@ -163,16 +167,13 @@ $(document).ready(function() {
         var btn = $(this);
         var row = btn.closest('tr');
 
-        // Zkusíme najít text v atributu data-confirm, jinak dáme výchozí
+        // Priorita: 1. Atribut data-confirm, 2. starý onclick confirm, 3. výchozí text
         var confirmText = btn.data('confirm') || "Opravdu chcete tuto položku smazat?";
-
-        // (Pojistka pro stará tlačítka, kdyby tam někde onclick ještě zůstal)
         var onclickAttr = btn.attr('onclick');
-        if (onclickAttr && onclickAttr.indexOf("confirm('") !== -1) {
+        if (!btn.data('confirm') && onclickAttr && onclickAttr.indexOf("confirm('") !== -1) {
             confirmText = onclickAttr.split("confirm('")[1].split("')")[0];
         }
 
-        // Zavoláme náš hezký modál
         sysConfirm(confirmText, function() {
             var originalHtml = btn.html();
             btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
@@ -188,7 +189,7 @@ $(document).ready(function() {
                 if (response.trim() === "OK") {
                     row.fadeOut(400, function() { $(this).remove(); });
                 } else {
-                    sysAlert(response, "danger");
+                    sysAlert("Položku nelze smazat:<br>" + response, "warning");
                     btn.prop('disabled', false).html(originalHtml);
                 }
             }).fail(function() {
@@ -197,6 +198,7 @@ $(document).ready(function() {
             });
         });
 
+        // Vyčistíme onclick, aby se nepletl do cesty
         btn.removeAttr('onclick');
     });
 

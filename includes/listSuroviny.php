@@ -2,8 +2,9 @@
 include_once("db_connect.php");
 if (!$is_adm && !$is_orders && !$is_dev) die("Nepovolený přístup.");
 
-// SQL dotaz: Vytáhneme suroviny a spočítáme pokusy
+// SQL dotaz: Zjišťujeme počty požadavků (pro zámek) a nabídek (pro historii)
 $sql = "SELECT s.*, 
+        (SELECT COUNT(p.id) FROM pozadavky p WHERE p.id_surovina = s.id) as pocet_pozadavku,
         (SELECT COUNT(pn.id) 
          FROM pozadavky_nabidky pn 
          JOIN pozadavky p ON pn.id_pozadavek = p.id 
@@ -11,20 +12,19 @@ $sql = "SELECT s.*,
         FROM suroviny s 
         ORDER BY s.nazev ASC";
 $res = mysqli_query($conn, $sql);
+
+if (!$res) {
+    die("<div class='alert alert-danger m-3'><strong>Chyba SQL:</strong> " . mysqli_error($conn) . "</div>");
+}
 ?>
 
 <div class="panel panel-primary shadow suroviny-panel">
     <div class="panel-heading suroviny-heading">
         <h3 class="panel-title"><i class="fa fa-flask"></i> Knihovna surovin a překlady</h3>
-        <div class="panel-actions" style="float: right; margin-top: -22px;">
-            <button class="btn btn-sm btn-success btn-save-all-translations">
-                <i class="fa fa-save"></i> Uložit vše naráz
-            </button>
-        </div>
     </div>
     <div class="panel-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-suroviny">
+            <table class="table table-striped table-hover table-suroviny align-middle">
                 <thead>
                 <tr>
                     <th class="col-id">ID</th>
@@ -35,57 +35,72 @@ $res = mysqli_query($conn, $sql);
                 </tr>
                 </thead>
                 <tbody>
-                <?php while ($row = mysqli_fetch_assoc($res)) { ?>
+                <?php while ($row = mysqli_fetch_assoc($res)):
+                    $is_locked = ($row['pocet_pozadavku'] > 0);
+                    ?>
                     <tr data-id="<?= $row['id'] ?>">
                         <td class="text-muted" style="vertical-align: middle;"><?= $row['id'] ?></td>
-                        <td style="vertical-align: middle;">
-                            <input type="text" class="form-control input-sm edit-nazev" value="<?= htmlspecialchars($row['nazev']) ?>">
-                        </td>
-                        <td style="vertical-align: middle;">
-                            <input type="text" class="form-control input-sm edit-nazev-en" placeholder="English name..." value="<?= htmlspecialchars($row['nazev_en'] ?? '') ?>">
-                        </td>
-                        <td style="vertical-align: middle;">
-                            <div class="erp-wrapper">
-                                <input type="text" class="form-control input-sm edit-skupzbo erp-input" placeholder="SkupZbo" value="<?= htmlspecialchars($row['skupzbo'] ?? '') ?>">
-                                <input type="text" class="form-control input-sm edit-regcis erp-input" placeholder="RegCis" value="<?= htmlspecialchars($row['regcis'] ?? '') ?>">
 
-                                <?php if (!empty($row['skupzbo']) && !empty($row['regcis'])) { ?>
+                        <td style="vertical-align: middle;">
+                            <?php if ($is_adm): ?>
+                                <input type="text" class="form-control input-sm edit-nazev" value="<?= htmlspecialchars($row['nazev']) ?>">
+                            <?php else: ?>
+                                <input type="text" class="form-control input-sm edit-nazev bg-light border-0 shadow-none" value="<?= htmlspecialchars($row['nazev']) ?>" readonly title="Název může měnit pouze administrátor">
+                            <?php endif; ?>
+                        </td>
+
+                        <td style="vertical-align: middle;">
+                            <input type="text" class="form-control input-sm edit-nazev-en"
+                                   placeholder="English name..."
+                                   value="<?= htmlspecialchars($row['nazev_en'] ?? '') ?>">
+                        </td>
+
+                        <td style="vertical-align: middle;">
+                            <div class="erp-wrapper" style="display: flex; align-items: center; gap: 5px;">
+                                <input type="text" class="form-control input-sm edit-skupzbo erp-input" style="width: 70px;" placeholder="Skup" value="<?= htmlspecialchars($row['skupzbo'] ?? '') ?>">
+                                <input type="text" class="form-control input-sm edit-regcis erp-input" style="width: 70px;" placeholder="Reg" value="<?= htmlspecialchars($row['regcis'] ?? '') ?>">
+
+                                <?php if (!empty($row['skupzbo']) && !empty($row['regcis'])): ?>
                                     <span class="label label-success" title="Zavedeno v IS"><i class="fa fa-check"></i></span>
-                                <?php } else { ?>
+                                <?php else: ?>
                                     <span class="label label-warning" title="Pouze ve vývoji"><i class="fa fa-flask"></i></span>
-                                <?php } ?>
+                                <?php endif; ?>
                             </div>
                         </td>
+
                         <td class="text-center nowrap" style="vertical-align: middle;">
-                            <?php if ($row['pocet_pokusu'] > 0) { ?>
-                                <button class="btn btn-sm btn-info btn-show-historie-sur" data-id="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['nazev'], ENT_QUOTES) ?>">
+                            <?php if ($row['pocet_pokusu'] > 0): ?>
+                                <button class="btn btn-sm btn-info btn-show-historie-sur"
+                                        style="margin-right: 4px;"
+                                        data-id="<?= $row['id'] ?>"
+                                        data-name="<?= htmlspecialchars($row['nazev'], ENT_QUOTES) ?>">
                                     <i class="fa fa-history"></i> (<?= $row['pocet_pokusu'] ?>)
                                 </button>
-                            <?php } ?>
+                            <?php endif; ?>
 
-                            <button class="btn btn-sm btn-danger btn-delete-ajax" data-id="<?= $row['id'] ?>" data-table="suroviny">
-                                <i class="fa fa-trash"></i>
-                            </button>
+                            <?php if (!$is_locked): ?>
+                                <button class="btn btn-sm btn-danger btn-delete-ajax"
+                                        data-id="<?= $row['id'] ?>"
+                                        data-table="suroviny"
+                                        data-confirm="Opravdu smazat surovinu <?= htmlspecialchars($row['nazev']) ?>?">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-sm btn-default" disabled title="Nelze smazat - je použita v požadavcích (<?= $row['pocet_pozadavku'] ?>x)">
+                                    <i class="fa fa-lock text-muted"></i>
+                                </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
-                <?php } ?>
+                <?php endwhile; ?>
                 </tbody>
             </table>
         </div>
-    </div>
-</div>
 
-<div class="modal fade" id="mHistorieSuroviny" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h4 class="modal-title"><i class="fa fa-history"></i> Historie pokusů: <span id="modalSurName"></span></h4>
-            </div>
-            <div class="modal-body" id="modalSurBody">
-            </div>
+        <div id="saveSurovinyContainer" class="text-center" style="margin-top: 25px; padding: 15px; border-top: 1px solid #eee; display: none;">
+            <button class="btn btn-lg btn-warning btn-save-all-translations" style="box-shadow: 0 4px 15px rgba(240, 173, 78, 0.4); font-weight: bold; padding: 12px 50px;">
+                <i class="fa fa-save"></i> ULOŽIT VŠECHNY ZMĚNY
+            </button>
         </div>
     </div>
 </div>
