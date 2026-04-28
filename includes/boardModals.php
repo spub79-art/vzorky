@@ -610,6 +610,20 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+<div class="modal fade" id="mSystemAlert" tabindex="-1" role="dialog" style="z-index: 100000;">
+    <div class="modal-dialog modal-sm" role="document" style="margin-top: 15vh;">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 15px 35px rgba(0,0,0,0.3);">
+            <div class="modal-header" id="mSystemAlertHeader" style="border-radius: 12px 12px 0 0; padding: 15px 20px; background-color: #337ab7;">
+                <button type="button" class="close text-white" data-dismiss="modal" style="opacity: 0.8; color: white;">&times;</button>
+                <h4 class="modal-title" id="mSystemAlertTitle" style="font-weight: bold; color: white;"><i class="fa fa-info-circle"></i> Upozornění</h4>
+            </div>
+            <div class="modal-body" id="mSystemAlertBody" style="padding: 25px 20px; font-size: 15px; text-align: center; color: #444;">
+            </div>
+            <div class="modal-footer" id="mSystemAlertFooter" style="border-top: 1px solid #f0f0f0; padding: 15px; text-align: center;">
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     $(document).ready(function() {
         // Kliknutí na modrý (TDS) nebo červený (COA) štítek na malé kartičce
