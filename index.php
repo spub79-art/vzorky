@@ -1,5 +1,7 @@
 <?php
-include_once($_SERVER['DOCUMENT_ROOT'] . "/config/config.php");
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+include_once(__DIR__ . '/config/config.php');
 include("includes/authLF.php");
 include("includes/db_connect.php");
 
@@ -38,9 +40,7 @@ $mapping = [
 ];
 $jsTableAction = $mapping[$page] ?? strtolower($page);
 
-// =======================================================
-// NOVINKA: ZJIŠTĚNÍ NEJPŘEČTENĚJŠÍ AKTUALITY PRO TLAČÍTKO
-// =======================================================
+// ZJIŠTĚNÍ NEJPŘEČTENĚJŠÍ AKTUALITY
 $unseen_news_badge = '';
 $conn_akt_check = mysqli_connect("localhost", "vzorky", "vzorky", "vzorky");
 
@@ -63,7 +63,6 @@ if ($conn_akt_check) {
     }
     mysqli_close($conn_akt_check);
 }
-// =======================================================
 ?>
 <!DOCTYPE html>
 <html lang="cs">
@@ -79,9 +78,7 @@ if ($conn_akt_check) {
 <div id="maincontainer" class="container-fluid">
 
     <div id="sticky-header">
-
         <div class="top-header-bar">
-
             <div class="top-header-left">
                 <a class="btn btn-primary<?php echo btnActive($page, ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik']); ?>" href="./index.php?Pozadavek=1">
                     <i class="glyphicon glyphicon-tasks"></i> Požadavky & Nákup
@@ -113,19 +110,14 @@ if ($conn_akt_check) {
 
             <div class="top-header-right">
                 <?php if (defined('IS_DEV') && IS_DEV): ?>
-                    <div class="dev-badge">
-                        <i class="glyphicon glyphicon-warning-sign"></i> DEV PROSTŘEDÍ
-                    </div>
+                    <div class="dev-badge"><i class="glyphicon glyphicon-warning-sign"></i> DEV PROSTŘEDÍ</div>
                 <?php endif; ?>
-
                 <a class="btn btn-news<?php echo btnActive($page, ['Aktuality']); ?>" href="./index.php?Aktuality=1">
                     <i class="glyphicon glyphicon-bullhorn"></i> Novinky <?= $unseen_news_badge ?>
                 </a>
-
                 <?php if ($is_adm || $is_kvalita): ?>
                     <a class="btn btn-info<?php echo btnActive($page, ['Users']); ?>" href="./index.php?Users=1">Uživatelé</a>
                 <?php endif; ?>
-
                 <a class="btn btn-danger" href="includes/logout.php">
                     Odhlásit (<?php echo is_array($_SESSION['username']) ? $_SESSION['username'][0] : $_SESSION['username']; ?>)
                 </a>
@@ -143,9 +135,7 @@ if ($conn_akt_check) {
                     <i class="glyphicon glyphicon-folder-close"></i> Archiv
                 </a>
                 <span class="submenu-divider">|</span>
-
                 <button class="btn btn-sm btn-warning btn-new-req"><i class="glyphicon glyphicon-plus"></i> Nový požadavek</button>
-
                 <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Zakaznik']); ?>" href="./index.php?Zakaznik=1">Zákazník</a>
                 <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Suroviny']); ?>" href="./index.php?Suroviny=1">Suroviny</a>
                 <?php if ($is_adm || $is_orders): ?>
@@ -153,8 +143,8 @@ if ($conn_akt_check) {
                 <?php endif; ?>
             </div>
         <?php endif; ?>
-
     </div>
+
     <div id="main-content">
         <?php
         switch ($page) {
@@ -209,6 +199,21 @@ if ($conn_akt_check) {
                         <option value="1">Urgentní</option>
                     </select>
                 </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label class="text-warning" style="font-weight: bold;"><i class="glyphicon glyphicon-user"></i> Zákazníci (pro koho to je):</label>
+                    <select id="mNRZakaznici" class="form-control select2-zakaznici" multiple="multiple" style="width:100%;">
+                        <?php
+                        $z_res = @mysqli_query($conn, "SELECT id, nazev FROM zakaznici ORDER BY nazev ASC");
+                        if ($z_res) {
+                            while($z = mysqli_fetch_assoc($z_res)) {
+                                echo "<option value='".$z['id']."'>".htmlspecialchars($z['nazev'])."</option>";
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label>Poznámka (např. očekávané množství, specifikace):</label>
                     <textarea id="mNRNote" class="form-control" rows="3"></textarea>
@@ -223,9 +228,20 @@ if ($conn_akt_check) {
 
 <script>
     $(document).ready(function() {
+        // Inicializace Select2 pro suroviny
         $('.select2-sur').select2({
             dropdownParent: $('#mNR'),
             tags: true,
+            createTag: function (params) {
+                return { id: params.term, text: params.term, newTag: true }
+            }
+        });
+
+        // Inicializace Select2 pro zákazníky (umožňuje vybrat více a psát nové)
+        $('.select2-zakaznici').select2({
+            dropdownParent: $('#mNR'),
+            tags: true,
+            placeholder: "-- Vyberte ze seznamu nebo napište nového --",
             createTag: function (params) {
                 return { id: params.term, text: params.term, newTag: true }
             }
@@ -248,25 +264,51 @@ if ($conn_akt_check) {
                     bezlepek: $('#mNRBezlepek').is(':checked') ? 1 : 0,
                     kosher: $('#mNRKosher').is(':checked') ? 1 : 0,
                     halal: $('#mNRHalal').is(':checked') ? 1 : 0,
+                    zakaznici: $('#mNRZakaznici').val(), // Odesíláme pole zákazníků
                     force_create: forceValue
                 }, function(r) {
                     var odpoved = r.trim();
                     btn.prop('disabled', false).text('Vytvořit požadavek');
 
-                    if (odpoved.startsWith("WARNING|")) {
+                    if (odpoved.startsWith("EXACT_DUP|")) {
                         var exist_id = odpoved.split('|')[1];
 
-                        // Zobrazení našeho hezkého modálu
                         $('#dupExistId').text(exist_id);
                         $('#mDuplicateWarning').modal('show');
 
-                        // Odpojíme předchozí akce tlačítek a napojíme nové
+                        // 1. Připojení zákazníků (Nová akce!)
+                        $('#btnDupAppend').off('click').on('click', function() {
+                            var zakaznici_ids = $('#mNRZakaznici').val();
+                            if (!zakaznici_ids || zakaznici_ids.length === 0) {
+                                alert("Nemáte vybrány žádné zákazníky, které bychom mohli připojit.");
+                                return;
+                            }
+
+                            $('#mDuplicateWarning').modal('hide');
+                            btn.prop('disabled', true).text('Připojuji zákazníky...');
+
+                            $.post('includes/ajax_append_customers.php', {
+                                id_pozadavek: exist_id,
+                                zakaznici: zakaznici_ids
+                            }, function(r2) {
+                                if (r2.trim() === "OK") {
+                                    $('#mNR').modal('hide');
+                                    if (typeof safeReload === "function") safeReload(); else window.location.reload();
+                                } else {
+                                    alert(r2);
+                                    btn.prop('disabled', false).text('Vytvořit požadavek');
+                                }
+                            });
+                        });
+
+                        // 2. Vynucení duplicity
                         $('#btnDupForce').off('click').on('click', function() {
                             $('#mDuplicateWarning').modal('hide');
                             btn.prop('disabled', true).text('Vynucuji založení...');
                             odeslatPozadavek(1);
                         });
 
+                        // 3. Přejít na požadavek
                         $('#btnDupGoTo').off('click').on('click', function() {
                             $('#mDuplicateWarning').modal('hide');
                             $('#mNR').modal('hide');
@@ -298,8 +340,10 @@ if ($conn_akt_check) {
             $('#mNRVegan, #mNRBezlepek, #mNRKosher, #mNRHalal').prop('checked', false);
             $('#mNRPrio').val('0');
             $('#mNRNote').val('');
+            $('#mNRZakaznici').val(null).trigger('change'); // Vyčištění zákazníků
             $('#mNR').modal('show');
         });
+
         $(document).on('click', '#btnToggleMyTasks', function() {
             showOnlyMyTasks = !showOnlyMyTasks;
             applyFilters();
@@ -308,10 +352,10 @@ if ($conn_akt_check) {
 </script>
 
 <?php
-// --- ZJIŠTĚNÍ POČTU NEVYŘEŠENÝCH POŽADAVKŮ (Pouze pro Admina/Vývoj) ---
+// --- ZJIŠTĚNÍ POČTU NEVYŘEŠENÝCH POŽADAVKŮ PRO DEV (Pouze pro Admina/Vývoj) ---
 $unresolved_badge = '';
 if ($is_adm || $is_vyvoj) {
-    $dev_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM dev_pozadavky WHERE stav = 0");
+    $dev_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM vzorky.dev_pozadavky WHERE stav = 0");
     if ($dev_q) {
         $dev_r = mysqli_fetch_assoc($dev_q);
         if ($dev_r['c'] > 0) {
@@ -323,8 +367,7 @@ if ($is_adm || $is_vyvoj) {
 
 <div class="feedback-btn-wrapper">
     <button id="btnOpenDevTasks" class="btn btn-primary btn-feedback">
-        <i class="glyphicon glyphicon-bullhorn"></i> Nápady & Úpravy
-        <?= $unresolved_badge ?>
+        <i class="glyphicon glyphicon-bullhorn"></i> Nápady & Úpravy <?= $unresolved_badge ?>
     </button>
 </div>
 
@@ -336,16 +379,13 @@ if ($is_adm || $is_vyvoj) {
                 <h4 class="modal-title feedback-modal-title"><i class="glyphicon glyphicon-bullhorn"></i> Požadavky na úpravu systému</h4>
             </div>
             <div class="modal-body feedback-modal-body">
-
                 <div class="feedback-form-box">
                     <label class="small text-muted" style="text-transform: uppercase;">Máte nápad na vylepšení nebo jste našli chybu?</label>
                     <textarea id="devTaskText" class="form-control feedback-textarea" rows="3" placeholder="Napište sem, co byste potřebovali přidat nebo opravit..."></textarea>
                     <button id="btnSaveDevTask" class="btn btn-primary btn-block btn-feedback-submit">Odeslat vývojáři</button>
                 </div>
-
                 <h5 class="feedback-list-title">Seznam požadavků</h5>
-                <div id="devTasksList" class="feedback-list-container">
-                </div>
+                <div id="devTasksList" class="feedback-list-container"></div>
             </div>
         </div>
     </div>
@@ -375,23 +415,32 @@ if ($is_adm || $is_vyvoj) {
             });
         });
 
-        $(document).on('click', '.btn-close-dev-task', function() {
+        $(document).on('click', '.btn-update-dev-task', function() {
             var id = $(this).data('id');
+            var newStatus = $(this).data('status');
             var btn = $(this);
-            btn.prop('disabled', true).text('...');
+            var reakce = "";
 
-            $.post('includes/ajax_dev_pozadavky.php', { action: 'close', id: id }, function(r) {
+            if (newStatus == 2) {
+                reakce = prompt("Uveďte prosím důvod zamítnutí (povinné):");
+                if (reakce === null) return; // Uživatel dal Storno
+                if (reakce.trim() === "") { alert("Důvod zamítnutí musí být vyplněn!"); return; }
+            } else {
+                reakce = prompt("Můžete přidat krátký komentář (nepovinné):");
+            }
+
+            btn.prop('disabled', true).text('...');
+            $.post('includes/ajax_dev_pozadavky.php', {
+                action: 'update_status',
+                id: id,
+                status: newStatus,
+                reakce: reakce
+            }, function(r) {
                 if (r.trim() === "OK") {
                     loadDevTasks();
-                    var badge = $('#devBadgeCount');
-                    if (badge.length) {
-                        var count = parseInt(badge.text()) - 1;
-                        if (count > 0) badge.text(count);
-                        else badge.remove();
-                    }
                 } else {
                     alert("Chyba: " + r);
-                    btn.prop('disabled', false).text('✔ Vyřešit');
+                    btn.prop('disabled', false).text(newStatus == 1 ? '✔ Vyřešit' : '✖ Zamítnout');
                 }
             });
         });
@@ -403,7 +452,6 @@ if ($is_adm || $is_vyvoj) {
             });
         }
 
-        // SMRSKÁVÁNÍ HLAVIČKY PŘI SCROLLOVÁNÍ
         $(window).scroll(function() {
             if ($(window).scrollTop() > 40) {
                 $('#sticky-header').addClass('is-scrolled');

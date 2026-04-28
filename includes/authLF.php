@@ -2,6 +2,9 @@
 set_include_path($_SERVER['DOCUMENT_ROOT'] . 'includes/');
 include_once("db_connect.php");
 
+// Pojistka pro případ, že konstanta ještě není zapsaná v db_connect.php
+if (!defined('DB_TBL_USERS')) define('DB_TBL_USERS', 'users');
+
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -13,8 +16,10 @@ if(isset($_POST['username']) && isset($_POST['password'])){
     $myusername = mysqli_real_escape_string($conn, $_POST['username']);
     $mypassword = mysqli_real_escape_string($conn, $_POST['password']);
 
-    $sql = "SELECT id, jmeno, login, heslo, admin, vyvoj, orders, kvalita 
-            FROM users 
+    // ZMĚNA 1: Přidán chybějící sloupec 'cumil' do SELECTu
+    // ZMĚNA 2: Tabulka se nyní bere dynamicky z naší konstanty DB_TBL_USERS
+    $sql = "SELECT id, jmeno, login, heslo, admin, vyvoj, orders, kvalita, cumil 
+            FROM " . DB_TBL_USERS . " 
             WHERE login = '$myusername' AND heslo = '$mypassword' 
             LIMIT 1";
 
@@ -31,7 +36,7 @@ if(isset($_POST['username']) && isset($_POST['password'])){
         $_SESSION["vyvoj"] = (int)$row['vyvoj'];
         $_SESSION["orders"] = (int)$row['orders'];
         $_SESSION["kvalita"] = (int)$row['kvalita'];
-        $_SESSION['cumil'] = $row['cumil'];
+        $_SESSION['cumil'] = (int)$row['cumil'];
 
         header("Location: index.php");
         exit();
@@ -98,11 +103,4 @@ if (empty($_SESSION["username"])) {
     // ZÁSADNÍ: Tímto se zastaví vykonávání. index.php už se vůbec nenačte.
     exit();
 }
-
-// ======================================================================
-// POKUD JE PŘIHLÁŠENÝ: Skript tiše skončí a index.php normálně pokračuje.
-// ======================================================================
-// Poznámka: Záměrně jsem odstranil to staré echo "Přihlášený uživatel...",
-// protože by se vypsalo ÚPLNĚ NAHOŘE nad <!DOCTYPE html>, což rozbíjelo web.
-// Tvoje jméno se stejně správně ukazuje vpravo nahoře v červeném tlačítku Odhlásit.
 ?>

@@ -1,6 +1,7 @@
 <?php
-// --- STAŽENÍ AKTUÁLNÍHO KURZU ČNB (EUR) ---
-$eur_rate = 25.00;
+// --- STAŽENÍ AKTUÁLNÍHO KURZU ČNB (EUR a USD) ---
+$eur_rate = 25.10;
+$usd_rate = 23.50; // Fallback, kdyby náhodou vypadlo spojení s ČNB
 try {
     $ctx = stream_context_create(['http' => ['timeout' => 2]]);
     $cnb_data = @file_get_contents('https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.txt', false, $ctx);
@@ -10,14 +11,18 @@ try {
             if (strpos($line, '|EUR|') !== false) {
                 $parts = explode('|', $line);
                 $eur_rate = (float)str_replace(',', '.', trim($parts[4]));
-                break;
+            }
+            if (strpos($line, '|USD|') !== false) {
+                $parts = explode('|', $line);
+                $usd_rate = (float)str_replace(',', '.', trim($parts[4]));
             }
         }
     }
 } catch (Exception $e) {}
 ?>
 <script>
-    var CNB_EUR_RATE = <?= number_format($eur_rate, 3, '.', '') ?>;
+    window.CNB_EUR_RATE = <?= number_format($eur_rate, 3, '.', '') ?>;
+    window.CNB_USD_RATE = <?= number_format($usd_rate, 3, '.', '') ?>;
 </script>
 
 <div class="modal fade" id="mWF" tabindex="-1">
@@ -101,7 +106,28 @@ try {
         </div>
     </div>
 </div>
-
+<div id="mExportModal" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white" style="background-color: #337ab7;">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:0.8;">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-list-alt"></i> Generátor: Co aktuálně sháníme</h4>
+            </div>
+            <div class="modal-body" style="background-color: #f9f9f9;">
+                <div id="mExportModalBody">
+                    <div class="text-center text-muted" style="padding: 40px;">
+                        <i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>
+                        Načítám seznam z Fáze 1...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background-color: #fff;">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zavřít</button>
+                <button type="button" class="btn btn-success" id="btnCopyExport"><i class="glyphicon glyphicon-copy"></i> Kopírovat text do schránky</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="mReason" tabindex="-1" style="z-index: 9999;">
     <div class="modal-dialog modal-sm">
         <div class="modal-content" style="border-radius: 12px; border: none;">
@@ -153,6 +179,7 @@ try {
                             <select id="mNNMena" class="form-control input-lg" style="border-radius: 0 8px 8px 0; border-left: 1px solid #ddd; background: #f0f7ff; color: #337ab7; font-weight: bold; width: 90px; box-shadow: none;">
                                 <option value="CZK">CZK</option>
                                 <option value="EUR">EUR</option>
+                                <option value="USD">USD</option>
                             </select>
                         </span>
                     </div>
@@ -234,6 +261,55 @@ try {
     </div>
 </div>
 
+<div class="modal fade" id="mAddReq" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header" style="background:#5cb85c; color:#fff; border-radius: 12px 12px 0 0; padding: 15px 20px;">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:1;">&times;</button>
+                <h4 class="modal-title" style="font-weight: bold;"><i class="glyphicon glyphicon-plus"></i> Nový požadavek</h4>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+
+                <div class="form-group">
+                    <label>Surovina:</label>
+                    <select id="mAddReqSurovina" class="form-control select2-sur" style="width:100%;">
+                    </select>
+                </div>
+
+                <div class="form-group" style="background:#fcfcfc; padding:15px; border:1px solid #eee; border-radius:10px;">
+                    <label class="small text-muted" style="display:block; margin-bottom:10px; text-transform: uppercase;">Požadované parametry</label>
+                    <label class="checkbox-inline" style="font-weight: bold;"><input type="checkbox" id="mAddReqBio"> BIO</label>
+                    <label class="checkbox-inline" style="font-weight: bold;"><input type="checkbox" id="mAddReqVegan"> Vegan</label>
+                    <label class="checkbox-inline" style="font-weight: bold;"><input type="checkbox" id="mAddReqBezlepek"> Bezlepek</label>
+                    <label class="checkbox-inline" style="font-weight: bold;"><input type="checkbox" id="mAddReqKosher"> Kosher</label>
+                    <label class="checkbox-inline" style="font-weight: bold;"><input type="checkbox" id="mAddReqHalal"> Halal</label>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label class="small text-muted" style="text-transform: uppercase;">Priorita požadavku</label>
+                    <select id="mAddReqPrio" class="form-control" style="border-radius: 8px;">
+                        <option value="0">Normální</option>
+                        <option value="1">Urgentní</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label class="text-success"><i class="glyphicon glyphicon-user"></i> Zákazník (pro koho je surovina určena):</label>
+                    <input type="text" id="mAddReqZakaznik" class="form-control" placeholder="Např. Boon Bar, DM, Lidl... (nepovinné)">
+                </div>
+
+                <div class="form-group">
+                    <label>Poznámka / Zadání:</label>
+                    <textarea id="mAddReqNote" class="form-control" rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px; border-top: 1px solid #f5f5f5;">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-success" id="mAddReqSave" style="border-radius: 8px; font-weight:bold;">ZALOŽIT POŽADAVEK</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="mEditReq" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius: 12px; border: none;">
@@ -261,9 +337,14 @@ try {
                     </select>
                 </div>
 
+                <div class="form-group" style="margin-top: 15px;">
+                    <label class="text-warning"><i class="glyphicon glyphicon-user"></i> Zákazník (pro koho je surovina určena):</label>
+                    <input type="text" id="mEditReqZakaznik" class="form-control" placeholder="Např. Boon Bar, DM, Lidl... (nepovinné)">
+                </div>
+
                 <div class="form-group">
-                    <label class="small text-muted" style="text-transform: uppercase;">Poznámka k zadání</label>
-                    <textarea id="mEditReqNote" class="form-control" rows="3" style="border-radius: 8px; resize: none;"></textarea>
+                    <label>Poznámka / Zadání:</label>
+                    <textarea id="mEditReqNote" class="form-control" rows="4"></textarea>
                 </div>
             </div>
             <div class="modal-footer" style="padding: 15px; border-top: 1px solid #f5f5f5; display: flex; justify-content: space-between; gap: 10px;">
@@ -355,19 +436,21 @@ try {
         </div>
     </div>
 </div>
-<div class="modal fade" id="mDuplicateWarning" tabindex="-1" role="dialog" style="z-index: 1060;"> <div class="modal-dialog modal-sm" role="document">
+<div class="modal fade" id="mDuplicateWarning" tabindex="-1" role="dialog" style="z-index: 1060;">
+    <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content">
             <div class="modal-header" style="background-color: #f0ad4e; color: white;">
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title"><i class="glyphicon glyphicon-warning-sign"></i> Pozor: Duplicita</h4>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-warning-sign"></i> Pozor: Přesná shoda!</h4>
             </div>
             <div class="modal-body">
-                <p>Na tuto surovinu již aktivně běží výběrové řízení <strong>(Požadavek #<span id="dupExistId"></span>)</strong>.</p>
-                <p>Chcete i přesto založit ÚPLNĚ NOVÝ požadavek (např. pro jiný projekt / duální nákup)?</p>
+                <p id="dupTextBody">Přesně tento požadavek (včetně stejných certifikátů) již v systému běží <strong>(Požadavek #<span id="dupExistId"></span>)</strong>.</p>
+                <p>Chcete k němu pouze přidat své zákazníky, nebo natvrdo založit další paralelní požadavek?</p>
             </div>
             <div class="modal-footer" style="text-align: center;">
                 <button type="button" class="btn btn-default btn-block" id="btnDupGoTo">Zrušit a přejít na existující</button>
-                <button type="button" class="btn btn-warning btn-block" id="btnDupForce" style="margin-top: 5px;">Ano, založit nový</button>
+                <button type="button" class="btn btn-success btn-block" id="btnDupAppend" style="margin-top: 5px;">Jen připojit zákazníky</button>
+                <button type="button" class="btn btn-warning btn-block" id="btnDupForce" style="margin-top: 5px;">Založit jako ÚPLNĚ NOVÝ</button>
             </div>
         </div>
     </div>
@@ -391,6 +474,112 @@ try {
         </div>
     </div>
 </div>
+<div class="modal fade" id="mCancelReqModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #d9534f; color: white;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-trash"></i> Zrušit požadavek</h4>
+            </div>
+            <div class="modal-body">
+                <p>Opravdu chcete tento požadavek trvale zrušit (označit jako KO)?</p>
+                <input type="hidden" id="mCancelReqId">
+                <div class="form-group">
+                    <label>Důvod zrušení:</label>
+                    <textarea id="mCancelReqReason" class="form-control" rows="3" placeholder="Např.: Už surovinu nepotřebujeme..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zpět</button>
+                <button type="button" class="btn btn-danger" id="mCancelReqSave">Zrušit požadavek</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mPingPurchasing" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #5bc0de; color: white;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-bell"></i> Vyžádat další nabídku</h4>
+            </div>
+            <div class="modal-body">
+                <p>Chcete požádat Nákup o dohledání další alternativy pro surovinu <strong id="pingSurName"></strong>?</p>
+                <p class="text-muted small">Nákupu přijde upozornění a požadavek se jim na nástěnce zvýrazní.</p>
+                <input type="hidden" id="pingReqId">
+                <input type="hidden" id="pingSurRaw">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-info" id="btnConfirmPing">Ano, odeslat žádost</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mUrgeTaskModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #f0ad4e; color: white;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-flash"></i> Urgovat řešení</h4>
+            </div>
+            <div class="modal-body">
+                <p>Chcete urgovat řešení tohoto požadavku?</p>
+                <p class="text-muted small">Systém automaticky zjistí, u koho to momentálně stojí, a pošle příslušnému oddělení upozornění na Telegram.</p>
+                <input type="hidden" id="mUrgeReqId">
+                <input type="hidden" id="mUrgeSurRaw">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-warning" id="btnConfirmUrge">Ano, urgovat</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="mDeleteHistoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #d9534f; color: white;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-trash"></i> Smazat záznam</h4>
+            </div>
+            <div class="modal-body">
+                <p>Opravdu chcete smazat tuto poznámku?</p>
+                <p class="text-muted small">Tuto akci nelze vzít zpět.</p>
+                <input type="hidden" id="mDeleteHistoryId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-danger" id="mDeleteHistorySave">Ano, smazat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mEditHistoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white" style="background-color: #337ab7;">
+                <button type="button" class="close" data-dismiss="modal" style="color: white;">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-pencil"></i> Upravit poznámku</h4>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="mEditHistoryId">
+                <div class="form-group">
+                    <label>Text poznámky:</label>
+                    <textarea id="mEditHistoryText" class="form-control" rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-primary" id="mEditHistorySave">Uložit změny</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     $(document).ready(function() {
         // Kliknutí na modrý (TDS) nebo červený (COA) štítek na malé kartičce
@@ -409,6 +598,41 @@ try {
                 $('#mOfferFilesContent').html(data);
             }).fail(function() {
                 $('#mOfferFilesContent').html('<div class="alert alert-danger">Chyba při načítání souborů ze serveru.</div>');
+            });
+        });
+
+        // ----------------------------------------------------
+        // ZMĚNA: Přidán JS pro vytvoření (uložení) nového požadavku
+        // ----------------------------------------------------
+        $('#mAddReqSave').on('click', function() {
+            var btn = $(this);
+            var idSurovina = $('#mAddReqSurovina').val();
+
+            if (!idSurovina) {
+                alert("Musíte vybrat surovinu!");
+                return;
+            }
+
+            btn.prop('disabled', true).text('Zakládám...');
+
+            $.post('includes/ajax_add_request.php', {
+                id_surovina: idSurovina,
+                bio: $('#mAddReqBio').is(':checked') ? 1 : 0,
+                vegan: $('#mAddReqVegan').is(':checked') ? 1 : 0,
+                bezlepek: $('#mAddReqBezlepek').is(':checked') ? 1 : 0,
+                kosher: $('#mAddReqKosher').is(':checked') ? 1 : 0,
+                halal: $('#mAddReqHalal').is(':checked') ? 1 : 0,
+                priorita: $('#mAddReqPrio').val(),
+                poznamka: $('#mAddReqNote').val(),
+                zakaznik: $('#mAddReqZakaznik').val() // Předáváme zákazníka
+            }, function(r) {
+                if(r.trim() == "OK") {
+                    $('#mAddReq').modal('hide');
+                    if (typeof safeReload === "function") safeReload(); else location.reload();
+                } else {
+                    alert(r);
+                    btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK');
+                }
             });
         });
     });

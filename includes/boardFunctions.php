@@ -28,4 +28,23 @@ function renderBadges($row) { ?>
         <?php if(!empty($row['priorita']) && $row['priorita'] == 1): ?><span class="badge" style="background-color:#d9534f; font-size:8px; padding: 2px 4px;">URGENT</span><?php endif; ?>
     </div>
 <?php }
+// =========================================================================
+// UNIVERZÁLNÍ ZÁPIS DO HISTORIE POŽADAVKU (UNIFIED TIMELINE)
+// =========================================================================
+function zapis_do_historie($conn, $id_pozadavek, $id_nabidka, $typ_zaznamu, $text_hodnota = '', $stara_hodnota = '', $nova_hodnota = '') {
+    $id_user = $_SESSION['uid'] ?? 0;
+    $jmeno = is_array($_SESSION['username']) ? $_SESSION['username'][0] : ($_SESSION['username'] ?? 'Systém');
+
+    // Ochrana proti SQL injection
+    $text_db = mysqli_real_escape_string($conn, $text_hodnota);
+    $stara_db = mysqli_real_escape_string($conn, $stara_hodnota);
+    $nova_db = mysqli_real_escape_string($conn, $nova_hodnota);
+
+    $sql = "INSERT INTO historie_pozadavku 
+            (id_pozadavek, id_nabidka, typ_zaznamu, id_user, jmeno_user, text_hodnota, stara_hodnota, nova_hodnota) 
+            VALUES 
+            ($id_pozadavek, $id_nabidka, '$typ_zaznamu', $id_user, '$jmeno', '$text_db', '$stara_db', '$nova_db')";
+
+    mysqli_query($conn, $sql);
+}
 ?>

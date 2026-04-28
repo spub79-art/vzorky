@@ -20,14 +20,21 @@ if (!$q_req || mysqli_num_rows($q_req) == 0) {
 }
 $req = mysqli_fetch_assoc($q_req);
 
-// 2. Načtení komentářů k požadavku
-$req_comments = [];
-$q_com_req = mysqli_query($conn, "SELECT * FROM board_poznamky WHERE typ_entity = 'pozadavek' AND id_entity = $id_pozadavek ORDER BY vytvoreno ASC");
-if ($q_com_req) {
-    while ($c = mysqli_fetch_assoc($q_com_req)) { $req_comments[] = $c; }
+// 2. Načtení CELÉ historie (požadavek i všechny jeho nabídky) jedním dotazem
+$history_req = [];
+$history_off = [];
+$q_hist = mysqli_query($conn, "SELECT * FROM historie_pozadavku WHERE id_pozadavek = $id_pozadavek ORDER BY vytvoreno DESC");
+if ($q_hist) {
+    while ($h = mysqli_fetch_assoc($q_hist)) {
+        if ($h['id_nabidka'] == 0) {
+            $history_req[] = $h;
+        } else {
+            $history_off[$h['id_nabidka']][] = $h;
+        }
+    }
 }
 
-// 3. Načtení všech nabídek a jejich komentářů
+// 3. Načtení všech nabídek
 $offers = [];
 $q_off = mysqli_query($conn, "SELECT pn.*, d.nazev as dodavatel_nazev, cs.nazev as status_nazev, cs.barva_hex 
                               FROM pozadavky_nabidky pn 
@@ -37,12 +44,6 @@ $q_off = mysqli_query($conn, "SELECT pn.*, d.nazev as dodavatel_nazev, cs.nazev 
                               ORDER BY pn.cena_nabidka ASC");
 if ($q_off) {
     while ($o = mysqli_fetch_assoc($q_off)) {
-        $o_id = $o['id'];
-        $o['comments'] = [];
-        $q_com_off = mysqli_query($conn, "SELECT * FROM board_poznamky WHERE typ_entity = 'nabidka' AND id_entity = $o_id ORDER BY vytvoreno ASC");
-        if ($q_com_off) {
-            while ($co = mysqli_fetch_assoc($q_com_off)) { $o['comments'][] = $co; }
-        }
         $offers[] = $o;
     }
 }
@@ -67,21 +68,47 @@ if ($q_off) {
 
         <div class="panel panel-default">
             <div class="panel-heading"><b>Zadání požadavku</b></div>
-            <div class="panel-body rd-task-body">
+            <div class="panel-body rd-task-body" style="background-color: #fcfcfc;">
                 <?= !empty(trim($req['poznamka'])) ? nl2br(htmlspecialchars(trim($req['poznamka']))) : '<i class="text-muted">Bez zadání</i>' ?>
             </div>
         </div>
 
-        <h4 class="rd-disc-title">Diskuze k zadání</h4>
-        <div class="rd-disc-scroll">
-            <?php if (empty($req_comments)): ?>
-                <div class="text-muted" style="font-size: 13px;">Zatím žádné komentáře.</div>
+        <h4 class="rd-disc-title"><i class="glyphicon glyphicon-time" style="color:#999; font-size:12px;"></i> Historie požadavku</h4>
+        <div class="rd-disc-scroll" style="background: #fff; border: 1px solid #eee; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto;">
+            <?php if (empty($history_req)): ?>
+                <div class="text-muted" style="font-size: 13px;">Zatím žádná historie.</div>
             <?php else: ?>
-                <?php foreach($req_comments as $c): ?>
-                    <div class="rd-comment-box">
-                        <strong class="rd-comment-author"><?= htmlspecialchars($c['autor_jmeno']) ?></strong>
-                        <span class="rd-comment-time">(<?= date('j.n.Y H:i', strtotime($c['vytvoreno'])) ?>)</span>
-                        <div class="rd-comment-text"><?= nl2br(htmlspecialchars($c['text_poznamky'])) ?></div>
+                <?php foreach($history_req as $h):
+                    $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
+                    $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
+
+                    $icon = 'glyphicon-cog text-muted';
+                    if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
+                    if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';
+                    if ($h['typ_zaznamu'] == 'status') {
+                        if (in_array($h['nova_hodnota'], ['5', '7'])) $icon = 'glyphicon-ban-circle text-danger';
+                        elseif (in_array($h['nova_hodnota'], ['6', '8'])) $icon = 'glyphicon-ok-sign text-success';
+                        else $icon = 'glyphicon-share-alt text-primary';
+                    }
+                    if ($h['typ_zaznamu'] == 'soubor') $icon = 'glyphicon-file text-info';
+
+                    if (!$is_system) {
+                        $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
+                    }
+
+                    $text_style = '';
+                    if ($is_urgent_msg) {
+                        $text_style = 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;';
+                    }
+                    ?>
+                    <div style="margin-bottom: 6px; font-size: 11.5px; line-height: 1.3; border-bottom: 1px dotted #e9e9e9; padding-bottom: 4px;">
+                        <div style="color: #777; font-size: 10.5px; margin-bottom: 2px;">
+                            <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 3px;"></i>
+                            <?= htmlspecialchars($h['jmeno_user']) ?> &bull; <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>
+                        </div>
+                        <div style="padding-left: 14px; <?= $is_system ? 'color: #555;' : 'color: #222; font-weight: 500;' ?>">
+                            <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?>><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -104,7 +131,6 @@ if ($q_off) {
                     $is_ko = in_array($off['id_status'], [5, 7]);
                     $border_color = $off['barva_hex'] ?: '#ccc';
 
-                    // Zde zůstávají dynamické styly (barvy se mění podle PHP)
                     $bg_color = $is_ko ? '#fafafa' : '#fff';
                     $opacity = $is_ko ? '0.6' : '1';
 
@@ -117,7 +143,7 @@ if ($q_off) {
                             $fname = $finfo[0];
                             $ftype = $finfo[1] ?? 'other';
 
-                            if ($ftype == 'spec') $files_tds[] = $fname;
+                            if ($ftype == 'spec') $files_tds[] = $files_tds[] = $fname;
                             elseif ($ftype == 'lab') $files_coa[] = $fname;
                             else $files_other[] = $fname;
                         }
@@ -169,20 +195,13 @@ if ($q_off) {
                             </div>
 
                             <?php if (!empty(trim($off['poznamka_nakup']))): ?>
-                                <div class="rd-offer-note-buyer">
+                                <div class="rd-offer-note-buyer" style="background: #eef7fa; border-left: 3px solid #5bc0de; padding: 6px 10px; margin-bottom: 10px; font-size: 12px;">
+                                    <strong>Poznámka nákupu:</strong><br>
                                     <?= nl2br(htmlspecialchars(trim($off['poznamka_nakup']))) ?>
                                 </div>
                             <?php endif; ?>
 
-                            <?php if (!empty(trim($off['poznamka_cena']))): ?>
-                                <div class="rd-offer-syslog">
-                                    <?= htmlspecialchars(trim($off['poznamka_cena'])) ?>
-                                </div>
-                            <?php endif; ?>
-
                             <?php if (!empty($files_tds) || !empty($files_coa) || !empty($files_other)):
-
-// Získáme přesnou cestu ke složce z databáze
                                 $link_doc = trim($off['link_dokumentace']);
                                 $dir_path = "";
 
@@ -199,7 +218,6 @@ if ($q_off) {
                                     $dir_path = "/$base_dir/" . rawurlencode($folder_req_name) . "/" . rawurlencode($folder_off_name);
                                 }
 
-                                // Nativní Nextcloud UI odkaz s parametrem scrollto
                                 $safe_dl_base = "https://nextcloud.lifefood.eu/index.php/apps/files/?dir=" . $dir_path . "&scrollto=";
                                 ?>
                                 <div class="rd-offer-files-box">
@@ -209,7 +227,7 @@ if ($q_off) {
                                     <div class="rd-offer-files-body">
                                         <?php if (!empty($files_tds)): ?>
                                             <div class="rd-file-cat-tds"><strong>TDS (Specifikace):</strong><br>
-                                                <?php foreach($files_tds as $f):
+                                                <?php foreach(array_unique($files_tds) as $f):
                                                     $dl_link = $safe_dl_base . rawurlencode($f);
                                                     ?>
                                                     <div class="rd-file-link">
@@ -223,7 +241,7 @@ if ($q_off) {
 
                                         <?php if (!empty($files_coa)): ?>
                                             <div class="rd-file-cat-coa"><strong>COA (Laboratoř):</strong><br>
-                                                <?php foreach($files_coa as $f):
+                                                <?php foreach(array_unique($files_coa) as $f):
                                                     $dl_link = $safe_dl_base . rawurlencode($f);
                                                     ?>
                                                     <div class="rd-file-link">
@@ -237,7 +255,7 @@ if ($q_off) {
 
                                         <?php if (!empty($files_other)): ?>
                                             <div class="rd-file-cat-other"><strong>Ostatní:</strong><br>
-                                                <?php foreach($files_other as $f):
+                                                <?php foreach(array_unique($files_other) as $f):
                                                     $dl_link = $safe_dl_base . rawurlencode($f);
                                                     ?>
                                                     <div class="rd-file-link">
@@ -252,15 +270,42 @@ if ($q_off) {
                                 </div>
                             <?php endif; ?>
 
-                            <h5 class="rd-offer-chat-title">Komunikace k nabídce</h5>
-                            <div class="rd-offer-chat-scroll">
-                                <?php if (empty($off['comments'])): ?>
-                                    <em class="text-muted" style="font-size: 12px;">Žádné poznámky.</em>
+                            <h5 class="rd-offer-chat-title"><i class="glyphicon glyphicon-list-alt" style="color:#aaa; font-size:11px;"></i> Deník událostí k nabídce</h5>
+                            <div class="rd-offer-chat-scroll" style="background: #fafafa; border: 1px solid #e3e3e3; padding: 8px; border-radius: 3px; max-height: 250px; overflow-y: auto;">
+                                <?php if (empty($history_off[$off['id']])): ?>
+                                    <em class="text-muted" style="font-size: 12px;">Zatím bez záznamů.</em>
                                 <?php else: ?>
-                                    <?php foreach ($off['comments'] as $co): ?>
-                                        <div class="rd-offer-chat-item">
-                                            <span class="rd-offer-chat-author"><?= htmlspecialchars($co['autor_jmeno']) ?>:</span>
-                                            <span class="rd-offer-chat-text"><?= nl2br(htmlspecialchars($co['text_poznamky'])) ?></span>
+                                    <?php foreach ($history_off[$off['id']] as $h):
+                                        $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
+                                        $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
+
+                                        $icon = 'glyphicon-cog text-muted';
+                                        if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
+                                        if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';
+                                        if ($h['typ_zaznamu'] == 'status') {
+                                            if (in_array($h['nova_hodnota'], ['5', '7'])) $icon = 'glyphicon-ban-circle text-danger';
+                                            elseif (in_array($h['nova_hodnota'], ['6', '8'])) $icon = 'glyphicon-ok-sign text-success';
+                                            else $icon = 'glyphicon-share-alt text-primary';
+                                        }
+                                        if ($h['typ_zaznamu'] == 'soubor') $icon = 'glyphicon-file text-info';
+
+                                        if (!$is_system) {
+                                            $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
+                                        }
+
+                                        $text_style = '';
+                                        if ($is_urgent_msg) {
+                                            $text_style = 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;';
+                                        }
+                                        ?>
+                                        <div style="margin-bottom: 6px; font-size: 11.5px; line-height: 1.3; border-bottom: 1px dotted #e9e9e9; padding-bottom: 4px;">
+                                            <div style="color: #777; font-size: 10.5px; margin-bottom: 2px;">
+                                                <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 3px;"></i>
+                                                <?= htmlspecialchars($h['jmeno_user']) ?> &bull; <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>
+                                            </div>
+                                            <div style="padding-left: 14px; <?= $is_system ? 'color: #555;' : 'color: #222; font-weight: 500;' ?>">
+                                                <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?>><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
+                                            </div>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

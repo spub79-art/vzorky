@@ -28,7 +28,12 @@ function getContrastColor($hexcolor) {
     return ($yiq >= 140) ? '#2c3e50' : '#ffffff';
 }
 
+// ZMĚNA: Zákazníci se nyní tahají přes vnořený SELECT z vazební tabulky
 $sql = "SELECT p.*, s.nazev AS surovina_nazev, 
+        (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ') 
+         FROM pozadavky_zakaznici pz 
+         JOIN zakaznici z ON pz.id_zakaznik = z.id 
+         WHERE pz.id_pozadavek = p.id) as zakaznici_seznam,
         GROUP_CONCAT(CONCAT(
             IFNULL(d.nazev, 'Neznámý'), '|', 
             IFNULL(pn.cena_nabidka, '0'), '|', 
@@ -60,13 +65,16 @@ $sql = "SELECT p.*, s.nazev AS surovina_nazev,
 $result = mysqli_query($conn, $sql);
 $f1 = $f2 = $f3 = [];
 
-$board_comments_req = [];
-$board_comments_off = [];
-$res_com = mysqli_query($conn, "SELECT * FROM board_poznamky ORDER BY vytvoreno ASC");
-if ($res_com) {
-    while ($c = mysqli_fetch_assoc($res_com)) {
-        if ($c['typ_entity'] == 'pozadavek') $board_comments_req[$c['id_entity']][] = $c;
-        elseif ($c['typ_entity'] == 'nabidka') $board_comments_off[$c['id_entity']][] = $c;
+$history_req = [];
+$history_off = [];
+$res_hist = mysqli_query($conn, "SELECT * FROM historie_pozadavku ORDER BY vytvoreno DESC");
+if ($res_hist) {
+    while ($h = mysqli_fetch_assoc($res_hist)) {
+        if ($h['id_nabidka'] == 0) {
+            $history_req[$h['id_pozadavek']][] = $h;
+        } else {
+            $history_off[$h['id_nabidka']][] = $h;
+        }
     }
 }
 
@@ -120,6 +128,14 @@ if ($result) {
     }
 }
 ?>
+
+<?php if ($is_orders || $is_adm): ?>
+    <div class="row" style="margin-bottom: 15px; padding: 0 15px;">
+        <button id="btnOpenExportModal" class="btn btn-primary" style="float: right;">
+            <i class="glyphicon glyphicon-list-alt"></i> Generátor "Co sháníme"
+        </button>
+    </div>
+<?php endif; ?>
 
 <div class="row" id="board-container">
     <?php
@@ -204,20 +220,18 @@ if ($result) {
                                 <div class="req-title-row btn-open-detail" data-id="<?= $row['id'] ?>" style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#337ab7'" onmouseout="this.style.color=''">
 
                                     <?php
-                                    // Výpočet stáří požadavku
                                     $date_created = strtotime($row['datumPozadavek']);
                                     $diff_hours = (time() - $date_created) / 3600;
 
                                     $aging_style = "";
                                     $aging_icon = "";
 
-                                    // ZMĚNA 1: Plamínek ukážeme všude, pokud požadavek není zrušený a trvá už dlouho
                                     if (!$is_total_cancel) {
-                                        if ($diff_hours > 100) { // Více než 4 dny
-                                            $aging_style = "color: #d9534f; font-weight: bold;"; // Červená
+                                        if ($diff_hours > 100) {
+                                            $aging_style = "color: #d9534f; font-weight: bold;";
                                             $aging_icon = " <span title='Více než 100h v procesu!'>🔥</span>";
-                                        } elseif ($diff_hours > 72) { // Více než 3 dny
-                                            $aging_style = "color: #f0ad4e;"; // Oranžová
+                                        } elseif ($diff_hours > 72) {
+                                            $aging_style = "color: #f0ad4e;";
                                         }
                                     }
                                     ?>
@@ -264,6 +278,7 @@ if ($result) {
                                                data-halal="<?= $row['halal'] ?>"
                                                data-prio="<?= $row['priorita'] ?>"
                                                data-note="<?= htmlspecialchars($row['poznamka'] ?? '') ?>"
+                                               data-zakaznik="<?= htmlspecialchars($row['zakaznik'] ?? '') ?>"
                                                title="Editovat požadavek"></i>
 
                                             <i class="glyphicon glyphicon-trash text-danger btn-delete-req no-detail-trigger"
@@ -273,12 +288,19 @@ if ($result) {
                                         <?php endif; ?>
 
                                         <span class="req-id-badge <?= $status_class ?> no-detail-trigger" <?php if(!$is_total_cancel) echo "style='background-color: ".$row['color_bg']."; color: ".$badge_text_color.";'"; ?> title="Otevřít detail">
-        <i class="glyphicon glyphicon-zoom-in" style="font-size: 11px; margin-right: 2px;"></i><?= $row['id'] ?>
-    </span>
+                                            <i class="glyphicon glyphicon-zoom-in" style="font-size: 11px; margin-right: 2px;"></i><?= $row['id'] ?>
+                                        </span>
                                     </div>
                                 </div>
 
                                 <?php renderBadges($row); ?>
+
+                                <?php // ZMĚNA: Přidáno pole zákazník (vykreslení z vazební tabulky) ?>
+                                <?php if (!empty($row['zakaznici_seznam'])): ?>
+                                    <div style="font-size: 11px; color: #8e44ad; font-weight: bold; margin-bottom: 4px; padding-left: 2px;">
+                                        <i class="glyphicon glyphicon-user"></i> Zákazníci: <?= htmlspecialchars($row['zakaznici_seznam']) ?>
+                                    </div>
+                                <?php endif; ?>
 
                                 <?php if (!empty(trim($row['poznamka']))): ?>
                                     <div class="req-note-box <?= $status_class ?>">
@@ -287,30 +309,62 @@ if ($result) {
                                     </div>
                                 <?php endif; ?>
 
-                                <?php if (!empty($board_comments_req[$row['id']])): ?>
-                                    <div class="chat-container">
-                                        <?php foreach($board_comments_req[$row['id']] as $c):
-                                            $is_mine = (isset($_SESSION['uid']) && $c['id_user'] == $_SESSION['uid']);
-                                            $can_delete = ($is_mine || $is_adm);
-                                            $bg_color = $is_mine ? '#e3f2fd' : '#f1f3f5';
-                                            $bd_color = $is_mine ? '#bbdefb' : '#e9ecef';
+                                <?php if (!empty($history_req[$row['id']])): ?>
+                                    <div class="offer-sys-msg" style="margin-top: 6px; padding: 4px 6px; background: #fafafa; border: 1px solid #e3e3e3; border-radius: 3px; max-height: 120px; overflow-y: auto;">
+                                        <?php
+                                        $all_req_hist = $history_req[$row['id']];
+                                        $zobrazeno_req_hist = array_slice($all_req_hist, 0, 5);
+
+                                        foreach($zobrazeno_req_hist as $h):
+                                            $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
+                                            $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
+                                            $is_mine = (isset($_SESSION['uid']) && $h['id_user'] == $_SESSION['uid']);
+                                            $can_delete = (!$is_system && ($is_mine || $is_adm));
+
+                                            $icon = 'glyphicon-cog text-muted';
+                                            if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
+                                            if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';
+
+                                            if (!$is_system) {
+                                                $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
+                                            }
+
+                                            $text_style = '';
+                                            if ($is_urgent_msg) {
+                                                $text_style = 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;';
+                                            }
                                             ?>
-                                            <div class="chat-msg-box" style="background-color: <?= $bg_color ?>; border-color: <?= $bd_color ?>;">
+                                            <div style="font-size: 11px; line-height: 1.3; margin-bottom: 4px; <?= $is_system ? 'color: #666;' : 'color: #333;' ?>">
+                                                <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 2px;"></i>
+                                                [<?= htmlspecialchars($h['jmeno_user']) ?> - <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>]:
+
+                                                <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?> id="comment_text_<?= $h['id'] ?>"><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
+
+                                                <?php // ZMĚNA: Přidána editace pro zadání ?>
                                                 <?php if ($can_delete): ?>
-                                                    <i class="glyphicon glyphicon-remove text-danger btn-delete-comment chat-del-btn" data-id="<?= $c['id'] ?>" title="Smazat"></i>
+                                                    <span style="float: right; margin-top: 1px;">
+                                                        <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
+                                                        <i class="glyphicon glyphicon-remove text-danger btn-delete-history" data-id="<?= $h['id'] ?>" title="Smazat poznámku" style="cursor: pointer; font-size: 10px;"></i>
+                                                    </span>
                                                 <?php endif; ?>
-                                                <strong class="chat-author"><?= htmlspecialchars($c['autor_jmeno']) ?></strong>
-                                                <span class="chat-time">(<?= date('j.n. H:i', strtotime($c['vytvoreno'])) ?>):</span>
-                                                <span class="chat-text"><?= nl2br(htmlspecialchars($c['text_poznamky'])) ?></span>
                                             </div>
                                         <?php endforeach; ?>
+
+                                        <?php if (count($all_req_hist) > 5): ?>
+                                            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px; border-top: 1px dashed #ddd; padding-top: 2px;">
+                                                ... a dalších <?= count($all_req_hist) - 5 ?> starších záznamů (viz detail)
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
 
                                 <?php if (!$is_total_cancel): ?>
-                                    <div class="chat-input-wrapper">
-                                        <input type="text" class="form-control input-sm inline-comment-text chat-input" data-id="<?= $row['id'] ?>" data-type="pozadavek" placeholder="Napsat poznámku k zadání...">
-                                        <button class="btn btn-default btn-sm btn-inline-comment chat-btn" data-id="<?= $row['id'] ?>" data-type="pozadavek" title="Odeslat">
+                                    <div class="chat-flex-container">
+                                        <input type="text" class="form-control inline-comment-text" data-id="<?= $row['id'] ?>" data-type="pozadavek" placeholder="Napsat poznámku k zadání...">
+                                        <button class="btn btn-warning btn-urgent btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="1" title="Odeslat jako URGENTNÍ">
+                                            <i class="glyphicon glyphicon-flash"></i>
+                                        </button>
+                                        <button class="btn btn-default btn-send btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="0" title="Odeslat">
                                             <i class="glyphicon glyphicon-send text-primary"></i>
                                         </button>
                                     </div>
@@ -320,7 +374,7 @@ if ($result) {
 
                             <div class="req-body">
                                 <?php if ($is_urgent): ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $board_comments_off[$p[6]] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p[6]] ?? []); ?>
                                     <button class="btn btn-sm btn-block btn-warning btn-add-offer btn-search-offer" data-id="<?= $row['id'] ?>">
                                         <i class="glyphicon glyphicon-search"></i> DOHLEDAT DODAVATELE
                                     </button>
@@ -329,7 +383,7 @@ if ($result) {
                                         <?= $is_total_cancel ? 'Požadavek byl zrušen.' : 'Čeká se na vložení nabídky...' ?>
                                     </div>
                                 <?php else: ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $board_comments_off[$p[6]] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p[6]] ?? []); ?>
                                     <?php if ($col['id'] == 3 && !$is_total_cancel): ?>
                                         <a href="technologie.php" class="btn btn-sm btn-block btn-primary btn-goto-lab">
                                             <i class="glyphicon glyphicon-flask"></i> PŘEJÍT DO LABORATOŘE
@@ -350,9 +404,32 @@ if ($result) {
 
 <?php include_once("boardModals.php"); ?>
 
+<div id="mEditHistoryModal" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-pencil"></i> Upravit poznámku</h4>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="mEditHistoryId">
+                <textarea id="mEditHistoryText" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-primary" id="mEditHistorySave">Uložit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     window.manualRefreshHandling = true;
     var localLastChange = <?= $last_change_time ?? time() ?>;
+
+    // ZMĚNA: Přidány měnové kurzy
+    const CNB_EUR_RATE = 25.10;
+    const CNB_USD_RATE = 23.50;
 
     var showRejected = false;
     var showOnlyMyTasks = false;
@@ -446,6 +523,41 @@ if ($result) {
         applyFilters();
     });
 
+    // Spuštění generátoru "Co sháníme"
+    $(document).on('click', '#btnOpenExportModal', function() {
+        // Otevře modál
+        $('#mExportModal').modal('show');
+        // Nastaví načítací text
+        $('#mExportModalBody').html('<div class="text-center text-muted" style="padding: 40px;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Sestavuji seznam (může to chvilku trvat)...</div>');
+
+        // Zavolá skript na serveru
+        $.ajax({
+            url: 'includes/ajax_export_wanted.php',
+            type: 'GET',
+            success: function(data) {
+                // Přepíše vnitřek modálu vygenerovaným seznamem
+                $('#mExportModalBody').html(data);
+            },
+            error: function(xhr, status, error) {
+                // Pokud soubor neexistuje nebo spadne, napíše to chybu!
+                $('#mExportModalBody').html('<div class="alert alert-danger" style="margin: 20px;"><strong>Chyba:</strong> Nepodařilo se spojit se skriptem ajax_export_wanted.php.<br>Detaily: ' + error + '</div>');
+            }
+        });
+    });
+
+    // Logika pro tlačítko "Kopírovat do schránky"
+    $(document).on('click', '#btnCopyExport', function() {
+        var textToCopy = $('#exportTextarea').val();
+        if (!textToCopy) return;
+
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            var btn = $('#btnCopyExport');
+            var originalText = btn.html();
+            btn.removeClass('btn-success').addClass('btn-info').html('<i class="glyphicon glyphicon-ok"></i> Zkopírováno!');
+            setTimeout(function() { btn.removeClass('btn-info').addClass('btn-success').html(originalText); }, 2000);
+        });
+    });
+
     $(document).on('click', '.offer-comments-wrapper.can-expand', function() {
         var content = $(this).html();
         $('#mFullCommentsBody').html(content);
@@ -453,9 +565,6 @@ if ($result) {
         $('#mFullComments').modal('show');
     });
 
-    // ----------------------------------------------------
-    // ZMĚNA 4: LOGIKA PRO ZVONEČEK (Vyžádat nabídku)
-    // ----------------------------------------------------
     $(document).on('click', '.btn-ping-purchasing', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -473,7 +582,6 @@ if ($result) {
 
         var originalBtn = $('.btn-ping-purchasing[data-id="'+reqId+'"]');
         modalBtn.prop('disabled', true).text('Odesílám...');
-        // Nahrazeno ikonové točení:
         originalBtn.removeClass('glyphicon-bell text-info').addClass('glyphicon-refresh spinning text-muted');
 
         $.post('includes/ajax_ping_purchasing.php', { id: reqId, surovina: sur }, function(r) {
@@ -490,43 +598,47 @@ if ($result) {
         });
     });
 
-    // ----------------------------------------------------
-    // ZMĚNA 5: LOGIKA PRO BLESK (Urgovat)
-    // ----------------------------------------------------
     $(document).on('click', '.btn-urge-task', function(e) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // Těžký kalibr proti otevírání detailu
+        e.stopImmediatePropagation();
 
         var btn = $(this);
-        var reqId = btn.data('id');
-        var sur = btn.data('sur');
+        $('#mUrgeReqId').val(btn.data('id'));
+        $('#mUrgeSurRaw').val(btn.data('sur'));
+        $('#mUrgeTaskModal').modal('show');
+    });
 
-        if (!confirm("Chcete urgovat tento požadavek?\n\nSystém automaticky zjistí, u koho to momentálně stojí, a pošle mu upozornění na Telegram.")) return;
+    $('#btnConfirmUrge').on('click', function() {
+        var reqId = $('#mUrgeReqId').val();
+        var sur = $('#mUrgeSurRaw').val();
+        var modalBtn = $(this);
 
-        btn.removeClass('glyphicon-flash text-warning').addClass('glyphicon-refresh spinning text-muted');
+        var originalBtn = $('.btn-urge-task[data-id="'+reqId+'"]');
+        modalBtn.prop('disabled', true).text('Odesílám...');
+        originalBtn.removeClass('glyphicon-flash text-warning').addClass('glyphicon-refresh spinning text-muted');
 
         $.post('includes/ajax_urge_task.php', { id: reqId, surovina: sur }, function(r) {
             if (r.trim() === "OK") {
-                btn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
+                $('#mUrgeTaskModal').modal('hide');
+                modalBtn.prop('disabled', false).text('Ano, urgovat');
+                originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
                 setTimeout(function() { safeReload(); }, 2000);
             } else {
                 alert(r);
-                btn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-flash text-warning');
+                modalBtn.prop('disabled', false).text('Ano, urgovat');
+                originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-flash text-warning');
             }
         });
     });
 
-    // ----------------------------------------------------
-    // ZMĚNA 6: PŘEPÍNAČ PRIORITY (Vykřičník)
-    // ----------------------------------------------------
     $(document).on('click', '.btn-toggle-priority', function(e) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // Těžký kalibr proti otevírání detailu
+        e.stopImmediatePropagation();
 
         var icon = $(this);
         var reqId = icon.data('id');
         var currentPrio = icon.data('prio');
-        var newPrio = (currentPrio == 1) ? 0 : 1; // Prohození 0 -> 1 nebo 1 -> 0
+        var newPrio = (currentPrio == 1) ? 0 : 1;
 
         icon.removeClass('glyphicon-exclamation-sign glyphicon-unchecked text-danger text-muted')
             .addClass('glyphicon-refresh spinning');
@@ -556,8 +668,11 @@ if ($result) {
             var cena = parseFloat($('#mNNCena').val()) || 0;
             var mena = $('#mNNMena').val();
             if (cena > 0) $('#mNNDopravaWrapper').slideDown(200); else $('#mNNDopravaWrapper').slideUp(200);
-            if (mena === 'EUR' && cena > 0) {
-                var czk = cena * CNB_EUR_RATE;
+
+            // ZMĚNA: Aktualizace pro zobrazení kurzu i pro USD
+            if ((mena === 'EUR' || mena === 'USD') && cena > 0) {
+                var kurz = (mena === 'EUR') ? CNB_EUR_RATE : CNB_USD_RATE;
+                var czk = cena * kurz;
                 $('#mNNCzkCalc').text(czk.toFixed(2));
                 $('#mNNKurzInfo').slideDown(200);
             } else {
@@ -583,25 +698,77 @@ if ($result) {
         $(document).on('click', '.btn-inline-comment', function() {
             var id = $(this).data('id');
             var type = $(this).data('type');
+            var urgent = $(this).data('urgent') || 0;
             var text = $('.inline-comment-text[data-id="'+id+'"][data-type="'+type+'"]').val().trim();
             if (!text) return;
             var btn = $(this);
             btn.prop('disabled', true);
-            $.post('includes/ajax_add_comment.php', { id_entity: id, typ_entity: type, text: text }, function(r) {
+            $.post('includes/ajax_add_comment.php', { id_entity: id, typ_entity: type, text: text, is_urgent: urgent }, function(r) {
                 if (r.trim() === "OK") { safeReload(); } else { alert(r); btn.prop('disabled', false); }
             });
         });
 
         $(document).on('keypress', '.inline-comment-text', function(e) {
-            if(e.which == 13) $('.btn-inline-comment[data-id="'+$(this).data('id')+'"][data-type="'+$(this).data('type')+'"]').click();
+            if(e.which == 13) {
+                $('.btn-inline-comment[data-id="'+$(this).data('id')+'"][data-type="'+$(this).data('type')+'"][data-urgent="0"]').click();
+            }
         });
 
-        $(document).on('click', '.btn-delete-comment', function() {
-            if(!confirm("Opravdu smazat tuto poznámku?")) return;
-            $.post('includes/ajax_delete_comment.php', { id: $(this).data('id') }, function(r) {
-                if (r.trim() === "OK") safeReload(); else alert(r);
+        // ----------------------------------------------------
+        // LOGIKA PRO MAZÁNÍ A EDITACI HISTORIE
+        // ----------------------------------------------------
+        $(document).on('click', '.btn-delete-history', function() {
+            $('#mDeleteHistoryId').val($(this).data('id'));
+            $('#mDeleteHistoryModal').modal('show');
+        });
+
+        $('#mDeleteHistorySave').on('click', function() {
+            var btn = $(this);
+            var id = $('#mDeleteHistoryId').val();
+
+            btn.prop('disabled', true).text('Mažu...');
+
+            $.post('includes/ajax_delete_comment.php', { id: id }, function(r) {
+                if (r.trim() === "OK") {
+                    $('#mDeleteHistoryModal').modal('hide');
+                    btn.prop('disabled', false).text('Ano, smazat');
+                    safeReload();
+                } else {
+                    alert(r);
+                    btn.prop('disabled', false).text('Ano, smazat');
+                }
             });
         });
+
+        // ZMĚNA: JS pro otevření a uložení editace poznámky
+        $(document).on('click', '.btn-edit-history', function() {
+            $('#mEditHistoryId').val($(this).data('id'));
+            // Dekódování HTML entit zpět na text do textarea
+            var txt = $('<textarea />').html($(this).data('text')).text();
+            $('#mEditHistoryText').val(txt);
+            $('#mEditHistoryModal').modal('show');
+        });
+
+        $('#mEditHistorySave').on('click', function() {
+            var id = $('#mEditHistoryId').val();
+            var text = $('#mEditHistoryText').val().trim();
+            if (!text) return alert("Text nesmí být prázdný.");
+
+            var btn = $(this);
+            btn.prop('disabled', true).text('Ukládám...');
+
+            $.post('includes/ajax_edit_comment.php', { id: id, text: text }, function(r) {
+                if (r.trim() === "OK") {
+                    $('#mEditHistoryModal').modal('hide');
+                    btn.prop('disabled', false).text('Uložit');
+                    safeReload();
+                } else {
+                    alert(r);
+                    btn.prop('disabled', false).text('Uložit');
+                }
+            });
+        });
+
 
         $(document).on('click', '.btn-edit-offer', function() {
             var b = $(this);
@@ -671,6 +838,10 @@ if ($result) {
             $('#mEditReqHalal').prop('checked', b.data('halal') == 1);
             $('#mEditReqPrio').val(b.data('prio'));
             $('#mEditReqNote').val(b.data('note') === null || b.data('note') === 'null' ? '' : b.data('note'));
+
+            // ZMĚNA: Načtení zákazníka do editačního okna
+            $('#mEditReqZakaznik').val(b.data('zakaznik') === null || b.data('zakaznik') === 'null' ? '' : b.data('zakaznik'));
+
             $('#mEditReq').modal('show');
         });
 
@@ -684,7 +855,9 @@ if ($result) {
                 kosher: $('#mEditReqKosher').is(':checked') ? 1 : 0,
                 halal: $('#mEditReqHalal').is(':checked') ? 1 : 0,
                 priorita: $('#mEditReqPrio').val(),
-                poznamka: $('#mEditReqNote').val()
+                poznamka: $('#mEditReqNote').val(),
+                // ZMĚNA: Uložení zákazníka
+                zakaznik: $('#mEditReqZakaznik').val()
             }, function(r) {
                 if(r.trim() == "OK") { $('#mEditReq').modal('hide'); safeReload(); } else { alert(r); }
                 btn.prop('disabled', false).text('Uložit změny');
@@ -824,9 +997,7 @@ if ($result) {
         applyFilters();
     });
 
-    // ZMĚNA ZDE: Přidána .btn-toggle-priority do ignorovaných tříd pro otevření detailu
     $(document).on('click', '.btn-open-detail', function(e) {
-        // Absolutní zákaz otevírání detailu, pokud se kliklo na jakoukoliv akční ikonu
         if ($(e.target).closest('.btn-edit-req, .btn-delete-req, .btn-ping-purchasing, .btn-urge-task, .btn-toggle-priority').length > 0) {
             return;
         }

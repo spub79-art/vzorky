@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once("db_connect.php");
+include_once("boardFunctions.php"); // Načtení naší logovací funkce
 
 if (empty($_SESSION['username'])) die("Nepovolený přístup.");
 
@@ -10,38 +11,28 @@ $kdo = is_array($_SESSION['username']) ? $_SESSION['username'][0] : ($_SESSION['
 
 if ($id_pozadavek > 0) {
 
-    // Zjistíme fázi a kdo to brzdí (podle maximálního aktivního statusu nabídky)
+    // Zjistíme fázi a kdo to brzdí
     $q = mysqli_query($conn, "SELECT MAX(id_status) as max_st FROM pozadavky_nabidky WHERE id_pozadavek = $id_pozadavek AND id_status NOT IN (5, 7)");
     $r = mysqli_fetch_assoc($q);
-    $max_st = intval($r['max_st']);
+    $max_st = intval($r['max_st'] ?? 0);
 
-    // Detekce zpožděné skupiny
     $cilova_skupina = 'nakup';
     $komu_zprava = "NÁKUPU";
 
     if ($max_st == 12) {
-        $cilova_skupina = 'kvalita'; // 12 = Čeká na Kvalitu
+        $cilova_skupina = 'kvalita';
         $komu_zprava = "KVALITĚ";
     } elseif (in_array($max_st, [4, 10, 13])) {
-        $cilova_skupina = 'vyvoj'; // Testování / Nutriční (Vývoj)
+        $cilova_skupina = 'vyvoj';
         $komu_zprava = "VÝVOJI";
     }
 
-    // 1. Zápis do poznámek, ať to na sebe žaluje
-    $text_poznamky = "⚡ Uživatel urgoval řešení tohoto požadavku (upozorněna skupina: $komu_zprava).";
-    $uid = $_SESSION['uid'] ?? 0;
+    // ZÁPIS DO UNIFIED TIMELINE
+    zapis_do_historie($conn, $id_pozadavek, 0, 'urgence', "Uživatel urgoval řešení (upozorněna skupina: $komu_zprava).");
 
-    $stmt = $conn->prepare("INSERT INTO board_poznamky (typ_entity, id_entity, text_poznamky, id_user, autor_jmeno) VALUES ('pozadavek', ?, ?, ?, ?)");
-    $stmt->bind_param("isis", $id_pozadavek, $text_poznamky, $uid, $kdo);
-    $stmt->execute();
-
-    // 2. Odeslání cíleného Telegramu
+    // Odeslání Telegramu
     include_once("telegram.php");
-
-    $msg = "⚡ <b>URGENCE POŽADAVKU!</b>\n\n";
-    $msg .= "<b>Surovina:</b> " . htmlspecialchars($surovina) . "\n";
-    $msg .= "<b>Urguje:</b> " . htmlspecialchars($kdo) . "\n\n";
-    $msg .= "Tento požadavek čeká na vaši akci. Prosím, podívejte se na to.";
+    $msg = "⚡ <b>URGENCE POŽADAVKU!</b>\n\n<b>Surovina:</b> " . htmlspecialchars($surovina) . "\n<b>Urguje:</b> " . htmlspecialchars($kdo) . "\n\nTento požadavek čeká na vaši akci. Prosím, podívejte se na to.";
 
     $is_dev = (strpos($_SERVER['REQUEST_URI'], 'dev-vzorky') !== false);
     $base_url = $is_dev ? "https://docs.lifefood.eu/dev-vzorky" : "https://docs.lifefood.eu/vzorky";

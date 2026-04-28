@@ -459,3 +459,71 @@ tbody tr td.poznamka {
 .rd-offer-chat-item { margin-bottom: 8px; font-size: 12px; line-height: 1.4; background: #fdfdfd; padding: 6px; border-radius: 4px; border: 1px solid #f0f0f0; }
 .rd-offer-chat-author { color: #555; font-weight: bold; }
 .rd-offer-chat-text { color: #222; margin-left: 4px; }
+
+/* =========================================
+   UNIVERZÁLNÍ CHAT INPUT (Nerozbitný Flexbox - Kompaktní)
+   ========================================= */
+.chat-flex-container {
+	display: flex;
+	align-items: stretch;
+	height: 24px; /* Zmenšeno z 30px na 24px */
+	margin-top: 4px;
+}
+.chat-flex-container .form-control {
+	flex: 1;
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	height: 24px !important;
+	font-size: 10px; /* Zmenšení fontu */
+	padding: 2px 6px; /* Zmenšení výplně */
+	box-shadow: none;
+}
+.chat-flex-container .btn {
+	height: 24px !important;
+	margin-left: -1px;
+	z-index: 2;
+	padding: 2px 8px; /* Tlačítka nebudou tak široká */
+	font-size: 11px; /* Zmenšení ikonek */
+	line-height: 1; /* Pojistka proti roztažení Bootstrapem */
+}
+.chat-flex-container .btn-urgent {
+	border-radius: 0;
+	border-color: #eea236;
+}
+.chat-flex-container .btn-send {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+/* =========================================
+   SPRÁVA DODAVATELŮ
+   ========================================= */
+.dodavatele-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.dodavatele-table {
+	vertical-align: middle;
+}
+.dodavatele-table thead tr {
+	background-color: #f9f9f9;
+}
+.dodavatele-table td {
+	vertical-align: middle;
+}
+.dodavatele-table .col-id {
+	width: 60px;
+}
+.dodavatele-table .col-vzorky {
+	width: 140px;
+}
+.dodavatele-table .col-akce {
+	width: 150px;
+}
+.dodavatele-table .nowrap {
+	white-space: nowrap;
+}
+.dodavatel-kontakt small {
+	display: block;
+	line-height: 1.4;
+}

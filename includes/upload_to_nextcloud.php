@@ -1,6 +1,7 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
 include_once("db_connect.php");
-
+include_once("boardFunctions.php");
 $id_nabidka = $_POST['id_nabidka'] ?? 0;
 
 if ($id_nabidka == 0) {
@@ -123,9 +124,9 @@ if (count($uploaded_db_strings) > 0) {
     $new_files_str = implode('^', $uploaded_db_strings);
     $new_files_sql = mysqli_real_escape_string($conn, $new_files_str);
 
+    // ZMĚNA: Odstraněno svévolné posouvání id_status. Skript teď pouze aktualizuje soubory.
     $sql = "UPDATE pozadavky_nabidky SET 
             link_dokumentace = '$web_view_link', 
-            id_status = IF(id_status < 3, 3, id_status),
             seznam_souboru = CASE 
                 WHEN seznam_souboru IS NULL OR seznam_souboru = '' THEN '$new_files_sql'
                 ELSE CONCAT(seznam_souboru, '^', '$new_files_sql') 
@@ -133,9 +134,21 @@ if (count($uploaded_db_strings) > 0) {
             WHERE id = " . intval($id_nabidka);
 
     mysqli_query($conn, $sql);
-    mysqli_query($conn, "UPDATE pozadavky SET id_status = 3 WHERE id = $id_pozadavek AND id_status < 3");
 
-    file_put_contents('last_change.txt', time());
+    // ========================================================
+    // ZÁPIS DO HISTORIE POŽADAVKU
+    // ========================================================
+    include_once("boardFunctions.php");
+    $nahrane_nazvy = [];
+    foreach ($uploaded_db_strings as $uds) {
+        $parts = explode('~', $uds);
+        $nahrane_nazvy[] = $parts[0];
+    }
+    $log_text = "Nahrány dokumenty: " . implode(", ", $nahrane_nazvy);
+    zapis_do_historie($conn, $id_pozadavek, $id_nabidka, 'soubor', $log_text);
+    // ========================================================
+
+    @file_put_contents('last_change.txt', time());
 
     if (count($errors) > 0) echo "Částečně nahráno, chyby: " . implode(", ", $errors);
     else echo "OK";

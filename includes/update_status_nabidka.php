@@ -2,6 +2,7 @@
 ob_start();
 session_start();
 include("db_connect.php");
+include_once("boardFunctions.php");
 
 $id = intval($_POST['id'] ?? 0);
 $status = $_POST['status'] ?? '';
@@ -143,7 +144,26 @@ if ($id > 0) {
         }
     }
     // --- KONEC: CHYTRÉ TELEGRAM NOTIFIKACE ---
+// ========================================================
+    // NOVÉ: ZÁPIS DO UNIFIED TIMELINE (HISTORIE)
+    // ========================================================
+    // a) Pokud uživatel napsal manuální poznámku (důvod zamítnutí, nebo jen text), uložíme jako komentář
+    if (!empty($poznamka_vstup) && strpos($poznamka_vstup, 'Systémová akce:') === false) {
+        zapis_do_historie($conn, $id_pozadavek, $id, 'komentar', $poznamka_vstup);
+    }
 
+    // b) Pokud se jedná o posun statusu
+    if ($status !== 'no_change') {
+        $nazev_akce = "Změna stavu";
+        // Pokusíme se vyčíst hezčí název z té automatické systémové poznámky
+        if (strpos($poznamka_vstup, 'Systémová akce:') !== false) {
+            $nazev_akce = str_replace('Systémová akce: ', '', $poznamka_vstup);
+        }
+
+        // Zde ideálně chceme i název stavu, ale prozatím logujeme IDs nebo název akce
+        zapis_do_historie($conn, $id_pozadavek, $id, 'status', $nazev_akce, '', $status);
+    }
+    // ========================================================
     @file_put_contents('last_change.txt', time());
     echo "OK";
 }

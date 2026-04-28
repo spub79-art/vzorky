@@ -16,7 +16,8 @@ if (strpos(__DIR__, 'dev-vzorky') !== false) {
     define('DB_USER', 'vzorky');
     define('DB_PASS', 'vzorky');
     define('DB_NAME', 'vzorky_dev');
-
+// Dev verze sahá "přes plot" do ostré databáze
+    define('DB_TBL_USERS', 'users');
     // Na vývoji chceme vidět všechny PHP chyby
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
@@ -26,8 +27,10 @@ if (strpos(__DIR__, 'dev-vzorky') !== false) {
     // Ostrá (produkční) databáze
     define('DB_HOST', 'localhost');
     define('DB_USER', 'vzorky');
-    define('DB_PASS', 'vzorky'); // Případně uprav, pokud má ostrá jiné heslo
+    define('DB_PASS', 'vzorky');
     define('DB_NAME', 'vzorky');
+    // Dev verze sahá "přes plot" do ostré databáze
+    define('DB_TBL_USERS', 'vzorky.users');
 
     // Na produkci PHP chyby před uživateli skrýváme
     error_reporting(0);
@@ -38,7 +41,7 @@ if (strpos(__DIR__, 'dev-vzorky') !== false) {
 // 2. NEXTCLOUD
 // ==========================================
 define('NC_USER', 'aplikace_poptavky');
-define('NC_PASS', 'vase-vygenerovane-app-heslo'); // <-- Zde doplň to skutečné heslo do cloudu!
+define('NC_PASS', 'vase-vygenerovane-app-heslo');
 
 // ==========================================
 // 🤖 TELEGRAM BOT & KANÁLY
