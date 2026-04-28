@@ -47,4 +47,49 @@ function zapis_do_historie($conn, $id_pozadavek, $id_nabidka, $typ_zaznamu, $tex
 
     mysqli_query($conn, $sql);
 }
+// =========================================================================
+// POMOCNÉ FUNKCE PRO CELÝ SYSTÉM
+// =========================================================================
+
+// Vypočítá kontrastní barvu textu (bílá/tmavá) k libovolnému pozadí
+function getContrastColor($hexcolor) {
+    $hexcolor = trim($hexcolor, '#');
+    if (strlen($hexcolor) == 3) {
+        $r = hexdec(substr($hexcolor,0,1).substr($hexcolor,0,1));
+        $g = hexdec(substr($hexcolor,1,1).substr($hexcolor,1,1));
+        $b = hexdec(substr($hexcolor,2,1).substr($hexcolor,2,1));
+    } else {
+        $r = hexdec(substr($hexcolor,0,2));
+        $g = hexdec(substr($hexcolor,2,2));
+        $b = hexdec(substr($hexcolor,4,2));
+    }
+    $yiq = (($r*299)+($g*587)+($b*114))/1000;
+    return ($yiq >= 140) ? '#2c3e50' : '#ffffff';
+}
+
+// Vygeneruje hotový HTML štítek statusu přímo z číselníku v databázi
+function getStatusHtml($conn, $status_id) {
+    static $status_cache = null;
+
+    // Načteme číselník jen jednou při prvním zavolání, pak už to jede z paměti (cache)
+    if ($status_cache === null) {
+        $status_cache = [];
+        $res = mysqli_query($conn, "SELECT id, nazev, barva_hex FROM ciselnik_statusu");
+        if ($res) {
+            while ($row = mysqli_fetch_assoc($res)) {
+                $status_cache[(int)$row['id']] = $row;
+            }
+        }
+    }
+
+    $id = (int)$status_id;
+    if (isset($status_cache[$id])) {
+        $bg = htmlspecialchars($status_cache[$id]['barva_hex']);
+        $name = htmlspecialchars($status_cache[$id]['nazev']);
+        $color = getContrastColor($bg);
+        return '<span class="badge" style="background-color: ' . $bg . '; color: ' . $color . ';">' . $name . '</span>';
+    }
+
+    return '<span class="badge" style="background-color: #999;">Neznámý stav</span>';
+}
 ?>

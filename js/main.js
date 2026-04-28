@@ -96,5 +96,47 @@ $(document).ready(function() {
             $('#modalVzorkyBody').html('<div class="alert alert-danger">Chyba při stahování dat ze serveru.</div>');
         });
     });
+// ==========================================
+    // 4. GLOBÁLNÍ HLADKÉ MAZÁNÍ (AJAX)
+    // ==========================================
+    $(document).on('click', '.btn-delete-ajax', function(e) {
+        e.preventDefault(); // Zabráníme klasickému přechodu na odkaz (probliknutí stránky)
 
+        var btn = $(this);
+        var href = btn.attr('href');
+        var row = btn.closest('tr'); // Najdeme celý řádek v tabulce, kde tlačítko leží
+
+        // Získáme text z atributu onclick (pokud tam je) pro potvrzovací hlášku, nebo použijeme výchozí
+        var confirmText = "Opravdu chcete tuto položku smazat?";
+        var onclickAttr = btn.attr('onclick');
+        if (onclickAttr && onclickAttr.indexOf("confirm('") !== -1) {
+            confirmText = onclickAttr.split("confirm('")[1].split("')")[0];
+        }
+
+        if (confirm(confirmText)) {
+            btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>'); // Ukážeme točící se kolečko
+
+            // Fígl: Odstraníme z URL parametr "redirect", aby nám delete_logic.php vrátil jen text "OK" místo celého HTML
+            var ajaxUrl = href.replace(/&redirect=[a-zA-Z0-9_]+/, '');
+
+            $.get(ajaxUrl, function(response) {
+                if (response.trim() === "OK") {
+                    // Úspěch! Řádek plynule zmizí (fade out) a pak se vymaže z DOMu
+                    row.fadeOut(400, function() {
+                        $(this).remove();
+                    });
+                } else {
+                    // Pokud to vrátí nějakou chybovou hlášku z PHP (např. že má aktivní požadavky)
+                    alert(response);
+                    btn.prop('disabled', false).html('<i class="fa fa-trash"></i>');
+                }
+            }).fail(function() {
+                alert("Chyba při komunikaci se serverem.");
+                btn.prop('disabled', false).html('<i class="fa fa-trash"></i>');
+            });
+        }
+
+        // Vynulujeme starý onclick, aby se nevolal dvakrát
+        btn.removeAttr('onclick');
+    });
 });

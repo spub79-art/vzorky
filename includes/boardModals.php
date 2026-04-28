@@ -1,24 +1,41 @@
 <?php
-// --- STAŽENÍ AKTUÁLNÍHO KURZU ČNB (EUR a USD) ---
+// --- CHYTRÉ STAŽENÍ KURZU ČNB S CACHE (jen 1x denně) ---
 $eur_rate = 25.10;
-$usd_rate = 23.50; // Fallback, kdyby náhodou vypadlo spojení s ČNB
-try {
-    $ctx = stream_context_create(['http' => ['timeout' => 2]]);
-    $cnb_data = @file_get_contents('https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.txt', false, $ctx);
-    if ($cnb_data) {
-        $lines = explode("\n", $cnb_data);
-        foreach ($lines as $line) {
-            if (strpos($line, '|EUR|') !== false) {
-                $parts = explode('|', $line);
-                $eur_rate = (float)str_replace(',', '.', trim($parts[4]));
-            }
-            if (strpos($line, '|USD|') !== false) {
-                $parts = explode('|', $line);
-                $usd_rate = (float)str_replace(',', '.', trim($parts[4]));
-            }
-        }
+$usd_rate = 23.50; // Fallback
+$cache_file = __DIR__ . '/cnb_cache.json';
+$today = date('Y-m-d');
+$need_fetch = true;
+
+if (file_exists($cache_file)) {
+    $cache_data = json_decode(file_get_contents($cache_file), true);
+    if ($cache_data && isset($cache_data['date']) && $cache_data['date'] === $today) {
+        $eur_rate = (float)$cache_data['eur'];
+        $usd_rate = (float)$cache_data['usd'];
+        $need_fetch = false;
     }
-} catch (Exception $e) {}
+}
+
+if ($need_fetch) {
+    try {
+        $ctx = stream_context_create(['http' => ['timeout' => 2]]);
+        $cnb_data = @file_get_contents('https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.txt', false, $ctx);
+        if ($cnb_data) {
+            $lines = explode("\n", $cnb_data);
+            foreach ($lines as $line) {
+                if (strpos($line, '|EUR|') !== false) {
+                    $parts = explode('|', $line);
+                    $eur_rate = (float)str_replace(',', '.', trim($parts[4]));
+                }
+                if (strpos($line, '|USD|') !== false) {
+                    $parts = explode('|', $line);
+                    $usd_rate = (float)str_replace(',', '.', trim($parts[4]));
+                }
+            }
+            // Uložíme do cache pro zbytek dne
+            file_put_contents($cache_file, json_encode(['date' => $today, 'eur' => $eur_rate, 'usd' => $usd_rate]));
+        }
+    } catch (Exception $e) {}
+}
 ?>
 <script>
     window.CNB_EUR_RATE = <?= number_format($eur_rate, 3, '.', '') ?>;

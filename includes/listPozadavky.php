@@ -13,21 +13,6 @@ $is_cumil = (!empty($_SESSION['cumil']) && $_SESSION['cumil'] == 1);
 
 $last_change_time = file_exists('last_change.txt') ? file_get_contents('last_change.txt') : time();
 
-function getContrastColor($hexcolor) {
-    $hexcolor = trim($hexcolor, '#');
-    if (strlen($hexcolor) == 3) {
-        $r = hexdec(substr($hexcolor,0,1).substr($hexcolor,0,1));
-        $g = hexdec(substr($hexcolor,1,1).substr($hexcolor,1,1));
-        $b = hexdec(substr($hexcolor,2,1).substr($hexcolor,2,1));
-    } else {
-        $r = hexdec(substr($hexcolor,0,2));
-        $g = hexdec(substr($hexcolor,2,2));
-        $b = hexdec(substr($hexcolor,4,2));
-    }
-    $yiq = (($r*299)+($g*587)+($b*114))/1000;
-    return ($yiq >= 140) ? '#2c3e50' : '#ffffff';
-}
-
 // ZMĚNA: Zákazníci se nyní tahají přes vnořený SELECT z vazební tabulky
 $sql = "SELECT p.*, s.nazev AS surovina_nazev, 
         (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ') 

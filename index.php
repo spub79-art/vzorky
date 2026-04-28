@@ -390,76 +390,8 @@ if ($is_adm || $is_vyvoj) {
         </div>
     </div>
 </div>
-
-<script>
-    $(document).ready(function() {
-        $('#btnOpenDevTasks').click(function() {
-            loadDevTasks();
-            $('#mDevTasks').modal('show');
-        });
-
-        $('#btnSaveDevTask').click(function() {
-            var text = $('#devTaskText').val().trim();
-            if (!text) return;
-            var btn = $(this);
-            btn.prop('disabled', true).text('Odesílám...');
-
-            $.post('includes/ajax_dev_pozadavky.php', { action: 'add', text: text }, function(r) {
-                btn.prop('disabled', false).text('Odeslat vývojáři');
-                if (r.trim() === "OK") {
-                    $('#devTaskText').val('');
-                    loadDevTasks();
-                } else {
-                    alert("Chyba: " + r);
-                }
-            });
-        });
-
-        $(document).on('click', '.btn-update-dev-task', function() {
-            var id = $(this).data('id');
-            var newStatus = $(this).data('status');
-            var btn = $(this);
-            var reakce = "";
-
-            if (newStatus == 2) {
-                reakce = prompt("Uveďte prosím důvod zamítnutí (povinné):");
-                if (reakce === null) return; // Uživatel dal Storno
-                if (reakce.trim() === "") { alert("Důvod zamítnutí musí být vyplněn!"); return; }
-            } else {
-                reakce = prompt("Můžete přidat krátký komentář (nepovinné):");
-            }
-
-            btn.prop('disabled', true).text('...');
-            $.post('includes/ajax_dev_pozadavky.php', {
-                action: 'update_status',
-                id: id,
-                status: newStatus,
-                reakce: reakce
-            }, function(r) {
-                if (r.trim() === "OK") {
-                    loadDevTasks();
-                } else {
-                    alert("Chyba: " + r);
-                    btn.prop('disabled', false).text(newStatus == 1 ? '✔ Vyřešit' : '✖ Zamítnout');
-                }
-            });
-        });
-
-        function loadDevTasks() {
-            $('#devTasksList').html('<div class="feedback-msg"><i class="glyphicon glyphicon-refresh spinning"></i> Načítám...</div>');
-            $.post('includes/ajax_dev_pozadavky.php', { action: 'load' }, function(html) {
-                $('#devTasksList').html(html);
-            });
-        }
-
-        $(window).scroll(function() {
-            if ($(window).scrollTop() > 40) {
-                $('#sticky-header').addClass('is-scrolled');
-            } else {
-                $('#sticky-header').removeClass('is-scrolled');
-            }
-        });
-    });
-</script>
+<script src="js/main.js?v=1.0"></script>
+</body>
+</html>
 </body>
 </html>
