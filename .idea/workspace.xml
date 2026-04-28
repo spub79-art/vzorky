@@ -2,37 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d2a1b169-218d-47ab-bc4f-edf673a6648d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/cron_denni_souhrn.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/ajax_append_customers.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/ajax_edit_comment.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/ajax_export_wanted.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/ajax_get_dodavatel_vzorky.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/ajax_update_surovina.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/includes/ajax_update_surovina_batch.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/migrate_history.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/migrate_offers.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/config.php" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_add_comment.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_add_comment.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_add_request.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_add_request.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_delete_comment.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_delete_comment.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_dev_pozadavky.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_dev_pozadavky.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_ping_purchasing.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_ping_purchasing.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_request_detail.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_request_detail.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_update_priority.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_update_priority.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_update_request.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_update_request.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/ajax_urge_task.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_urge_task.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/authLF.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/authLF.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/boardFunctions.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/boardFunctions.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/ajax_get_surovina_historie.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/ajax_get_surovina_historie.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/includes/boardModals.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/boardModals.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/boardOfferRow.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/boardOfferRow.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/listDodavatele.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listDodavatele.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/listPozadavky.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listPozadavky.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/delete_logic.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/delete_logic.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/includes/listSuroviny.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listSuroviny.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/listUsers.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listUsers.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/update_status_nabidka.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/update_status_nabidka.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/includes/upload_to_nextcloud.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/upload_to_nextcloud.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.php" beforeDir="false" afterPath="$PROJECT_DIR$/index.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/includes/listZakaznici.php" beforeDir="false" afterPath="$PROJECT_DIR$/includes/listZakaznici.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/styles/vzorky.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles/vzorky.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -153,7 +128,7 @@
       <workItem from="1777009948082" duration="674000" />
       <workItem from="1777031939589" duration="5687000" />
       <workItem from="1777280593465" duration="9105000" />
-      <workItem from="1777356771725" duration="1209000" />
+      <workItem from="1777356771725" duration="7780000" />
     </task>
     <task id="LOCAL-00001" summary="zacatek... uplnej... prvni upravy baleni na vzorky">
       <created>1768998225821</created>
@@ -232,7 +207,14 @@
       <option name="project" value="LOCAL" />
       <updated>1775720960874</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="docela dost veci, aktualne snad faze 1 a faze 2 doopravdy hotova...">
+      <created>1777358070895</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1777358070895</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -285,7 +267,7 @@
     </state>
     <state x="758" y="333" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1771517014755" />
     <state x="1010" y="448" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1768992551015" />
-    <state x="799" y="172" width="1317" height="1216" key="CommitChangelistDialog2" timestamp="1775720959637">
+    <state x="799" y="172" width="1317" height="1216" key="CommitChangelistDialog2" timestamp="1777358069925">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="905" y="295" key="CommitChangelistDialog2/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1771254444232" />
@@ -295,7 +277,7 @@
     <state x="905" y="295" key="CommitChangelistDialog2/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1770640181636" />
     <state x="905" y="295" width="1450" height="1028" key="CommitChangelistDialog2/0.0.2560.1400/-1920.233.1920.1160/2560.365.1920.1040@0.0.2560.1400" timestamp="1772615173050" />
     <state x="905" y="295" key="CommitChangelistDialog2/0.0.2560.1400/-1920.365.1920.1040/2560.365.1920.1040@0.0.2560.1400" timestamp="1771513344827" />
-    <state x="799" y="172" width="1317" height="1216" key="CommitChangelistDialog2/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1775720959637" />
+    <state x="799" y="172" width="1317" height="1216" key="CommitChangelistDialog2/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1777358069925" />
     <state x="2652" y="457" width="1736" height="856" key="DiffContextDialog" timestamp="1770817294590">
       <screen x="2560" y="365" width="1920" height="1040" />
     </state>
@@ -304,7 +286,7 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="92" y="92" width="2376" height="1216" key="DirDiffDialog/0.0.2560.1400/-1920.233.1920.1160/2560.365.1920.1040@0.0.2560.1400" timestamp="1772614105166" />
-    <state x="1114" y="624" key="NewPhpFileDialog" timestamp="1777357044964">
+    <state x="1114" y="624" key="NewPhpFileDialog" timestamp="1777358269489">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="1114" y="624" key="NewPhpFileDialog/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1777293839695" />
@@ -314,8 +296,13 @@
     <state x="836" y="464" key="NewPhpFileDialog/0.0.1920.1040@0.0.1920.1040" timestamp="1775747803416" />
     <state x="1114" y="624" key="NewPhpFileDialog/0.0.2560.1400/-1920.233.1920.1160/2560.365.1920.1040@0.0.2560.1400" timestamp="1774937307135" />
     <state x="1114" y="624" key="NewPhpFileDialog/0.0.2560.1400/2560.365.1920.1040/-1920.233.1920.1160@0.0.2560.1400" timestamp="1771407734459" />
-    <state x="1114" y="624" key="NewPhpFileDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1777357044964" />
+    <state x="1114" y="624" key="NewPhpFileDialog/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1777358269489" />
     <state x="1114" y="624" key="NewPhpFileDialog/2560.365.1920.1040/0.0.2560.1400/-1920.233.1920.1160@0.0.2560.1400" timestamp="1770797904102" />
+    <state x="736" y="342" key="Vcs.Push.Dialog.v2" timestamp="1777370382303">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="736" y="342" key="Vcs.Push.Dialog.v2/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1777370382303" />
+    <state x="3112" y="619" key="Vcs.Push.Dialog.v2/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@2560.365.1920.1040" timestamp="1777367145134" />
     <state x="3305" y="620" key="VcsDiffUtil.ChangesDialog" timestamp="1770817286472">
       <screen x="2560" y="365" width="1920" height="1040" />
     </state>
@@ -343,10 +330,11 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="577" y="62" width="1936" height="1245" maximized="true" key="dock-window-1/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1777357626158" />
-    <state x="976" y="432" width="607" height="536" key="find.popup" timestamp="1777039768628">
+    <state x="976" y="432" width="607" height="536" key="find.popup" timestamp="1777361496304">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="976" y="432" width="737" height="606" key="find.popup/-1920.233.1920.1160/0.0.2560.1400/2560.365.1920.1040@0.0.2560.1400" timestamp="1770817930595" />
+    <state x="976" y="432" width="607" height="536" key="find.popup/-1920.233.1920.1160/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1777361496304" />
     <state x="301" y="252" width="1475" height="939" key="find.popup/-1920.365.1920.1040/2560.365.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1774604589872" />
     <state x="301" y="252" width="1475" height="939" key="find.popup/0.0.2560.1400/-1920.233.1920.1160/2560.365.1920.1040@0.0.2560.1400" timestamp="1774936391563" />
     <state x="976" y="432" width="607" height="536" key="find.popup/2560.365.1920.1040/-1920.233.1920.1160/0.0.2560.1400@0.0.2560.1400" timestamp="1777039768628" />

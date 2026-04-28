@@ -5,19 +5,30 @@ $current_page_url = "index.php?Zakaznik=1";
 // --- LOGIKA ZPRACOVÁNÍ (INSERT/UPDATE) ---
 if (isset($_POST['save_customer'])) {
     $nazev = mysqli_real_escape_string($conn, $_POST['nazev_novy']);
-    mysqli_query($conn, "INSERT INTO zakaznik (nazev) VALUES ('$nazev')");
+    // OPRAVA: Tabulka se jmenuje zakaznici
+    mysqli_query($conn, "INSERT INTO zakaznici (nazev) VALUES ('$nazev')");
     echo "<script>window.location.href='$current_page_url';</script>";
 }
 
 if (isset($_POST['update_zakaznik'])) {
     $id = (int)$_POST['id'];
     $nazev = mysqli_real_escape_string($conn, $_POST['nazev']);
-    mysqli_query($conn, "UPDATE zakaznik SET nazev = '$nazev' WHERE id = $id");
+    // OPRAVA: Tabulka se jmenuje zakaznici
+    mysqli_query($conn, "UPDATE zakaznici SET nazev = '$nazev' WHERE id = $id");
     echo "<script>window.location.href='$current_page_url';</script>";
 }
 
-$query = "SELECT z.*, COUNT(p.id) as pocet_pozadavku FROM zakaznik z LEFT JOIN pozadavky p ON z.id = p.id_zakaznik GROUP BY z.id ORDER BY z.id DESC";
+// OPRAVA: Správný název tabulky a vazba přes pozadavky_zakaznici
+$query = "SELECT z.*, COUNT(pz.id_pozadavek) as pocet_pozadavku 
+          FROM zakaznici z 
+          LEFT JOIN pozadavky_zakaznici pz ON z.id = pz.id_zakaznik 
+          GROUP BY z.id 
+          ORDER BY z.id DESC";
 $result = mysqli_query($conn, $query);
+
+if (!$result) {
+    die("<div class='alert alert-danger m-3'><strong>Chyba SQL:</strong> " . mysqli_error($conn) . "</div>");
+}
 ?>
 
 <div class="container-fluid mt-4">
@@ -77,7 +88,7 @@ $result = mysqli_query($conn, $query);
                                 <button type="submit" form="form_edit_<?= $row['id'] ?>" name="update_zakaznik" class="btn btn-outline-success btn-sm">
                                     <i class="fa fa-save"></i> Uložit
                                 </button>
-                                <a href="includes/delete_logic.php?table=zakaznik&id=<?= $row['id'] ?>&redirect=Zakaznik"
+                                <a href="includes/delete_logic.php?table=zakaznici&id=<?= $row['id'] ?>&redirect=Zakaznik"
                                    class="btn btn-danger btn-sm btn-delete-ajax"
                                    onclick="return confirm('Opravdu smazat zákazníka <?= htmlspecialchars($row['nazev']) ?>?')">
                                     <i class="fa fa-trash">X</i>

@@ -527,3 +527,57 @@ tbody tr td.poznamka {
 	display: block;
 	line-height: 1.4;
 }
+/* =========================================
+   ŠTÍTKY ERP A HISTORIE SUROVIN
+   ========================================= */
+.erp-badge-ok { background-color: #5cb85c; font-size: 10px; margin-top: 4px; display: inline-block; }
+.erp-badge-wait { background-color: #f0ad4e; font-size: 10px; margin-top: 4px; display: inline-block; }
+
+/* Statusy z nabídek */
+.badge-status-1 { background-color: #6c757d; }
+.badge-status-2, .badge-status-4, .badge-status-10 { background-color: #f0ad4e; }
+.badge-status-12, .badge-status-13 { background-color: #5bc0de; }
+.badge-status-3, .badge-status-8 { background-color: #337ab7; }
+.badge-status-6 { background-color: #5cb85c; }
+.badge-status-5, .badge-status-7 { background-color: #d9534f; }
+
+/* Tabulka pro AJAX historii */
+.table-history { font-size: 13px; margin-bottom: 0; }
+.table-history thead th { background-color: #f4f6f9; }
+.table-history td { vertical-align: middle; }
+.td-note-truncate { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.text-empty-note { font-size: 11px; color: #999; font-style: italic; }
+.btn-detail-link { border-color: #ccc; font-weight: bold; }
+
+/* --- KNIHOVNA SUROVIN --- */
+.suroviny-heading { display: flex; justify-content: space-between; align-items: center; }
+.table-suroviny td { vertical-align: middle !important; }
+.col-id { width: 50px; }
+.col-is { width: 220px; }
+.col-akce { width: 180px; }
+
+/* ERP kontejner pro RegCis a SkupZbo */
+.erp-container { display: flex; align-items: center; gap: 4px; }
+.erp-container .form-control { width: 80px; font-size: 11px; height: 26px; padding: 2px 5px; }
+
+.erp-badge-ok { background-color: #5cb85c; color: #fff; padding: 4px 6px; }
+.erp-badge-wait { background-color: #f0ad4e; color: #fff; padding: 4px 6px; }
+
+/* --- HISTORIE V MODÁLU --- */
+.table-history { font-size: 13px; margin-bottom: 0; }
+.table-history thead th { background-color: #f4f6f9; border-bottom: 2px solid #ddd; }
+.td-note-truncate { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help; }
+
+/* Kontejner pro ERP */
+.erp-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+/* Ochrana proti roztahování řádků */
+.erp-input {
+	width: 70px !important;
+	height: 26px !important;
+	font-size: 11px !important;
+	padding: 2px 5px !important;
+}

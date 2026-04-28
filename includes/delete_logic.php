@@ -42,8 +42,8 @@ if ($table === 'pozadavky') {
 // --- LOGIKA PRO OSTATNÍ TABULKY (Zákazníci atd.) ---
 else if (!empty($table) && $id > 0) {
     // Bezpečnostní pojistka: zákazníka smažeme jen když nemá požadavky
-    if ($table === 'zakaznik') {
-        $check = mysqli_query($conn, "SELECT id FROM pozadavky WHERE id_zakaznik = $id LIMIT 1");
+    if ($table === 'zakaznici') {
+        $check = mysqli_query($conn, "SELECT id_pozadavek FROM pozadavky_zakaznici WHERE id_zakaznik = $id LIMIT 1");
         if (mysqli_num_rows($check) > 0) {
             die("Nelze smazat zákazníka s aktivními požadavky.");
         }

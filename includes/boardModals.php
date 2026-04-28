@@ -579,7 +579,20 @@ try {
         </div>
     </div>
 </div>
-
+<div class="modal fade" id="mHistorieSuroviny" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title"><i class="fa fa-history"></i> Historie pokusů: <span id="modalSurName"></span></h4>
+            </div>
+            <div class="modal-body" id="modalSurBody">
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     $(document).ready(function() {
         // Kliknutí na modrý (TDS) nebo červený (COA) štítek na malé kartičce

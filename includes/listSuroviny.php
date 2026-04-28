@@ -1,170 +1,135 @@
 <?php
-// Načtení surovin s počtem jejich použití
-include_once("includes/db_connect.php");
+include_once("db_connect.php");
+if (!$is_adm && !$is_orders && !$is_dev) die("Nepovolený přístup.");
 
+// SQL dotaz: Vytáhneme suroviny a spočítáme pokusy
 $sql = "SELECT s.*, 
-               (SELECT COUNT(p.id) FROM pozadavky p WHERE p.id_surovina = s.id) as pouzito_krat
+        (SELECT COUNT(pn.id) 
+         FROM pozadavky_nabidky pn 
+         JOIN pozadavky p ON pn.id_pozadavek = p.id 
+         WHERE p.id_surovina = s.id) as pocet_pokusu
         FROM suroviny s 
         ORDER BY s.nazev ASC";
-
-$result = mysqli_query($conn, $sql);
-
-if (!$result) {
-    die("Chyba v SQL dotazu: " . mysqli_error($conn));
-}
+$res = mysqli_query($conn, $sql);
 ?>
 
-<div class="container-fluid mt-4" style="padding-bottom: 80px;">
-    <div class="d-flex justify-content-between align-items-center mb-3 text-dark">
-        <h2 class="mb-0"><i class="fa fa-leaf text-success me-2"></i>Knihovna surovin</h2>
-        <span class="badge bg-secondary">Celkem: <?= mysqli_num_rows($result) ?></span>
+<div class="panel panel-primary shadow suroviny-panel">
+    <div class="panel-heading suroviny-heading">
+        <h3 class="panel-title"><i class="fa fa-flask"></i> Knihovna surovin a překlady</h3>
+        <div class="panel-actions" style="float: right; margin-top: -22px;">
+            <button class="btn btn-sm btn-success btn-save-all-translations">
+                <i class="fa fa-save"></i> Uložit vše naráz
+            </button>
+        </div>
     </div>
-
-    <div class="table-responsive shadow-sm border rounded">
-        <table id="tableSuroviny" class="table table-hover align-middle bg-white table-sjednocena mb-0">
-            <thead class="table-dark">
-            <tr>
-                <th style="width: 60px;" class="text-center">ID</th>
-                <th style="width: 35%;">Název suroviny (CZ)</th>
-                <th style="width: 35%;">Anglický název (EN)</th>
-                <th class="text-center">Vlastnosti</th>
-                <th class="text-center">Počet poptávek</th>
-            </tr>
-            <tr class="search-row" style="background-color: #f8f9fa;">
-                <th><input type="text" class="form-control form-control-sm col-search" placeholder="ID..."></th>
-                <th><input type="text" class="form-control form-control-sm col-search" placeholder="Hledat CZ..."></th>
-                <th><input type="text" class="form-control form-control-sm col-search" placeholder="Hledat EN..."></th>
-                <th><input type="text" class="form-control form-control-sm col-search" placeholder="Vlastnost..."></th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            <?php while ($row = mysqli_fetch_assoc($result)): ?>
+    <div class="panel-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-suroviny">
+                <thead>
                 <tr>
-                    <td class="text-center text-muted"><?= $row['id'] ?></td>
-                    <td>
-                        <input type="text" class="form-control form-control-sm inline-input"
-                               data-id="<?= $row['id'] ?>" data-col="cz"
-                               data-orig="<?= htmlspecialchars($row['nazev'], ENT_QUOTES) ?>"
-                               value="<?= htmlspecialchars($row['nazev'], ENT_QUOTES) ?>"
-                               style="font-weight: bold; border: 1px solid transparent; background: transparent; transition: all 0.2s;">
-                    </td>
-                    <td>
-                        <input type="text" class="form-control form-control-sm inline-input"
-                               data-id="<?= $row['id'] ?>" data-col="en"
-                               data-orig="<?= htmlspecialchars($row['nazev_en'] ?? '', ENT_QUOTES) ?>"
-                               value="<?= htmlspecialchars($row['nazev_en'] ?? '', ENT_QUOTES) ?>"
-                               placeholder="Zadejte EN překlad..."
-                               style="color: #0d6efd; border: 1px solid transparent; background: transparent; transition: all 0.2s;">
-                    </td>
-                    <td class="text-center">
-                        <div class="d-flex justify-content-center gap-1">
-                            <?php if(!empty($row['bio'])): ?><span class="badge bg-success">BIO</span><?php endif; ?>
-                            <?php if(!empty($row['vegan'])): ?><span class="badge bg-info">VGN</span><?php endif; ?>
-                            <?php if(!empty($row['bezlepek'])): ?><span class="badge bg-warning text-dark">BL</span><?php endif; ?>
-                            <?php if(empty($row['bio']) && empty($row['vegan']) && empty($row['bezlepek'])): ?>
-                                <span class="text-muted small">-</span>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                    <td class="text-center">
-                        <span class="badge bg-light text-dark border"><?= $row['pouzito_krat'] ?>×</span>
-                    </td>
+                    <th class="col-id">ID</th>
+                    <th class="col-nazev">Název (CZ)</th>
+                    <th class="col-preklad">Anglický překlad (pro generátor)</th>
+                    <th class="col-is">Stav v IS (SkupZbo | RegCis)</th>
+                    <th class="col-akce text-center">Historie a akce</th>
                 </tr>
-            <?php endwhile; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                <?php while ($row = mysqli_fetch_assoc($res)) { ?>
+                    <tr data-id="<?= $row['id'] ?>">
+                        <td class="text-muted" style="vertical-align: middle;"><?= $row['id'] ?></td>
+                        <td style="vertical-align: middle;">
+                            <input type="text" class="form-control input-sm edit-nazev" value="<?= htmlspecialchars($row['nazev']) ?>">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <input type="text" class="form-control input-sm edit-nazev-en" placeholder="English name..." value="<?= htmlspecialchars($row['nazev_en'] ?? '') ?>">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <div class="erp-wrapper">
+                                <input type="text" class="form-control input-sm edit-skupzbo erp-input" placeholder="SkupZbo" value="<?= htmlspecialchars($row['skupzbo'] ?? '') ?>">
+                                <input type="text" class="form-control input-sm edit-regcis erp-input" placeholder="RegCis" value="<?= htmlspecialchars($row['regcis'] ?? '') ?>">
+
+                                <?php if (!empty($row['skupzbo']) && !empty($row['regcis'])) { ?>
+                                    <span class="label label-success" title="Zavedeno v IS"><i class="fa fa-check"></i></span>
+                                <?php } else { ?>
+                                    <span class="label label-warning" title="Pouze ve vývoji"><i class="fa fa-flask"></i></span>
+                                <?php } ?>
+                            </div>
+                        </td>
+                        <td class="text-center nowrap" style="vertical-align: middle;">
+                            <?php if ($row['pocet_pokusu'] > 0) { ?>
+                                <button class="btn btn-sm btn-info btn-show-historie-sur" data-id="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['nazev'], ENT_QUOTES) ?>">
+                                    <i class="fa fa-history"></i> (<?= $row['pocet_pokusu'] ?>)
+                                </button>
+                            <?php } ?>
+
+                            <button class="btn btn-sm btn-danger btn-delete-ajax" data-id="<?= $row['id'] ?>" data-table="suroviny">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                <?php } ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<div id="floatingSaveBox" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; background: white; padding: 15px 30px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 2px solid #f0ad4e;">
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <div>
-            <strong style="color: #d9534f; font-size: 16px;"><i class="fa fa-exclamation-triangle"></i> Máte neuložené změny!</strong><br>
-            <span class="text-muted small">Upravených surovin: <b id="modifiedCount">0</b></span>
+<div class="modal fade" id="mHistorieSuroviny" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title"><i class="fa fa-history"></i> Historie pokusů: <span id="modalSurName"></span></h4>
+            </div>
+            <div class="modal-body" id="modalSurBody">
+            </div>
         </div>
-        <button id="btnBatchSave" class="btn btn-warning" style="font-weight: bold; font-size: 16px; padding: 10px 20px;">
-            <i class="fa fa-save"></i> ULOŽIT VŠE
-        </button>
     </div>
 </div>
 
 <script>
-    $(document).ready(function() {
-        var tableID = '#tableSuroviny';
-
-        var tableSuroviny = $(tableID).DataTable({
-            "retrieve": true,
-            "paging": false,
-            "autoWidth": false,
-            "order": [[1, "asc"]],
-            "dom": 't'
-        });
-
-        $(tableID + ' .col-search').on('keyup change', function() {
-            var index = $(this).closest('th').index();
-            tableSuroviny.column(index).search(this.value).draw();
-        });
-
-        $(tableID + ' .col-search').on('keydown', function(e) {
-            if (e.keyCode == 13) { e.preventDefault(); return false; }
-        });
-
-        // EFEKT NAJETÍ MYŠÍ PRO POLÍČKA
-        $('.inline-input').on('mouseenter', function() {
-            if (!$(this).hasClass('is-modified')) { $(this).css({'border': '1px solid #ced4da', 'background': '#fff'}); }
-        }).on('mouseleave', function() {
-            if (!$(this).hasClass('is-modified') && !$(this).is(':focus')) { $(this).css({'border': '1px solid transparent', 'background': 'transparent'}); }
-        }).on('focus', function() {
-            $(this).css({'border': '1px solid #86b7fe', 'background': '#fff'});
-        }).on('blur', function() {
-            if (!$(this).hasClass('is-modified')) { $(this).css({'border': '1px solid transparent', 'background': 'transparent'}); }
-        });
-
-        // SLEDOVÁNÍ ZMĚN (INLINE EDIT)
-        var modifiedData = {};
-
-        $(document).on('input', '.inline-input', function() {
-            var input = $(this);
-            var id = input.data('id');
-            var col = input.data('col');
-            var orig = input.data('orig').toString();
-            var val = input.val().toString();
-
-            if (orig !== val) {
-                input.addClass('is-modified').css({'border': '2px solid #f0ad4e', 'background': '#fffcf5'});
-                if (!modifiedData[id]) modifiedData[id] = {};
-                modifiedData[id][col] = val;
-            } else {
-                input.removeClass('is-modified').css({'border': '1px solid #86b7fe', 'background': '#fff'});
-                if (modifiedData[id]) {
-                    delete modifiedData[id][col];
-                    if (Object.keys(modifiedData[id]).length === 0) delete modifiedData[id];
-                }
-            }
-
-            var modCount = Object.keys(modifiedData).length;
-            if (modCount > 0) {
-                $('#modifiedCount').text(modCount);
-                $('#floatingSaveBox').fadeIn(200);
-            } else {
-                $('#floatingSaveBox').fadeOut(200);
-            }
-        });
-
-        // ODESLÁNÍ VŠECH ZMĚN NA SERVER
-        $('#btnBatchSave').on('click', function() {
-            var btn = $(this);
-            btn.prop('disabled', true).html('<i class="fa fa-refresh fa-spin"></i> Ukládám...');
-
-            $.post('includes/ajax_update_surovina_batch.php', { data: modifiedData }, function(r) {
-                if (r.trim() === 'OK') {
-                    if (typeof safeReload === "function") safeReload(); else window.location.reload();
-                } else {
-                    alert("Kritická chyba při ukládání: " + r);
-                    btn.prop('disabled', false).html('<i class="fa fa-save"></i> ULOŽIT VŠE');
-                }
+    // 1. Hromadné ukládání (Excel style)
+    $('.btn-save-all-translations').off('click').click(function() {
+        var data = [];
+        $('.table-suroviny tbody tr').each(function() {
+            data.push({
+                id: $(this).data('id'),
+                nazev: $(this).find('.edit-nazev').val(),
+                nazev_en: $(this).find('.edit-nazev-en').val(),
+                skupzbo: $(this).find('.edit-skupzbo').val(),
+                regcis: $(this).find('.edit-regcis').val()
             });
+        });
+
+        $(this).html('<i class="fa fa-spinner fa-spin"></i> Ukládám...').prop('disabled', true);
+
+        $.post('includes/ajax_update_surovina_batch.php', { data: JSON.stringify(data) }, function(response) {
+            if (response === "OK") {
+                location.reload();
+            } else {
+                alert("Chyba při ukládání: " + response);
+                $('.btn-save-all-translations').html('<i class="fa fa-save"></i> Uložit vše naráz').prop('disabled', false);
+            }
+        });
+    });
+
+    // 2. Otevření modálu s historií
+    $(document).off('click', '.btn-show-historie-sur').on('click', '.btn-show-historie-sur', function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+
+        $('#modalSurName').text(name);
+        $('#modalSurBody').html('<div class="text-center text-muted py-4"><i class="fa fa-spinner fa-spin fa-2x"></i><br>Hledám v archivech...</div>');
+
+        $('#mHistorieSuroviny').modal('show');
+
+        $.post('includes/ajax_get_surovina_historie.php', { id: id }, function(response) {
+            $('#modalSurBody').html(response);
+        }).fail(function() {
+            $('#modalSurBody').html('<div class="alert alert-danger">Chyba při načítání. Zkontrolujte, že existuje soubor ajax_get_surovina_historie.php</div>');
         });
     });
 </script>
