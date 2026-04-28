@@ -652,26 +652,36 @@ if ($result) {
     $(document).on('click', '.btn-postpone-req', function(e) {
         e.stopPropagation();
         var reqId = $(this).data('id');
-        sysConfirm("Opravdu chcete tento požadavek ODLOŽIT k ledu?<br>Zmizí z aktuální nástěnky, ale přes tlačítko 'Zamítnuté / Odložené' půjde kdykoliv znovu oživit.", function() {
-            $.post('includes/ajax_set_req_status.php', { id: reqId, status: 8 }, function(r) {
-                if(r.trim() === "OK") safeReload(); else sysAlert(r, "danger");
-            });
-        });
+        sysConfirm(
+            "Opravdu chcete tento požadavek ODLOŽIT k ledu?<br>Zmizí z aktuální nástěnky, ale přes tlačítko 'Zamítnuté / Odložené' půjde kdykoliv znovu oživit.",
+            function() {
+                $.post('includes/ajax_set_req_status.php', { id: reqId, status: 8 }, function(r) {
+                    if(r.trim() === "OK") safeReload(); else sysAlert(r, "danger");
+                });
+            },
+            "Ano, odložit",
+            "btn-warning"
+        );
     });
 
     $(document).on('click', '.btn-revive-req', function(e) {
         e.stopPropagation();
         var reqId = $(this).data('id');
-        sysConfirm("Chcete tento požadavek OŽIVIT a vrátit ho zpět mezi aktivní k řešení?", function() {
-            $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1 }, function(r) {
-                if(r.trim() === "OK") {
-                    showRejected = false; // Automaticky zruší filtr KO, aby byl požadavek vidět
-                    safeReload();
-                } else {
-                    sysAlert(r, "danger");
-                }
-            });
-        });
+        sysConfirm(
+            "Chcete tento požadavek OŽIVIT a vrátit ho zpět mezi aktivní k řešení?",
+            function() {
+                $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1 }, function(r) {
+                    if(r.trim() === "OK") {
+                        showRejected = false; // Automaticky zruší filtr KO, aby byl požadavek vidět
+                        safeReload();
+                    } else {
+                        sysAlert(r, "danger");
+                    }
+                });
+            },
+            "Ano, oživit",
+            "btn-success"
+        );
     });
 
     setInterval(function() {

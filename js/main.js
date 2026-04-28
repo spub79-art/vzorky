@@ -37,15 +37,23 @@ window.sysAlert = function(message, type) {
     $('#mSystemAlert').modal('show');
 };
 
-window.sysConfirm = function(message, callback) {
+// ZMĚNA: Přidány parametry btnText a btnClass pro úpravu modálu podle akce
+window.sysConfirm = function(message, callback, btnText = 'Ano, smazat', btnClass = 'btn-danger') {
     ensureSystemModal();
-    $('#mSystemAlertHeader').css('background-color', '#d9534f');
+
+    // Změníme barvu hlavičky podle barvy tlačítka
+    var headerBg = '#d9534f';
+    if (btnClass.indexOf('success') !== -1) headerBg = '#5cb85c';
+    if (btnClass.indexOf('warning') !== -1) headerBg = '#f0ad4e';
+    if (btnClass.indexOf('info') !== -1 || btnClass.indexOf('primary') !== -1) headerBg = '#337ab7';
+
+    $('#mSystemAlertHeader').css('background-color', headerBg);
     $('#mSystemAlertTitle').html('<i class="fa fa-question-circle"></i> Potvrzení akce');
     $('#mSystemAlertBody').html('<strong>' + message + '</strong>');
 
     var btns = '<div style="display: flex; gap: 10px;">' +
         '<button type="button" class="btn btn-default" data-dismiss="modal" style="flex: 1; border-radius: 8px; font-weight: bold;">Zrušit</button>' +
-        '<button type="button" class="btn btn-danger" id="btnSysConfirmYes" style="flex: 1; border-radius: 8px; font-weight: bold;">Ano, smazat</button>' +
+        '<button type="button" class="btn ' + btnClass + '" id="btnSysConfirmYes" style="flex: 1; border-radius: 8px; font-weight: bold;">' + btnText + '</button>' +
         '</div>';
     $('#mSystemAlertFooter').html(btns);
     $('#mSystemAlert').modal('show');
@@ -53,6 +61,43 @@ window.sysConfirm = function(message, callback) {
     $('#btnSysConfirmYes').off('click').on('click', function() {
         $('#mSystemAlert').modal('hide');
         if (typeof callback === 'function') callback();
+    });
+};
+
+// NOVÉ: Prompt pro vyžádání textu (např. při odložení)
+window.sysPrompt = function(message, callback, btnText = 'Uložit', btnClass = 'btn-primary') {
+    ensureSystemModal();
+
+    var headerBg = '#337ab7';
+    if (btnClass.indexOf('success') !== -1) headerBg = '#5cb85c';
+    if (btnClass.indexOf('warning') !== -1) headerBg = '#f0ad4e';
+    if (btnClass.indexOf('danger') !== -1) headerBg = '#d9534f';
+
+    $('#mSystemAlertHeader').css('background-color', headerBg);
+    $('#mSystemAlertTitle').html('<i class="fa fa-pencil"></i> Vyžadováno upřesnění');
+
+    var bodyHtml = '<div style="text-align: left; font-size: 13px;"><strong>' + message + '</strong><br><br>' +
+        '<textarea id="sysPromptInput" class="form-control" rows="3" placeholder="Zadejte vysvětlení pro kolegy..."></textarea></div>';
+    $('#mSystemAlertBody').html(bodyHtml);
+
+    var btns = '<div style="display: flex; gap: 10px;">' +
+        '<button type="button" class="btn btn-default" data-dismiss="modal" style="flex: 1; border-radius: 8px; font-weight: bold;">Zrušit</button>' +
+        '<button type="button" class="btn ' + btnClass + '" id="btnSysPromptYes" style="flex: 1; border-radius: 8px; font-weight: bold;">' + btnText + '</button>' +
+        '</div>';
+    $('#mSystemAlertFooter').html(btns);
+    $('#mSystemAlert').modal('show');
+
+    // Focus na textové pole po zobrazení modálu
+    setTimeout(function(){ $('#sysPromptInput').focus(); }, 400);
+
+    $('#btnSysPromptYes').off('click').on('click', function() {
+        var val = $('#sysPromptInput').val().trim();
+        if(!val) {
+            $('#sysPromptInput').css('border', '2px solid #d9534f');
+            return;
+        }
+        $('#mSystemAlert').modal('hide');
+        if (typeof callback === 'function') callback(val);
     });
 };
 
@@ -66,6 +111,7 @@ $(document).ready(function() {
     $(document).on('input change', '.table-suroviny input', function() {
         $('#saveSurovinyContainer').slideDown(300);
     });
+
     $(document).on('click', '.btn-save-all-translations', function() {
         var data = [];
         $('.table-suroviny tbody tr').each(function() {
@@ -158,7 +204,7 @@ $(document).ready(function() {
         });
     });
 
-// ==========================================
+    // ==========================================
     // 4. GLOBÁLNÍ HLADKÉ MAZÁNÍ (AJAX)
     // ==========================================
     $(document).on('click', '.btn-delete-ajax', function(e) {
@@ -174,6 +220,7 @@ $(document).ready(function() {
             confirmText = onclickAttr.split("confirm('")[1].split("')")[0];
         }
 
+        // Tady pro standardní mazání nepředáváme další parametry, takže se uplatní výchozí červené "Ano, smazat"
         sysConfirm(confirmText, function() {
             var originalHtml = btn.html();
             btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
