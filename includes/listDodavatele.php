@@ -19,7 +19,7 @@ $res = mysqli_query($conn, $sql);
     </div>
     <div class="panel-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-sjednocena dodavatele-table">
+            <table class="table table-striped table-hover table-sjednocena dodavatele-table align-middle">
                 <thead>
                 <tr>
                     <th class="col-id">ID</th>
@@ -33,14 +33,14 @@ $res = mysqli_query($conn, $sql);
                 <tbody>
                 <?php while ($row = mysqli_fetch_assoc($res)): ?>
                     <tr>
-                        <td><?= $row['id'] ?></td>
-                        <td><strong><?= htmlspecialchars($row['nazev']) ?></strong></td>
-                        <td><?= htmlspecialchars($row['kontaktni_osoba'] ?? '-') ?></td>
-                        <td class="dodavatel-kontakt">
+                        <td class="text-muted" style="vertical-align: middle;"><?= $row['id'] ?></td>
+                        <td style="vertical-align: middle;"><strong><?= htmlspecialchars($row['nazev']) ?></strong></td>
+                        <td style="vertical-align: middle;"><?= htmlspecialchars($row['kontaktni_osoba'] ?? '-') ?></td>
+                        <td class="dodavatel-kontakt" style="vertical-align: middle;">
                             <i class="fa fa-envelope text-muted"></i> <?= htmlspecialchars($row['email'] ?? '-') ?><br>
                             <i class="fa fa-phone text-muted"></i> <?= htmlspecialchars($row['telefon'] ?? '-') ?>
                         </td>
-                        <td class="text-center">
+                        <td class="text-center" style="vertical-align: middle;">
                             <?php if ($row['pocet_vzorku'] > 0): ?>
                                 <button class="btn btn-sm btn-info btn-show-vzorky" data-id="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['nazev'], ENT_QUOTES) ?>" title="Zobrazit historii vzorků">
                                     <i class="fa fa-archive"></i> <?= $row['pocet_vzorku'] ?>
@@ -49,14 +49,24 @@ $res = mysqli_query($conn, $sql);
                                 <span class="badge bg-light text-muted">0</span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-center nowrap">
+                        <td class="text-center nowrap" style="vertical-align: middle;">
                             <button class="btn btn-sm btn-warning btn-edit-dodavatel" data-id="<?= $row['id'] ?>" title="Upravit dodavatele">
                                 <i class="fa fa-pencil"></i> Upravit
                             </button>
 
-                            <button class="btn btn-sm btn-danger btn-delete-ajax" data-id="<?= $row['id'] ?>" data-table="dodavatele" title="Smazat dodavatele">
-                                <i class="fa fa-trash">X</i>
-                            </button>
+                            <?php if ($row['pocet_vzorku'] == 0): ?>
+                                <button class="btn btn-sm btn-danger btn-delete-ajax"
+                                        data-id="<?= $row['id'] ?>"
+                                        data-table="dodavatele"
+                                        data-confirm="Opravdu chcete smazat dodavatele <?= htmlspecialchars($row['nazev']) ?>?"
+                                        title="Smazat dodavatele">
+                                    <i class="fa fa-trash"></i> X
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-sm btn-default" disabled title="Nelze smazat - dodavatel má v systému <?= $row['pocet_vzorku'] ?> nabídek/vzorků">
+                                    <i class="fa fa-lock text-muted"></i> Zamčeno
+                                </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endwhile; ?>
@@ -81,4 +91,3 @@ $res = mysqli_query($conn, $sql);
         </div>
     </div>
 </div>
-

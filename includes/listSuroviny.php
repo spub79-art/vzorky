@@ -83,11 +83,11 @@ if (!$res) {
                                         data-id="<?= $row['id'] ?>"
                                         data-table="suroviny"
                                         data-confirm="Opravdu smazat surovinu <?= htmlspecialchars($row['nazev']) ?>?">
-                                    <i class="fa fa-trash"></i>
+                                    <i class="fa fa-trash"></i> X
                                 </button>
                             <?php else: ?>
                                 <button class="btn btn-sm btn-default" disabled title="Nelze smazat - je použita v požadavcích (<?= $row['pocet_pozadavku'] ?>x)">
-                                    <i class="fa fa-lock text-muted"></i>
+                                    <i class="fa fa-lock text-muted"></i> Zamčeno
                                 </button>
                             <?php endif; ?>
                         </td>

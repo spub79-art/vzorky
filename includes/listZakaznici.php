@@ -87,10 +87,10 @@ if (!$result) {
                                 <a href="includes/delete_logic.php?table=zakaznici&id=<?= $row['id'] ?>&redirect=Zakaznik"
                                    class="btn btn-danger btn-sm btn-delete-ajax"
                                    data-confirm="Opravdu smazat zákazníka <?= htmlspecialchars($row['nazev']) ?>?">
-                                    <i class="fa fa-trash">X</i>
+                                    <i class="fa fa-trash"></i> X
                                 </a>
                             <?php else: ?>
-                                <span class="badge bg-light text-dark border"><i class="fa fa-lock me-1"></i> Aktivní (<?= $row['pocet_pozadavku'] ?>×)</span>
+                                <span class="badge bg-light text-dark border" style="padding: 6px 10px;"><i class="fa fa-lock me-1"></i> Aktivní (<?= $row['pocet_pozadavku'] ?>×)</span>
                             <?php endif; ?>
                         </div>
                     </td>

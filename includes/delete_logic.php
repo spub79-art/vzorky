@@ -49,6 +49,14 @@ else if (!empty($table) && $id > 0) {
         }
     }
 
+    // BEZPEČNOSTNÍ POJISTKA: dodavatele smažeme jen když nedodal žádné vzorky/nabídky
+    if ($table === 'dodavatele') {
+        $check = mysqli_query($conn, "SELECT id FROM pozadavky_nabidky WHERE id_dodavatel = $id LIMIT 1");
+        if (mysqli_num_rows($check) > 0) {
+            die("Nelze smazat dodavatele, který je vázán k existujícím nabídkám či vzorkům.");
+        }
+    }
+
     if (mysqli_query($conn, "DELETE FROM `$table` WHERE id = $id")) {
         // Pokud máme parametr pro přesměrování, vrátíme se na index
         if (!empty($redirect_param)) {
@@ -59,6 +67,5 @@ else if (!empty($table) && $id > 0) {
         exit;
     }
 }
-
 echo "Chyba při zpracování požadavku.";
 ?>
