@@ -355,9 +355,33 @@ if ($need_fetch) {
                 </div>
 
                 <div class="form-group" style="margin-top: 15px;">
-                    <label class="text-warning"><i class="glyphicon glyphicon-user"></i> Zákazník (pro koho je surovina určena):</label>
-                    <input type="text" id="mEditReqZakaznik" class="form-control" placeholder="Např. Boon Bar, DM, Lidl... (nepovinné)">
+                    <label class="text-warning" style="font-weight: bold;"><i class="glyphicon glyphicon-user"></i> Zákazníci (pro koho to je):</label>
+                    <select id="mEditReqZakaznici" class="form-control" multiple="multiple" style="width:100%;">
+                        <?php
+                        $z_res_edit = @mysqli_query($conn, "SELECT id, nazev FROM zakaznici ORDER BY nazev ASC");
+                        if ($z_res_edit) {
+                            while($z = mysqli_fetch_assoc($z_res_edit)) {
+                                echo "<option value='".$z['id']."'>".htmlspecialchars($z['nazev'])."</option>";
+                            }
+                        }
+                        ?>
+                    </select>
                 </div>
+                <script>
+                    // Exkluzivní inicializace pro editaci, spustí se až po otevření okna
+                    $(document).ready(function() {
+                        $('#mEditReq').on('shown.bs.modal', function () {
+                            $('#mEditReqZakaznici').select2({
+                                dropdownParent: $('#mEditReq'),
+                                tags: true,
+                                placeholder: "-- Vyberte ze seznamu nebo napište nového --",
+                                createTag: function (params) {
+                                    return { id: params.term, text: params.term, newTag: true }
+                                }
+                            });
+                        });
+                    });
+                </script>
 
                 <div class="form-group">
                     <label>Poznámka / Zadání:</label>

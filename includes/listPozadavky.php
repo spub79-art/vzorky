@@ -13,12 +13,15 @@ $is_cumil = (!empty($_SESSION['cumil']) && $_SESSION['cumil'] == 1);
 
 $last_change_time = file_exists('last_change.txt') ? file_get_contents('last_change.txt') : time();
 
-// ZMĚNA: Zákazníci se nyní tahají přes vnořený SELECT z vazební tabulky
 $sql = "SELECT p.*, s.nazev AS surovina_nazev, 
         (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ') 
          FROM pozadavky_zakaznici pz 
          JOIN zakaznici z ON pz.id_zakaznik = z.id 
          WHERE pz.id_pozadavek = p.id) as zakaznici_seznam,
+         (SELECT GROUP_CONCAT(pz.id_zakaznik SEPARATOR ',') 
+         FROM pozadavky_zakaznici pz 
+         WHERE pz.id_pozadavek = p.id) as zakaznici_ids,
+         
         GROUP_CONCAT(CONCAT(
             IFNULL(d.nazev, 'Neznámý'), '|', 
             IFNULL(pn.cena_nabidka, '0'), '|', 
@@ -69,14 +72,15 @@ if ($result) {
         $p1_active = $p2_active = $p3_active = $has_any_active = false;
         $p1_visible = $p2_visible = $p3_visible = false;
 
-        $is_req_cancelled = in_array((int)$row['id_status'], [5, 7]);
+        // Přidáno číslo 8 = Odloženo k ledu
+        $is_req_cancelled = in_array((int)$row['id_status'], [5, 7, 8]);
 
         if (!empty($row['nabidky_raw'])) {
             foreach (explode(';;', $row['nabidky_raw']) as $o) {
                 $pts = explode('|', $o);
                 if (count($pts) < 8 || $pts[6] == '0') continue;
                 $s_id = (int)$pts[7];
-                if (!in_array($s_id, [5, 7])) {
+                if (!in_array($s_id, [5, 7, 8])) {
                     $has_any_active = true;
 
                     if (in_array($s_id, [10, 4])) {
@@ -139,7 +143,7 @@ if ($result) {
                         <?php
                         $active_count = 0;
                         foreach($col['data'] as $item) {
-                            if (!in_array((int)$item['id_status'], [5, 7])) $active_count++;
+                            if (!in_array((int)$item['id_status'], [5, 7, 8])) $active_count++;
                         }
                         echo $active_count;
                         ?>
@@ -147,7 +151,9 @@ if ($result) {
                 </div>
                 <div class="panel-body board-panel-body">
                     <?php foreach ($col['data'] as $row):
-                        $is_total_cancel = in_array((int)$row['id_status'], [5, 7]);
+                        $is_total_cancel = in_array((int)$row['id_status'], [5, 7, 8]);
+                        $is_postponed = ((int)$row['id_status'] == 8);
+
                         $all_offers_for_this = [];
 
                         if (!empty($row['nabidky_raw'])) {
@@ -155,7 +161,7 @@ if ($result) {
                                 $pts = explode('|', $o);
                                 if (count($pts) > 6 && $pts[6] != '0') {
                                     $s_id = (int)$pts[7];
-                                    $is_ko = in_array($s_id, [5, 7]);
+                                    $is_ko = in_array($s_id, [5, 7, 8]);
 
                                     $phase_of_offer = 1;
                                     if (!$is_ko) {
@@ -189,13 +195,13 @@ if ($result) {
                         $border_top_color = $is_total_cancel ? '#ccc' : ($is_grey ? '#d1d5da' : $row['color_bg']);
 
                         $all_ko = (!empty($all_offers_for_this));
-                        foreach ($all_offers_for_this as $pt) { if (!in_array((int)$pt[7], [5, 7])) $all_ko = false; }
+                        foreach ($all_offers_for_this as $pt) { if (!in_array((int)$pt[7], [5, 7, 8])) $all_ko = false; }
                         $card_classes = "req-card " . ($is_urgent ? 'req-card-urgent needs-my-action ' : '');
                         if ($is_total_cancel || ($col['id'] == 1 && $all_ko && !$is_urgent && empty($all_offers_for_this) == false)) {
                             $card_classes .= ' offer-rejected';
                         }
 
-                        $status_class = $is_total_cancel ? 'is-cancelled' : 'is-active';
+                        $status_class = $is_postponed ? 'is-postponed' : ($is_total_cancel ? 'is-cancelled' : 'is-active');
                         $badge_text_color = getContrastColor($row['color_bg']);
                         ?>
 
@@ -251,6 +257,20 @@ if ($result) {
                                                title="Vyžádat dohledání další nabídky od Nákupu"></i>
                                         <?php endif; ?>
 
+                                        <?php if (($is_vyvoj || $is_adm) && in_array((int)$row['id_status'], [5, 7, 8])): ?>
+                                            <i class="glyphicon glyphicon-play text-success btn-revive-req no-detail-trigger"
+                                               style="pointer-events: auto; cursor: pointer; margin-right: 8px;"
+                                               data-id="<?= $row['id'] ?>"
+                                               title="Oživit požadavek (Vrátit mezi aktivní k řešení)"></i>
+                                        <?php endif; ?>
+
+                                        <?php if (($is_vyvoj || $is_adm) && !$is_total_cancel): ?>
+                                            <i class="glyphicon glyphicon-pause text-muted btn-postpone-req no-detail-trigger"
+                                               style="pointer-events: auto; cursor: pointer; margin-right: 8px;"
+                                               data-id="<?= $row['id'] ?>"
+                                               title="Odložit k ledu (Schovat z aktivních, zůstane v historii)"></i>
+                                        <?php endif; ?>
+
                                         <?php if (($is_vyvoj || $is_adm) && $row['id_status'] == 1): ?>
                                             <i class="glyphicon glyphicon-pencil btn-edit-req no-detail-trigger"
                                                style="pointer-events: auto; cursor: pointer; margin-right: 8px;"
@@ -263,13 +283,13 @@ if ($result) {
                                                data-halal="<?= $row['halal'] ?>"
                                                data-prio="<?= $row['priorita'] ?>"
                                                data-note="<?= htmlspecialchars($row['poznamka'] ?? '') ?>"
-                                               data-zakaznik="<?= htmlspecialchars($row['zakaznik'] ?? '') ?>"
+                                               data-zakaznici-ids="<?= htmlspecialchars($row['zakaznici_ids'] ?? '') ?>"
                                                title="Editovat požadavek"></i>
 
                                             <i class="glyphicon glyphicon-trash text-danger btn-delete-req no-detail-trigger"
                                                style="pointer-events: auto; cursor: pointer;"
                                                data-id="<?= $row['id'] ?>"
-                                               title="Zrušit požadavek"></i>
+                                               title="Zrušit požadavek (KO)"></i>
                                         <?php endif; ?>
 
                                         <span class="req-id-badge <?= $status_class ?> no-detail-trigger" <?php if(!$is_total_cancel) echo "style='background-color: ".$row['color_bg']."; color: ".$badge_text_color.";'"; ?> title="Otevřít detail">
@@ -280,7 +300,6 @@ if ($result) {
 
                                 <?php renderBadges($row); ?>
 
-                                <?php // ZMĚNA: Přidáno pole zákazník (vykreslení z vazební tabulky) ?>
                                 <?php if (!empty($row['zakaznici_seznam'])): ?>
                                     <div style="font-size: 11px; color: #8e44ad; font-weight: bold; margin-bottom: 4px; padding-left: 2px;">
                                         <i class="glyphicon glyphicon-user"></i> Zákazníci: <?= htmlspecialchars($row['zakaznici_seznam']) ?>
@@ -325,7 +344,6 @@ if ($result) {
 
                                                 <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?> id="comment_text_<?= $h['id'] ?>"><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
 
-                                                <?php // ZMĚNA: Přidána editace pro zadání ?>
                                                 <?php if ($can_delete): ?>
                                                     <span style="float: right; margin-top: 1px;">
                                                         <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
@@ -365,7 +383,7 @@ if ($result) {
                                     </button>
                                 <?php elseif (empty($all_offers_for_this) && $col['id'] == 1): ?>
                                     <div class="req-empty-msg <?= $status_class ?>" style="background: rgba(255,255,255,0.7);">
-                                        <?= $is_total_cancel ? 'Požadavek byl zrušen.' : 'Čeká se na vložení nabídky...' ?>
+                                        <?= $is_postponed ? 'Požadavek je odložen (Čeká se na lepší časy).' : ($is_total_cancel ? 'Požadavek byl zrušen.' : 'Čeká se na vložení nabídky...') ?>
                                     </div>
                                 <?php else: ?>
                                     <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p[6]] ?? []); ?>
@@ -412,7 +430,6 @@ if ($result) {
     window.manualRefreshHandling = true;
     var localLastChange = <?= $last_change_time ?? time() ?>;
 
-    // ZMĚNA: Přidány měnové kurzy
     const CNB_EUR_RATE = 25.10;
     const CNB_USD_RATE = 23.50;
 
@@ -475,7 +492,7 @@ if ($result) {
         if(showRejected) {
             $('#btnToggleRejected').html('<i class="glyphicon glyphicon-eye-close"></i> Skrýt KO').addClass('btn-danger').removeClass('btn-default');
         } else {
-            $('#btnToggleRejected').html('<i class="glyphicon glyphicon-eye-open"></i> Zamítnuté (KO)').removeClass('btn-danger').addClass('btn-default');
+            $('#btnToggleRejected').html('<i class="glyphicon glyphicon-eye-open"></i> Zamítnuté / Odložené').removeClass('btn-danger').addClass('btn-default');
         }
 
         if(showOnlyMyTasks) {
@@ -508,29 +525,22 @@ if ($result) {
         applyFilters();
     });
 
-    // Spuštění generátoru "Co sháníme"
     $(document).on('click', '#btnOpenExportModal', function() {
-        // Otevře modál
         $('#mExportModal').modal('show');
-        // Nastaví načítací text
         $('#mExportModalBody').html('<div class="text-center text-muted" style="padding: 40px;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Sestavuji seznam (může to chvilku trvat)...</div>');
 
-        // Zavolá skript na serveru
         $.ajax({
             url: 'includes/ajax_export_wanted.php',
             type: 'GET',
             success: function(data) {
-                // Přepíše vnitřek modálu vygenerovaným seznamem
                 $('#mExportModalBody').html(data);
             },
             error: function(xhr, status, error) {
-                // Pokud soubor neexistuje nebo spadne, napíše to chybu!
                 $('#mExportModalBody').html('<div class="alert alert-danger" style="margin: 20px;"><strong>Chyba:</strong> Nepodařilo se spojit se skriptem ajax_export_wanted.php.<br>Detaily: ' + error + '</div>');
             }
         });
     });
 
-    // Logika pro tlačítko "Kopírovat do schránky"
     $(document).on('click', '#btnCopyExport', function() {
         var textToCopy = $('#exportTextarea').val();
         if (!textToCopy) return;
@@ -576,7 +586,7 @@ if ($result) {
                 originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
                 setTimeout(function() { safeReload(); }, 1500);
             } else {
-                alert(r);
+                if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
                 modalBtn.prop('disabled', false).text('Ano, odeslat');
                 originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-bell text-info');
             }
@@ -609,7 +619,7 @@ if ($result) {
                 originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
                 setTimeout(function() { safeReload(); }, 2000);
             } else {
-                alert(r);
+                if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
                 modalBtn.prop('disabled', false).text('Ano, urgovat');
                 originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-flash text-warning');
             }
@@ -632,9 +642,35 @@ if ($result) {
             if (r.trim() === "OK") {
                 safeReload();
             } else {
-                alert("Chyba při změně priority: " + r);
+                if (typeof sysAlert === "function") sysAlert("Chyba při změně priority: " + r, "danger"); else alert("Chyba při změně priority: " + r);
                 safeReload();
             }
+        });
+    });
+
+    // JS PRO ODLOŽENÍ A OŽIVENÍ
+    $(document).on('click', '.btn-postpone-req', function(e) {
+        e.stopPropagation();
+        var reqId = $(this).data('id');
+        sysConfirm("Opravdu chcete tento požadavek ODLOŽIT k ledu?<br>Zmizí z aktuální nástěnky, ale přes tlačítko 'Zamítnuté / Odložené' půjde kdykoliv znovu oživit.", function() {
+            $.post('includes/ajax_set_req_status.php', { id: reqId, status: 8 }, function(r) {
+                if(r.trim() === "OK") safeReload(); else sysAlert(r, "danger");
+            });
+        });
+    });
+
+    $(document).on('click', '.btn-revive-req', function(e) {
+        e.stopPropagation();
+        var reqId = $(this).data('id');
+        sysConfirm("Chcete tento požadavek OŽIVIT a vrátit ho zpět mezi aktivní k řešení?", function() {
+            $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1 }, function(r) {
+                if(r.trim() === "OK") {
+                    showRejected = false; // Automaticky zruší filtr KO, aby byl požadavek vidět
+                    safeReload();
+                } else {
+                    sysAlert(r, "danger");
+                }
+            });
         });
     });
 
@@ -654,7 +690,6 @@ if ($result) {
             var mena = $('#mNNMena').val();
             if (cena > 0) $('#mNNDopravaWrapper').slideDown(200); else $('#mNNDopravaWrapper').slideUp(200);
 
-            // ZMĚNA: Aktualizace pro zobrazení kurzu i pro USD
             if ((mena === 'EUR' || mena === 'USD') && cena > 0) {
                 var kurz = (mena === 'EUR') ? CNB_EUR_RATE : CNB_USD_RATE;
                 var czk = cena * kurz;
@@ -689,7 +724,7 @@ if ($result) {
             var btn = $(this);
             btn.prop('disabled', true);
             $.post('includes/ajax_add_comment.php', { id_entity: id, typ_entity: type, text: text, is_urgent: urgent }, function(r) {
-                if (r.trim() === "OK") { safeReload(); } else { alert(r); btn.prop('disabled', false); }
+                if (r.trim() === "OK") { safeReload(); } else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); btn.prop('disabled', false); }
             });
         });
 
@@ -699,9 +734,6 @@ if ($result) {
             }
         });
 
-        // ----------------------------------------------------
-        // LOGIKA PRO MAZÁNÍ A EDITACI HISTORIE
-        // ----------------------------------------------------
         $(document).on('click', '.btn-delete-history', function() {
             $('#mDeleteHistoryId').val($(this).data('id'));
             $('#mDeleteHistoryModal').modal('show');
@@ -719,16 +751,14 @@ if ($result) {
                     btn.prop('disabled', false).text('Ano, smazat');
                     safeReload();
                 } else {
-                    alert(r);
+                    if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
                     btn.prop('disabled', false).text('Ano, smazat');
                 }
             });
         });
 
-        // ZMĚNA: JS pro otevření a uložení editace poznámky
         $(document).on('click', '.btn-edit-history', function() {
             $('#mEditHistoryId').val($(this).data('id'));
-            // Dekódování HTML entit zpět na text do textarea
             var txt = $('<textarea />').html($(this).data('text')).text();
             $('#mEditHistoryText').val(txt);
             $('#mEditHistoryModal').modal('show');
@@ -737,7 +767,7 @@ if ($result) {
         $('#mEditHistorySave').on('click', function() {
             var id = $('#mEditHistoryId').val();
             var text = $('#mEditHistoryText').val().trim();
-            if (!text) return alert("Text nesmí být prázdný.");
+            if (!text) return sysAlert("Text nesmí být prázdný.", "warning");
 
             var btn = $(this);
             btn.prop('disabled', true).text('Ukládám...');
@@ -748,7 +778,7 @@ if ($result) {
                     btn.prop('disabled', false).text('Uložit');
                     safeReload();
                 } else {
-                    alert(r);
+                    if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
                     btn.prop('disabled', false).text('Uložit');
                 }
             });
@@ -790,7 +820,7 @@ if ($result) {
             var targetScript = (mode === 'edit') ? 'includes/ajax_update_offer.php' : 'includes/ajax_add_offer.php';
             var d = $('#mNNDod').val(), c = $('#mNNCena').val(), id = $('#mNNId').val();
 
-            if(!d || !c) { alert("Vyplňte dodavatele a cenu."); return; }
+            if(!d || !c) { sysAlert("Vyplňte dodavatele a cenu.", "warning"); return; }
 
             var finalNote = $('#mNNPozn').val().trim();
             var dopravaVal = $('#mNNDoprava').val();
@@ -809,7 +839,7 @@ if ($result) {
                 moq_qty: $('#mNNMoqQty').val(),
                 moq_mj: $('#mNNMoqMj').val(),
                 poznamka_nakup: finalNote
-            }, function(r) { if(r.trim() == "OK") { $('#mNN').modal('hide'); safeReload(); } else { alert(r); } });
+            }, function(r) { if(r.trim() == "OK") { $('#mNN').modal('hide'); safeReload(); } else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); } });
         });
 
         $(document).on('click', '.btn-edit-req', function() {
@@ -824,8 +854,12 @@ if ($result) {
             $('#mEditReqPrio').val(b.data('prio'));
             $('#mEditReqNote').val(b.data('note') === null || b.data('note') === 'null' ? '' : b.data('note'));
 
-            // ZMĚNA: Načtení zákazníka do editačního okna
-            $('#mEditReqZakaznik').val(b.data('zakaznik') === null || b.data('zakaznik') === 'null' ? '' : b.data('zakaznik'));
+            var zakIdsRaw = b.data('zakaznici-ids');
+            var selectedIds = [];
+            if (zakIdsRaw && zakIdsRaw.toString().trim() !== "") {
+                selectedIds = zakIdsRaw.toString().split(',');
+            }
+            $('#mEditReqZakaznici').val(selectedIds).trigger('change');
 
             $('#mEditReq').modal('show');
         });
@@ -841,11 +875,15 @@ if ($result) {
                 halal: $('#mEditReqHalal').is(':checked') ? 1 : 0,
                 priorita: $('#mEditReqPrio').val(),
                 poznamka: $('#mEditReqNote').val(),
-                // ZMĚNA: Uložení zákazníka
-                zakaznik: $('#mEditReqZakaznik').val()
+                zakaznici: $('#mEditReqZakaznici').val()
             }, function(r) {
-                if(r.trim() == "OK") { $('#mEditReq').modal('hide'); safeReload(); } else { alert(r); }
-                btn.prop('disabled', false).text('Uložit změny');
+                if(r.trim() == "OK") {
+                    $('#mEditReq').modal('hide');
+                    safeReload();
+                } else {
+                    if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
+                }
+                btn.prop('disabled', false).text('ULOŽIT ZMĚNY');
             });
         });
 
@@ -860,9 +898,9 @@ if ($result) {
         $('#mCancelReqSave').click(function() {
             var id = $('#mCancelReqId').val();
             var reason = $('#mCancelReqReason').val().trim();
-            if(!reason) { alert("Vyplňte prosím důvod zrušení."); return; }
+            if(!reason) { sysAlert("Vyplňte prosím důvod zrušení.", "warning"); return; }
             $.post('includes/ajax_cancel_request.php', { id: id, poznamka: reason }, function(r) {
-                if(r.trim() === "OK") { $('#mCancelReqModal').modal('hide'); safeReload(); } else { alert(r); }
+                if(r.trim() === "OK") { $('#mCancelReqModal').modal('hide'); safeReload(); } else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); }
             });
         });
 
@@ -871,7 +909,7 @@ if ($result) {
         });
 
         $('#mQNSave').on('click', function() {
-            var qty = $('#mQNQty').val().trim(); if(!qty) { alert("Zadejte požadované množství."); return; }
+            var qty = $('#mQNQty').val().trim(); if(!qty) { sysAlert("Zadejte požadované množství.", "warning"); return; }
             var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
             $.post('includes/update_status_nabidka.php', { id: $('#mQNId').val(), status: $('#mQNStatus').val(), qty: qty, poznamka: $('#mQNNote').val() }, function() { $('#mQtyNote').modal('hide'); btn.prop('disabled', false).text('Potvrdit schválení'); safeReload(); });
         });
@@ -891,7 +929,7 @@ if ($result) {
         });
 
         $('#mReasonSave').on('click', function() {
-            var txt = $('#mReasonText').val().trim(); if(!txt) { alert("Zadejte prosím důvod."); return; }
+            var txt = $('#mReasonText').val().trim(); if(!txt) { sysAlert("Zadejte prosím důvod.", "warning"); return; }
             var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
             $.post('includes/update_status_nabidka.php', { id: $('#mReasonId').val(), status: $('#mReasonStatus').val(), poznamka: txt }, function() { $('#mReason').modal('hide'); btn.prop('disabled', false).text('Potvrdit akci'); safeReload(); });
         });
@@ -977,13 +1015,22 @@ if ($result) {
             });
         });
 
-        $(document).on('click', '.btn-delete-file', function() { if(!confirm("Smazat soubor?")) return; $.post('includes/delete_file.php', { id: $(this).data('id'), file: $(this).data('file') }, function() { $('#mWF').modal('hide'); safeReload(); }); });
+        $(document).on('click', '.btn-delete-file', function() {
+            var fileId = $(this).data('id');
+            var fileName = $(this).data('file');
+            sysConfirm("Opravdu chcete smazat tento soubor?", function() {
+                $.post('includes/delete_file.php', { id: fileId, file: fileName }, function() {
+                    $('#mWF').modal('hide');
+                    safeReload();
+                });
+            });
+        });
 
         applyFilters();
     });
 
     $(document).on('click', '.btn-open-detail', function(e) {
-        if ($(e.target).closest('.btn-edit-req, .btn-delete-req, .btn-ping-purchasing, .btn-urge-task, .btn-toggle-priority').length > 0) {
+        if ($(e.target).closest('.btn-edit-req, .btn-delete-req, .btn-ping-purchasing, .btn-urge-task, .btn-toggle-priority, .btn-postpone-req, .btn-revive-req').length > 0) {
             return;
         }
 
@@ -1037,7 +1084,7 @@ if ($result) {
     $('#mQualSave').on('click', function() {
         var sarze = $('#mQualSarze').val().trim();
         if(!sarze) {
-            alert("Vyplňte prosím číslo šarže z COA dokumentu.");
+            sysAlert("Vyplňte prosím číslo šarže z COA dokumentu.", "warning");
             $('#mQualSarze').focus();
             return;
         }

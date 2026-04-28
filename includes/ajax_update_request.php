@@ -2,56 +2,59 @@
 include_once("db_connect.php");
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-if (empty($_SESSION['vyvoj']) && empty($_SESSION['adm'])) die("Nepovolený přístup.");
+if (empty($_SESSION['username'])) die("Nepřihlášen");
 
-$id = (int)$_POST['id'];
-$bio = (int)$_POST['bio'];
-$vegan = (int)$_POST['vegan'];
-$bezlepek = (int)$_POST['bezlepek'];
-$kosher = (int)$_POST['kosher'];
-$halal = (int)$_POST['halal'];
-$priorita = (int)$_POST['priorita'];
-$poznamka_zadani = trim($_POST['poznamka'] ?? '');
-$user_id = !empty($_SESSION['uid']) ? (int)$_SESSION['uid'] : null;
+$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+if ($id <= 0) die("Neplatné ID.");
 
-// Update základních dat požadavku
-$sql = "UPDATE pozadavky SET 
-        bio = ?, vegan = ?, bezlepek = ?, kosher = ?, halal = ?, 
-        priorita = ?, poznamka = ?, id_user_vytvoril = ?
-        WHERE id = ? AND id_status = 1";
+$bio = isset($_POST['bio']) ? (int)$_POST['bio'] : 0;
+$vegan = isset($_POST['vegan']) ? (int)$_POST['vegan'] : 0;
+$bezlepek = isset($_POST['bezlepek']) ? (int)$_POST['bezlepek'] : 0;
+$kosher = isset($_POST['kosher']) ? (int)$_POST['kosher'] : 0;
+$halal = isset($_POST['halal']) ? (int)$_POST['halal'] : 0;
+$priorita = isset($_POST['priorita']) ? (int)$_POST['priorita'] : 0;
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("iiiiiisii", $bio, $vegan, $bezlepek, $kosher, $halal, $priorita, $poznamka_zadani, $user_id, $id);
+$poznamka = isset($_POST['poznamka']) ? mysqli_real_escape_string($conn, trim($_POST['poznamka'])) : '';
 
-if ($stmt->execute()) {
+$q = "UPDATE pozadavky SET 
+        bio=$bio, vegan=$vegan, bezlepek=$bezlepek, kosher=$kosher, halal=$halal, 
+        priorita=$priorita, poznamka='$poznamka'
+      WHERE id=$id";
 
-    // ========================================================
-    // NOVÉ: SYNCHRONIZACE ZÁKAZNÍKŮ
-    // ========================================================
-    // 1. Smažeme staré vazby
+if (mysqli_query($conn, $q)) {
+
+    // Nejprve smažeme všechny staré vazby na zákazníky pro tento požadavek
     mysqli_query($conn, "DELETE FROM pozadavky_zakaznici WHERE id_pozadavek = $id");
 
-    // 2. Projdeme a uložíme nové (a případně vytvoříme chybějící v číselníku)
-    $zakaznici = isset($_POST['zakaznici']) && is_array($_POST['zakaznici']) ? $_POST['zakaznici'] : [];
-    foreach ($zakaznici as $zak_raw) {
-        if (trim($zak_raw) === '') continue;
+    // Nyní vložíme nové vazby ze Select2 (stejně jako při zakládání)
+    $zakaznici = isset($_POST['zakaznici']) ? $_POST['zakaznici'] : [];
+    if (!is_array($zakaznici)) $zakaznici = [];
 
-        if (!is_numeric($zak_raw)) {
-            $z_name = mysqli_real_escape_string($conn, $zak_raw);
-            mysqli_query($conn, "INSERT INTO zakaznici (nazev) VALUES ('$z_name')");
-            $id_zakaznik = mysqli_insert_id($conn);
+    foreach ($zakaznici as $z_val) {
+        $z_val = trim($z_val);
+        if (empty($z_val)) continue;
+
+        // Pokud to není číslo, uživatel napsal úplně nový název
+        if (!is_numeric($z_val)) {
+            $z_safe = mysqli_real_escape_string($conn, $z_val);
+            $check_z = mysqli_query($conn, "SELECT id FROM zakaznici WHERE nazev = '$z_safe' LIMIT 1");
+            if (mysqli_num_rows($check_z) > 0) {
+                $zr = mysqli_fetch_assoc($check_z);
+                $z_id = $zr['id'];
+            } else {
+                mysqli_query($conn, "INSERT INTO zakaznici (nazev) VALUES ('$z_safe')");
+                $z_id = mysqli_insert_id($conn);
+            }
         } else {
-            $id_zakaznik = intval($zak_raw);
+            $z_id = (int)$z_val;
         }
 
-        if ($id_zakaznik > 0) {
-            mysqli_query($conn, "INSERT INTO pozadavky_zakaznici (id_pozadavek, id_zakaznik) VALUES ($id, $id_zakaznik)");
-        }
+        // Vložíme do vazební tabulky
+        mysqli_query($conn, "INSERT IGNORE INTO pozadavky_zakaznici (id_pozadavek, id_zakaznik) VALUES ($id, $z_id)");
     }
 
-    file_put_contents('last_change.txt', time());
     echo "OK";
 } else {
-    echo "Chyba: " . $stmt->error;
+    echo "Chyba SQL: " . mysqli_error($conn);
 }
 ?>

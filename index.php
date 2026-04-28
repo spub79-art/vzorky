@@ -202,11 +202,11 @@ if ($conn_akt_check) {
 
                 <div class="form-group" style="margin-top: 15px;">
                     <label class="text-warning" style="font-weight: bold;"><i class="glyphicon glyphicon-user"></i> Zákazníci (pro koho to je):</label>
-                    <select id="mNRZakaznici" class="form-control select2-zakaznici" multiple="multiple" style="width:100%;">
+                    <select id="mEditReqZakaznici" class="form-control select2-zakaznici" multiple="multiple" style="width:100%;">
                         <?php
-                        $z_res = @mysqli_query($conn, "SELECT id, nazev FROM zakaznici ORDER BY nazev ASC");
-                        if ($z_res) {
-                            while($z = mysqli_fetch_assoc($z_res)) {
+                        $z_res3 = @mysqli_query($conn, "SELECT id, nazev FROM zakaznici ORDER BY nazev ASC");
+                        if ($z_res3) {
+                            while($z = mysqli_fetch_assoc($z_res3)) {
                                 echo "<option value='".$z['id']."'>".htmlspecialchars($z['nazev'])."</option>";
                             }
                         }
@@ -238,13 +238,17 @@ if ($conn_akt_check) {
         });
 
         // Inicializace Select2 pro zákazníky (umožňuje vybrat více a psát nové)
-        $('.select2-zakaznici').select2({
-            dropdownParent: $('#mNR'),
-            tags: true,
-            placeholder: "-- Vyberte ze seznamu nebo napište nového --",
-            createTag: function (params) {
-                return { id: params.term, text: params.term, newTag: true }
-            }
+// Inicializace Select2 pro zákazníky (umožňuje vybrat více a psát nové) - Univerzální pro všechny modály
+        $('.select2-zakaznici').each(function() {
+            var modalId = $(this).closest('.modal').attr('id');
+            $(this).select2({
+                dropdownParent: $('#' + modalId),
+                tags: true,
+                placeholder: "-- Vyberte ze seznamu nebo napište nového --",
+                createTag: function (params) {
+                    return { id: params.term, text: params.term, newTag: true }
+                }
+            });
         });
 
         $('#mNRSave').on('click', function() {
