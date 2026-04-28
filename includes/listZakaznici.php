@@ -34,7 +34,7 @@ if (!$result) {
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4 bg-light p-3 rounded shadow-sm">
         <h2 class="mb-0"><i class="fa fa-users text-primary me-2"></i>Správa zákazníků</h2>
-        <button type="button" class="btn btn-primary btn-lg shadow" onclick="toggleAddRow()">
+        <button type="button" class="btn btn-primary btn-lg shadow" class="btn btn-primary btn-lg shadow btn-toggle-add-customer">
             <i class="fa fa-plus-circle me-1"></i> Nový zákazník
         </button>
     </div>
@@ -60,7 +60,7 @@ if (!$result) {
                         <button type="submit" form="form_new" name="save_customer" class="btn btn-success">
                             <i class="fa fa-save me-1"></i> Uložit
                         </button>
-                        <button type="button" class="btn btn-secondary" onclick="toggleAddRow()">
+                        <button type="button" class="btn btn-secondary" class="btn btn-secondary btn-toggle-add-customer">
                             <i class="fa fa-times"></i>
                         </button>
                     </div>
@@ -104,15 +104,3 @@ if (!$result) {
         </table>
     </div>
 </div>
-
-<script>
-    function toggleAddRow() {
-        var x = document.getElementById("addRow");
-        if (x.style.display === "none") {
-            x.style.display = "table-row";
-            setTimeout(function() { x.querySelector('input[name="nazev_novy"]').focus(); }, 100);
-        } else {
-            x.style.display = "none";
-        }
-    }
-</script>
