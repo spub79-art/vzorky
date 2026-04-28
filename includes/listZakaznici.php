@@ -2,10 +2,8 @@
 include_once("includes/db_connect.php");
 $current_page_url = "index.php?Zakaznik=1";
 
-// --- LOGIKA ZPRACOVÁNÍ (INSERT/UPDATE) ---
 if (isset($_POST['save_customer'])) {
     $nazev = mysqli_real_escape_string($conn, $_POST['nazev_novy']);
-    // OPRAVA: Tabulka se jmenuje zakaznici
     mysqli_query($conn, "INSERT INTO zakaznici (nazev) VALUES ('$nazev')");
     echo "<script>window.location.href='$current_page_url';</script>";
 }
@@ -13,12 +11,10 @@ if (isset($_POST['save_customer'])) {
 if (isset($_POST['update_zakaznik'])) {
     $id = (int)$_POST['id'];
     $nazev = mysqli_real_escape_string($conn, $_POST['nazev']);
-    // OPRAVA: Tabulka se jmenuje zakaznici
     mysqli_query($conn, "UPDATE zakaznici SET nazev = '$nazev' WHERE id = $id");
     echo "<script>window.location.href='$current_page_url';</script>";
 }
 
-// OPRAVA: Správný název tabulky a vazba přes pozadavky_zakaznici
 $query = "SELECT z.*, COUNT(pz.id_pozadavek) as pocet_pozadavku 
           FROM zakaznici z 
           LEFT JOIN pozadavky_zakaznici pz ON z.id = pz.id_zakaznik 
@@ -34,7 +30,7 @@ if (!$result) {
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4 bg-light p-3 rounded shadow-sm">
         <h2 class="mb-0"><i class="fa fa-users text-primary me-2"></i>Správa zákazníků</h2>
-        <button type="button" class="btn btn-primary btn-lg shadow" class="btn btn-primary btn-lg shadow btn-toggle-add-customer">
+        <button type="button" class="btn btn-primary btn-lg shadow btn-toggle-add-customer">
             <i class="fa fa-plus-circle me-1"></i> Nový zákazník
         </button>
     </div>
@@ -60,7 +56,7 @@ if (!$result) {
                         <button type="submit" form="form_new" name="save_customer" class="btn btn-success">
                             <i class="fa fa-save me-1"></i> Uložit
                         </button>
-                        <button type="button" class="btn btn-secondary" class="btn btn-secondary btn-toggle-add-customer">
+                        <button type="button" class="btn btn-secondary btn-toggle-add-customer">
                             <i class="fa fa-times"></i>
                         </button>
                     </div>
