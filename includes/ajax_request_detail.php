@@ -7,6 +7,7 @@ if (!isset($_POST['id'])) exit;
 $id_pozadavek = (int)$_POST['id'];
 
 $is_adm = (!empty($_SESSION['adm']) && $_SESSION['adm'] == 1);
+$current_uid = $_SESSION['uid'] ?? 0;
 
 // 1. Načtení detailu požadavku
 $q_req = mysqli_query($conn, "SELECT p.*, s.nazev AS surovina_nazev, cs.nazev as status_nazev, cs.barva_hex 
@@ -52,7 +53,7 @@ if ($q_off) {
 <div class="row" style="margin: 0;">
 
     <div class="col-md-4 rd-left-col">
-        <h2 class="rd-header-title">
+        <h2 class="rd-header-title" style="flex-wrap: wrap; gap: 10px;">
             <span><?= htmlspecialchars($req['surovina_nazev']) ?></span>
             <small class="rd-header-id">#<?= $req['id'] ?> (zadáno: <?= date('j.n.Y', strtotime($req['datumPozadavek'])) ?>)</small>
         </h2>
@@ -81,6 +82,8 @@ if ($q_off) {
                 <?php foreach($history_req as $h):
                     $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
                     $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
+                    // ZMĚNA: Umožníme mazat/upravovat i vlastní systémové zprávy
+                    $can_delete = ($h['id_user'] == $current_uid || $is_adm);
 
                     $icon = 'glyphicon-cog text-muted';
                     if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
@@ -105,6 +108,12 @@ if ($q_off) {
                         <div style="color: #777; font-size: 10.5px; margin-bottom: 2px;">
                             <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 3px;"></i>
                             <?= htmlspecialchars($h['jmeno_user']) ?> &bull; <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>
+                            <?php if ($can_delete): ?>
+                                <span style="float: right;">
+                                    <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
+                                    <i class="glyphicon glyphicon-remove text-danger btn-delete-history" data-id="<?= $h['id'] ?>" title="Smazat poznámku" style="cursor: pointer; font-size: 10px;"></i>
+                                </span>
+                            <?php endif; ?>
                         </div>
                         <div style="padding-left: 14px; <?= $is_system ? 'color: #555;' : 'color: #222; font-weight: 500;' ?>">
                             <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?>><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
@@ -152,8 +161,8 @@ if ($q_off) {
                     <div class="col-md-6" style="margin-bottom: 20px;">
                         <div class="rd-offer-card" style="background-color: <?= $bg_color ?>; border-top-color: <?= $border_color ?>; opacity: <?= $opacity ?>;">
 
-                            <div class="rd-offer-header">
-                                <div>
+                            <div class="rd-offer-header" style="flex-wrap: wrap;">
+                                <div style="margin-bottom: 10px;">
                                     <h4 class="rd-offer-vendor">
                                         <?= htmlspecialchars($off['dodavatel_nazev']) ?>
                                         <span class="rd-offer-id">(#<?= $off['id'] ?>)</span>
@@ -162,7 +171,7 @@ if ($q_off) {
                                         <?= htmlspecialchars($off['status_nazev']) ?>
                                     </span>
                                 </div>
-                                <div class="rd-offer-price-col">
+                                <div class="rd-offer-price-col" style="text-align: left; width: 100%;">
                                     <div class="rd-offer-price-main">
                                         <?= number_format($off['cena_nabidka'], 2, ',', ' ') ?> <?= htmlspecialchars($off['mena']) ?>
                                     </div>
@@ -224,7 +233,7 @@ if ($q_off) {
                                     <div class="rd-offer-files-head">
                                         <i class="glyphicon glyphicon-paperclip"></i> Přiložené soubory
                                     </div>
-                                    <div class="rd-offer-files-body">
+                                    <div class="rd-offer-files-body" style="word-wrap: break-word;">
                                         <?php if (!empty($files_tds)): ?>
                                             <div class="rd-file-cat-tds"><strong>TDS (Specifikace):</strong><br>
                                                 <?php foreach(array_unique($files_tds) as $f):
@@ -278,6 +287,8 @@ if ($q_off) {
                                     <?php foreach ($history_off[$off['id']] as $h):
                                         $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
                                         $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
+                                        // ZMĚNA: Umožníme mazat/upravovat i vlastní systémové zprávy
+                                        $can_delete = ($h['id_user'] == $current_uid || $is_adm);
 
                                         $icon = 'glyphicon-cog text-muted';
                                         if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
@@ -302,6 +313,12 @@ if ($q_off) {
                                             <div style="color: #777; font-size: 10.5px; margin-bottom: 2px;">
                                                 <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 3px;"></i>
                                                 <?= htmlspecialchars($h['jmeno_user']) ?> &bull; <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>
+                                                <?php if ($can_delete): ?>
+                                                    <span style="float: right;">
+                                                        <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
+                                                        <i class="glyphicon glyphicon-remove text-danger btn-delete-history" data-id="<?= $h['id'] ?>" title="Smazat poznámku" style="cursor: pointer; font-size: 10px;"></i>
+                                                    </span>
+                                                <?php endif; ?>
                                             </div>
                                             <div style="padding-left: 14px; <?= $is_system ? 'color: #555;' : 'color: #222; font-weight: 500;' ?>">
                                                 <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?>><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>

@@ -648,14 +648,15 @@ if ($result) {
         });
     });
 
-    // JS PRO ODLOŽENÍ A OŽIVENÍ
+    // JS PRO ODLOŽENÍ
     $(document).on('click', '.btn-postpone-req', function(e) {
         e.stopPropagation();
         var reqId = $(this).data('id');
-        sysConfirm(
-            "Opravdu chcete tento požadavek ODLOŽIT k ledu?<br>Zmizí z aktuální nástěnky, ale přes tlačítko 'Zamítnuté / Odložené' půjde kdykoliv znovu oživit.",
-            function() {
-                $.post('includes/ajax_set_req_status.php', { id: reqId, status: 8 }, function(r) {
+        // ZMĚNA: Voláme sysPrompt místo sysConfirm, aby se ukázalo textové pole
+        sysPrompt(
+            "Opravdu chcete tento požadavek ODLOŽIT k ledu?<br>Zmizí z nástěnky, ale půjde kdykoliv znovu oživit.",
+            function(reason) {
+                $.post('includes/ajax_set_req_status.php', { id: reqId, status: 8, poznamka: reason }, function(r) {
                     if(r.trim() === "OK") safeReload(); else sysAlert(r, "danger");
                 });
             },
@@ -664,15 +665,16 @@ if ($result) {
         );
     });
 
+    // JS PRO OŽIVENÍ
     $(document).on('click', '.btn-revive-req', function(e) {
         e.stopPropagation();
         var reqId = $(this).data('id');
-        sysConfirm(
-            "Chcete tento požadavek OŽIVIT a vrátit ho zpět mezi aktivní k řešení?",
-            function() {
-                $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1 }, function(r) {
+        sysPrompt(
+            "OŽIVENÍ POŽADAVKU<br>Napište kolegům krátký důvod oživení:",
+            function(reason) {
+                $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1, poznamka: reason }, function(r) {
                     if(r.trim() === "OK") {
-                        showRejected = false; // Automaticky zruší filtr KO, aby byl požadavek vidět
+                        showRejected = false; // Automaticky zruší filtr KO
                         safeReload();
                     } else {
                         sysAlert(r, "danger");
