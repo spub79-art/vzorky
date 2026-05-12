@@ -50,6 +50,9 @@ if ($q_off) {
 }
 ?>
 
+<!-- SKRYTÉ ID PRO JAVASCRIPT (Aby věděl, co má po editaci překreslit) -->
+<input type="hidden" id="currentReqDetailId" value="<?= $id_pozadavek ?>">
+
 <div class="row" style="margin: 0;">
 
     <div class="col-md-4 rd-left-col">
@@ -82,7 +85,7 @@ if ($q_off) {
                 <?php foreach($history_req as $h):
                     $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
                     $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
-                    // ZMĚNA: Umožníme mazat/upravovat i vlastní systémové zprávy
+                    // Umožníme mazat/upravovat i vlastní systémové zprávy
                     $can_delete = ($h['id_user'] == $current_uid || $is_adm);
 
                     $icon = 'glyphicon-cog text-muted';
@@ -287,7 +290,6 @@ if ($q_off) {
                                     <?php foreach ($history_off[$off['id']] as $h):
                                         $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
                                         $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
-                                        // ZMĚNA: Umožníme mazat/upravovat i vlastní systémové zprávy
                                         $can_delete = ($h['id_user'] == $current_uid || $is_adm);
 
                                         $icon = 'glyphicon-cog text-muted';

@@ -746,55 +746,7 @@ if ($result) {
             }
         });
 
-        $(document).on('click', '.btn-delete-history', function() {
-            $('#mDeleteHistoryId').val($(this).data('id'));
-            $('#mDeleteHistoryModal').modal('show');
-        });
-
-        $('#mDeleteHistorySave').on('click', function() {
-            var btn = $(this);
-            var id = $('#mDeleteHistoryId').val();
-
-            btn.prop('disabled', true).text('Mažu...');
-
-            $.post('includes/ajax_delete_comment.php', { id: id }, function(r) {
-                if (r.trim() === "OK") {
-                    $('#mDeleteHistoryModal').modal('hide');
-                    btn.prop('disabled', false).text('Ano, smazat');
-                    safeReload();
-                } else {
-                    if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
-                    btn.prop('disabled', false).text('Ano, smazat');
-                }
-            });
-        });
-
-        $(document).on('click', '.btn-edit-history', function() {
-            $('#mEditHistoryId').val($(this).data('id'));
-            var txt = $('<textarea />').html($(this).data('text')).text();
-            $('#mEditHistoryText').val(txt);
-            $('#mEditHistoryModal').modal('show');
-        });
-
-        $('#mEditHistorySave').on('click', function() {
-            var id = $('#mEditHistoryId').val();
-            var text = $('#mEditHistoryText').val().trim();
-            if (!text) return sysAlert("Text nesmí být prázdný.", "warning");
-
-            var btn = $(this);
-            btn.prop('disabled', true).text('Ukládám...');
-
-            $.post('includes/ajax_edit_comment.php', { id: id, text: text }, function(r) {
-                if (r.trim() === "OK") {
-                    $('#mEditHistoryModal').modal('hide');
-                    btn.prop('disabled', false).text('Uložit');
-                    safeReload();
-                } else {
-                    if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
-                    btn.prop('disabled', false).text('Uložit');
-                }
-            });
-        });
+        
 
 
         $(document).on('click', '.btn-edit-offer', function() {

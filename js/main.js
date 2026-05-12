@@ -2,7 +2,6 @@
 // GLOBÁLNÍ SYSTÉMOVÉ HLÁŠKY (Náhrada alert / confirm)
 // ==========================================
 
-// Funkce, která zajistí, že modál vždy existuje, ať jsme na jakékoliv stránce
 function ensureSystemModal() {
     if ($('#mSystemAlert').length === 0) {
         $('body').append(
@@ -37,11 +36,9 @@ window.sysAlert = function(message, type) {
     $('#mSystemAlert').modal('show');
 };
 
-// ZMĚNA: Přidány parametry btnText a btnClass pro úpravu modálu podle akce
 window.sysConfirm = function(message, callback, btnText = 'Ano, smazat', btnClass = 'btn-danger') {
     ensureSystemModal();
 
-    // Změníme barvu hlavičky podle barvy tlačítka
     var headerBg = '#d9534f';
     if (btnClass.indexOf('success') !== -1) headerBg = '#5cb85c';
     if (btnClass.indexOf('warning') !== -1) headerBg = '#f0ad4e';
@@ -60,11 +57,12 @@ window.sysConfirm = function(message, callback, btnText = 'Ano, smazat', btnClas
 
     $('#btnSysConfirmYes').off('click').on('click', function() {
         $('#mSystemAlert').modal('hide');
-        if (typeof callback === 'function') callback();
+        setTimeout(function() {
+            if (typeof callback === 'function') callback();
+        }, 400);
     });
 };
 
-// NOVÉ: Prompt pro vyžádání textu (např. při odložení)
 window.sysPrompt = function(message, callback, btnText = 'Uložit', btnClass = 'btn-primary') {
     ensureSystemModal();
 
@@ -87,7 +85,6 @@ window.sysPrompt = function(message, callback, btnText = 'Uložit', btnClass = '
     $('#mSystemAlertFooter').html(btns);
     $('#mSystemAlert').modal('show');
 
-    // Focus na textové pole po zobrazení modálu
     setTimeout(function(){ $('#sysPromptInput').focus(); }, 400);
 
     $('#btnSysPromptYes').off('click').on('click', function() {
@@ -97,17 +94,29 @@ window.sysPrompt = function(message, callback, btnText = 'Uložit', btnClass = '
             return;
         }
         $('#mSystemAlert').modal('hide');
-        if (typeof callback === 'function') callback(val);
+        setTimeout(function() {
+            if (typeof callback === 'function') callback(val);
+        }, 400);
     });
 };
 
+function refreshAfterHistoryChange() {
+    if (($('#mReqDetail').hasClass('in') || $('#mReqDetail').is(':visible')) && $('#currentReqDetailId').length > 0) {
+        var openReqId = $('#currentReqDetailId').val();
+        if (openReqId) {
+            $.post('includes/ajax_request_detail.php', { id: openReqId }, function(data) {
+                $('#mReqDetailContent').html(data);
+            });
+        }
+    } else {
+        $('#board-container').load(window.location.href + ' #board-container > *', function() {
+            if (typeof applyFilters === "function") applyFilters();
+        });
+    }
+}
 
 $(document).ready(function() {
 
-    // ==========================================
-    // 1. KNIHOVNA SUROVIN
-    // ==========================================
-    // Zobrazení tlačítka pro uložení surovin při jakékoliv změně v inputech
     $(document).on('input change', '.table-suroviny input', function() {
         $('#saveSurovinyContainer').slideDown(300);
     });
@@ -154,9 +163,6 @@ $(document).ready(function() {
         }
     });
 
-    // ==========================================
-    // 2. SPRÁVA ZÁKAZNÍKŮ
-    // ==========================================
     $(document).on('click', '.btn-toggle-add-customer', function() {
         var row = $("#addRow");
         if (row.is(":hidden")) {
@@ -167,9 +173,6 @@ $(document).ready(function() {
         }
     });
 
-    // ==========================================
-    // 3. SPRÁVA DODAVATELŮ
-    // ==========================================
     $(document).on('click', '.btn-add-dodavatel', function() {
         $('#modal-loader').show();
         $('#modal-dynamic-content').html('');
@@ -204,33 +207,19 @@ $(document).ready(function() {
         });
     });
 
-    // ==========================================
-    // 4. GLOBÁLNÍ HLADKÉ MAZÁNÍ (AJAX)
-    // ==========================================
     $(document).on('click', '.btn-delete-ajax', function(e) {
         e.preventDefault();
-
         var btn = $(this);
         var row = btn.closest('tr');
-
-        // Priorita: 1. Atribut data-confirm, 2. starý onclick confirm, 3. výchozí text
         var confirmText = btn.data('confirm') || "Opravdu chcete tuto položku smazat?";
-        var onclickAttr = btn.attr('onclick');
-        if (!btn.data('confirm') && onclickAttr && onclickAttr.indexOf("confirm('") !== -1) {
-            confirmText = onclickAttr.split("confirm('")[1].split("')")[0];
-        }
 
-        // Tady pro standardní mazání nepředáváme další parametry, takže se uplatní výchozí červené "Ano, smazat"
         sysConfirm(confirmText, function() {
             var originalHtml = btn.html();
             btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
 
-            var ajaxUrl = "";
-            if (btn.is('a') && btn.attr('href')) {
-                ajaxUrl = btn.attr('href').replace(/&redirect=[a-zA-Z0-9_]+/, '');
-            } else {
-                ajaxUrl = 'includes/delete_logic.php?table=' + btn.data('table') + '&id=' + btn.data('id');
-            }
+            var ajaxUrl = (btn.is('a') && btn.attr('href'))
+                ? btn.attr('href').replace(/&redirect=[a-zA-Z0-9_]+/, '')
+                : 'includes/delete_logic.php?table=' + btn.data('table') + '&id=' + btn.data('id');
 
             $.get(ajaxUrl, function(response) {
                 if (response.trim() === "OK") {
@@ -244,9 +233,114 @@ $(document).ready(function() {
                 btn.prop('disabled', false).html(originalHtml);
             });
         });
-
-        // Vyčistíme onclick, aby se nepletl do cesty
         btn.removeAttr('onclick');
     });
 
+    // MAZÁNÍ OMYLEM VLOŽENÉ NABÍDKY
+    $(document).on('click', '.btn-delete-offer-ajax', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = $(this).data('id');
+        sysConfirm("Opravdu chcete smazat tuto chybně vloženou nabídku?", function() {
+            $.post('includes/delete_logic.php?table=pozadavky_nabidky&id=' + id, function(r) {
+                if(r.trim() === "OK") safeReload(); else sysAlert(r, "warning");
+            });
+        });
+    });
+
+    // OPRAVA PINGNUTÍ NÁKUPU (OKOK modál -> sysPrompt)
+    $(document).on('click', '.btn-ping-purchasing', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var reqId = $(this).data('id');
+        var sur = $(this).data('sur');
+
+        sysPrompt("Vyžádat další nabídku k surovině <b>" + sur + "</b>.<br>Napište Nákupu, co přesně potřebujete (jiné balení, lepší certifikát...):", function(note) {
+            var originalBtn = $('.btn-ping-purchasing[data-id="'+reqId+'"]');
+            originalBtn.removeClass('glyphicon-bell text-info').addClass('glyphicon-refresh spinning text-muted');
+
+            $.post('includes/ajax_ping_purchasing.php', { id: reqId, surovina: sur, poznamka: note }, function(r) {
+                if (r.trim() === "OK") {
+                    originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
+                    setTimeout(function() { safeReload(); }, 1500);
+                } else {
+                    sysAlert(r, "danger");
+                    originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-bell text-info');
+                }
+            });
+        }, "Odeslat požadavek", "btn-info");
+    });
+
+    $('#mNNSave').on('click', function() {
+        var mode = $('#mNN').attr('data-mode');
+        var targetScript = (mode === 'edit') ? 'includes/ajax_update_offer.php' : 'includes/ajax_add_offer.php';
+        var d = $('#mNNDod').val(), c = $('#mNNCena').val(), id = $('#mNNId').val();
+
+        // ZMĚNA: Cena už není povinná
+        if(!d) { sysAlert("Vyplňte prosím dodavatele.", "warning"); return; }
+
+        var finalNote = $('#mNNPozn').val().trim();
+        var dopravaVal = $('#mNNDoprava').val();
+
+        if (dopravaVal) {
+            var dCena = (dopravaVal === 'custom') ? $('#mNNDopravaCustom').val() : dopravaVal;
+            if (dCena) { finalNote = "[Dopravné: " + dCena + " Kč/MJ]\n" + finalNote; }
+        }
+
+        $.post(targetScript, {
+            id_nabidka: (mode === 'edit' ? id : 0),
+            id_pozadavek: (mode === 'add' ? id : 0),
+            dodavatel_raw: d,
+            cena: c, // Může být prázdná
+            mena: $('#mNNMena').val() || 'CZK',
+            moq_qty: $('#mNNMoqQty').val(),
+            moq_mj: $('#mNNMoqMj').val(),
+            poznamka_nakup: finalNote
+        }, function(r) {
+            if(r.trim() == "OK") { $('#mNN').modal('hide'); safeReload(); }
+            else { sysAlert(r, "danger"); }
+        });
+    });
+
+    $(document).on('click', '.btn-edit-history', function(e) {
+        e.stopPropagation();
+        $('#mEditHistoryId').val($(this).data('id'));
+        var txt = $('<textarea />').html($(this).data('text')).text();
+        $('#mEditHistoryText').val(txt);
+        $('#mEditHistoryModal').modal('show');
+    });
+
+    $('#mEditHistorySave').off('click').on('click', function() {
+        var id = $('#mEditHistoryId').val();
+        var text = $('#mEditHistoryText').val().trim();
+        if (!text) return sysAlert("Text nesmí být prázdný.", "warning");
+
+        var btn = $(this);
+        btn.prop('disabled', true).text('Ukládám...');
+
+        $.post('includes/ajax_edit_comment.php', { id: id, text: text }, function(r) {
+            if (r.trim() === "OK") {
+                $('#mEditHistoryModal').modal('hide');
+                btn.prop('disabled', false).text('Uložit');
+                setTimeout(refreshAfterHistoryChange, 400);
+            } else {
+                sysAlert(r, "danger");
+                btn.prop('disabled', false).text('Uložit');
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-delete-history', function(e) {
+        e.stopPropagation();
+        var id = $(this).data('id');
+        sysConfirm("Opravdu chcete trvale smazat tuto poznámku z historie?", function() {
+            $.post('includes/ajax_delete_comment.php', { id: id }, function(r) {
+                if (r.trim() === "OK") {
+                    refreshAfterHistoryChange();
+                } else {
+                    sysAlert(r, "danger");
+                }
+            });
+        });
+    });
 });
