@@ -73,6 +73,14 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
         </button>
     <?php endif; ?>
 
+    <?php
+    // Popelnice se ukáže jen nákupu/adminovi a pouze pokud u nabídky ještě není žádná další historie (soubory, komentáře, schvalování)
+    if (($is_orders || $is_adm) && empty($history_off)): ?>
+        <button class="btn btn-xs btn-block btn-danger btn-delete-offer-ajax" data-id="<?= $p_id ?>" title="Smazat chybně vloženou nabídku" style="margin-top: 2px;">
+            <i class="glyphicon glyphicon-trash"></i> SMAZAT OMYL
+        </button>
+    <?php endif; ?>
+
     <?php if (in_array($p_status_id, [10, 4]) && ($is_vyvoj || $is_adm)): ?>
         <?php if ($has_lab): ?>
             <button class="btn btn-xs btn-block btn-success btn-wf-direct" data-id="<?= $p_id ?>" data-status="6">TEST OK</button>

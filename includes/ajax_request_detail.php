@@ -50,7 +50,6 @@ if ($q_off) {
 }
 ?>
 
-<!-- SKRYTÉ ID PRO JAVASCRIPT (Aby věděl, co má po editaci překreslit) -->
 <input type="hidden" id="currentReqDetailId" value="<?= $id_pozadavek ?>">
 
 <div class="row" style="margin: 0;">
@@ -58,7 +57,23 @@ if ($q_off) {
     <div class="col-md-4 rd-left-col">
         <h2 class="rd-header-title" style="flex-wrap: wrap; gap: 10px;">
             <span><?= htmlspecialchars($req['surovina_nazev']) ?></span>
-            <small class="rd-header-id">#<?= $req['id'] ?> (zadáno: <?= date('j.n.Y', strtotime($req['datumPozadavek'])) ?>)</small>
+            <?php
+            // Najdeme, kdo požadavek založil, přímo z historie
+            $zadavatel = "Neznámý uživatel";
+            if (!empty($history_req)) {
+                // Projdeme historii odzadu (nejstarší záznam)
+                $reverse_hist = array_reverse($history_req);
+                foreach ($reverse_hist as $hr) {
+                    if ($hr['typ_zaznamu'] == 'zalozeni') {
+                        $zadavatel = $hr['jmeno_user'];
+                        break;
+                    }
+                }
+            }
+            ?>
+            <small class="rd-header-id" style="display: block; margin-top: 5px; width: 100%;">
+                #<?= $req['id'] ?> &bull; Zadal/a: <strong><?= htmlspecialchars($zadavatel) ?></strong> &bull; <?= date('j.n.Y', strtotime($req['datumPozadavek'])) ?>
+            </small>
         </h2>
 
         <div class="rd-badges-wrapper">
