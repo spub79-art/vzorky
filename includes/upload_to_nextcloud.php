@@ -86,8 +86,29 @@ function process_files($input_name, $type_tag, $folder_url) {
             continue;
         }
 
+        // 1. OCHRANA PROTI PŘEKROČENÍ LIMITU SERVERU A CHYBÁM PHP
+        $fileError = $_FILES[$input_name]['error'][$key];
+        if ($fileError !== UPLOAD_ERR_OK) {
+            $err_msg = "Neznámá chyba";
+            if ($fileError == UPLOAD_ERR_INI_SIZE || $fileError == UPLOAD_ERR_FORM_SIZE) $err_msg = "Soubor je na tento server příliš velký";
+            $errors[] = "$name (Nenahráno: $err_msg)";
+            continue;
+        }
+
         $tempPath = $_FILES[$input_name]['tmp_name'][$key];
-        $full_url = $folder_url . rawurlencode($name);
+        $fileSize = filesize($tempPath);
+
+        // 2. OCHRANA PROTI NULOVÝM SOUBORŮM
+        if ($fileSize === 0) {
+            $errors[] = "$name (Soubor je prázdný nebo poškozený)";
+            continue;
+        }
+
+        // 3. VYČIŠTĚNÍ NÁZVU (Ochrana proti pádu cURL kvůli divným znakům)
+        // Zbavíme se háčků, čárek a mezer, jinak se to na síti může ztratit
+        $safe_name = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', basename($name));
+
+        $full_url = $folder_url . rawurlencode($safe_name);
 
         $fh = fopen($tempPath, 'r');
         $ch = curl_init();
@@ -95,19 +116,24 @@ function process_files($input_name, $type_tag, $folder_url) {
         curl_setopt($ch, CURLOPT_USERPWD, NC_USER . ":" . NC_PASS);
         curl_setopt($ch, CURLOPT_PUT, true);
         curl_setopt($ch, CURLOPT_INFILE, $fh);
-        curl_setopt($ch, CURLOPT_INFILESIZE, filesize($tempPath));
+        curl_setopt($ch, CURLOPT_INFILESIZE, $fileSize);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60); // Přidán timeout, aby to "neumřelo" po cestě
 
-        curl_exec($ch);
+        $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
         curl_close($ch);
         fclose($fh);
 
-        if ($httpCode >= 200 && $httpCode < 300) {
-            $uploaded_db_strings[] = $name . '~' . $type_tag;
-            $existing_files[] = $name;
+        // 4. BEZPEČNÁ VALIDACE VÝSLEDKU
+        if ($curlErr) {
+            $errors[] = "$safe_name (Chyba spojení na disk: $curlErr)";
+        } elseif ($httpCode >= 200 && $httpCode < 300) {
+            $uploaded_db_strings[] = $safe_name . '~' . $type_tag;
+            $existing_files[] = $safe_name;
         } else {
-            $errors[] = "$name (Chyba $httpCode)";
+            $errors[] = "$safe_name (Disk vrátil chybu $httpCode)";
         }
     }
 }

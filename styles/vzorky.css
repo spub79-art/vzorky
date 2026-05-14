@@ -581,3 +581,13 @@ tbody tr td.poznamka {
 	font-size: 11px !important;
 	padding: 2px 5px !important;
 }
+/* Efekt pro urgentní blesk (hover glow a zvětšení) */
+.btn-inline-comment[data-urgent="1"] {
+	transition: all 0.2s ease-in-out !important;
+}
+
+.btn-inline-comment[data-urgent="1"]:hover {
+	color: #ff0000 !important; /* Zářivější červená při najetí */
+	text-shadow: 0 0 10px rgba(217, 83, 79, 0.8); /* Červený "glow" efekt okolo */
+	transform: scale(1.2); /* Mírné zvětšení ikonky */
+}

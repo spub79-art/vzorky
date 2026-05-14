@@ -15,28 +15,19 @@ function getUniqueColor($id, $is_spread = true) {
     );
 }
 
+function renderBadges($row) { ?>
+    <div style="display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px;">
+        <?php if(!empty($row['bio'])): ?><span class="badge" style="background-color:#28a745; font-size:8px; padding: 2px 4px;">BIO</span><?php endif; ?>
+        <?php if(!empty($row['vegan'])): ?><span class="badge" style="background-color:#17a2b8; font-size:8px; padding: 2px 4px;">VGN</span><?php endif; ?>
+        <?php if(!empty($row['bezlepek'])): ?><span class="badge" style="background-color:#ffc107; color:#000; font-size:8px; padding: 2px 4px;">BEZ LEPKU</span><?php endif; ?>
 
-// Pomocné funkce pro vykreslování prvků na nástěnce
+        <?php if(!empty($row['kosher'])): ?><span class="badge" style="background-color:#6f42c1; font-size:8px; padding: 2px 4px;">KOSHER</span><?php endif; ?>
 
-function renderBadges($row) {
-    if ($row['priorita'] == 1) echo '<span class="label label-danger req-badge"><i class="glyphicon glyphicon-flash"></i> URGENT</span>';
-    if ($row['bio'] == 1) echo '<span class="label label-success req-badge">BIO</span>';
-    // ZMĚNA: BL -> BEZ LEPKU
-    if ($row['bezlepek'] == 1) echo '<span class="label label-warning req-badge">BEZ LEPKU</span>';
-    if ($row['vegan'] == 1) echo '<span class="label label-success req-badge">VEGAN</span>';
-    if ($row['kosher'] == 1) echo '<span class="label rd-badge-kosher req-badge">KOSHER</span>';
-    if ($row['halal'] == 1) echo '<span class="label rd-badge-halal req-badge">HALAL</span>';
-}
+        <?php if(!empty($row['halal'])): ?><span class="badge" style="background-color:#009688; font-size:8px; padding: 2px 4px;">HALAL</span><?php endif; ?>
 
-function getPhaseName($phase) {
-    switch ($phase) {
-        case 1: return "1. VÝBĚR";
-        case 2: return "2. DOKUMENTY";
-        case 3: return "3. TESTOVÁNÍ";
-        default: return "NEZNÁMÁ FÁZE";
-    }
-}
-
+        <?php if(!empty($row['priorita']) && $row['priorita'] == 1): ?><span class="badge" style="background-color:#d9534f; font-size:8px; padding: 2px 4px;">URGENT</span><?php endif; ?>
+    </div>
+<?php }
 // =========================================================================
 // UNIVERZÁLNÍ ZÁPIS DO HISTORIE POŽADAVKU (UNIFIED TIMELINE)
 // =========================================================================

@@ -21,12 +21,23 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
     $has_spec = count($spec_files) > 0;
     $has_lab = count($lab_files) > 0;
 
+    // Zjistíme, zda k nabídce existuje uživatelská aktivita (komentář nebo soubor)
+    $has_user_activity = false;
+    if (!empty($history_off)) {
+        foreach($history_off as $h) {
+            if (in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni', 'soubor'])) {
+                $has_user_activity = true;
+                break;
+            }
+        }
+    }
+
     $needs_action = false;
     if ($is_adm) {
         $needs_action = true;
     } elseif ($is_orders) {
         if ($filter_phase == 2 && (($p_status_id == 3 && !$has_spec) || in_array($p_status_id, [9, 8, 11]))) $needs_action = true;
-        if (!$has_lab && in_array($p_status_id, [10, 4, 8, 11])) $needs_action = true;
+        if (!$has_lab && in_array($p_status_id, [12, 13, 10, 4, 8, 11])) $needs_action = true;
     } elseif ($is_quality) {
         if ($p_status_id == 12 && $has_spec) $needs_action = true;
     } elseif ($is_vyvoj) {
@@ -71,14 +82,11 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
         <button class="btn btn-xs btn-block btn-info btn-edit-offer" data-id="<?= $p_id ?>" data-dodavatel="<?= htmlspecialchars($p[0]) ?>" data-cena="<?= $p[1] ?>" data-moq-qty="<?= $p_moq_qty ?>" data-moq-mj="<?= $p_moq_mj ?>" data-poznamka="">
             <i class="glyphicon glyphicon-pencil"></i> UPRAVIT CENU
         </button>
-    <?php endif; ?>
-
-    <?php
-    // Popelnice se ukáže jen nákupu/adminovi a pouze pokud u nabídky ještě není žádná další historie (soubory, komentáře, schvalování)
-    if (($is_orders || $is_adm) && empty($history_off)): ?>
-        <button class="btn btn-xs btn-block btn-danger btn-delete-offer-ajax" data-id="<?= $p_id ?>" title="Smazat chybně vloženou nabídku" style="margin-top: 2px;">
-            <i class="glyphicon glyphicon-trash"></i> SMAZAT OMYL
-        </button>
+        <?php if (!$has_user_activity): ?>
+            <button class="btn btn-xs btn-block btn-danger btn-delete-offer-ajax" data-id="<?= $p_id ?>" title="Smazat chybně vloženou nabídku" style="margin-top: 2px;">
+                <i class="glyphicon glyphicon-trash"></i> SMAZAT OMYL
+            </button>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if (in_array($p_status_id, [10, 4]) && ($is_vyvoj || $is_adm)): ?>
@@ -134,10 +142,10 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
 
             <div class="offer-title-row">
                 <div class="offer-title-group">
-        <span class="offer-title" title="<?= htmlspecialchars($p[0]) ?>">
-            <span class="text-muted" style="font-size: 1em; margin-right: 4px;">#<?= $p_id ?></span>
-            <?= htmlspecialchars($p[0]) ?>
-        </span>
+                    <span class="offer-title" title="<?= htmlspecialchars($p[0]) ?>">
+                        <span class="text-muted" style="font-size: 1em; margin-right: 4px;">#<?= $p_id ?></span>
+                        <?= htmlspecialchars($p[0]) ?>
+                    </span>
                     <div class="offer-files-row">
                         <?= $tds_badge ?>
                         <?= $coa_badge ?>
@@ -150,8 +158,10 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     $mena = $p[2];
 
                     $dopravne = 0;
+                    if (!empty($p[15]) && preg_match('/\[Dopravné:\s*([0-9.,]+)\s*Kč\/MJ\]/ui', $p[15], $m)) {
+                        $dopravne = (float)str_replace(',', '.', $m[1]);
+                    }
 
-                    // PŘIDÁNO: Přepočet i pro USD
                     $kurz_eur = defined('CNB_EUR_RATE') ? CNB_EUR_RATE : 25.10;
                     $kurz_usd = defined('CNB_USD_RATE') ? CNB_USD_RATE : 23.50;
 
@@ -209,14 +219,10 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                 </div>
             <?php endif; ?>
 
-            <?php // ======================================================== ?>
-            <?php // VYKRESLENÍ SJEDNOCENÉ ČASOVÉ OSY (Kompaktní design) ?>
-            <?php // ======================================================== ?>
             <?php if (!empty($history_off)): ?>
                 <div class="offer-sys-msg" style="margin-top: 6px; padding: 4px 6px; background: #fafafa; border: 1px solid #e3e3e3; border-radius: 3px; max-height: 120px; overflow-y: auto;">
                     <?php
                     $zobrazeno_off_hist = array_slice($history_off, 0, 5);
-
                     foreach($zobrazeno_off_hist as $h):
                         $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
                         $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
@@ -230,23 +236,14 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                             else $icon = 'glyphicon-share-alt text-primary';
                         }
                         if ($h['typ_zaznamu'] == 'soubor') $icon = 'glyphicon-file text-info';
+                        if (!$is_system) $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
 
-                        if (!$is_system) {
-                            $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
-                        }
-
-                        $text_style = '';
-                        if ($is_urgent_msg) {
-                            $text_style = 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;';
-                        }
+                        $text_style = $is_urgent_msg ? 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;' : '';
                         ?>
                         <div style="font-size: 11px; line-height: 1.3; margin-bottom: 4px; <?= $is_system ? 'color: #666;' : 'color: #333;' ?>">
                             <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 2px;"></i>
                             [<?= htmlspecialchars($h['jmeno_user']) ?> - <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>]:
-
-                            <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?>><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
-
-                            <?php // PŘIDÁNO: Editační tlačítko (tužka) vedle křížku ?>
+                            <span style="<?= $text_style ?>"><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
                             <?php if ($can_delete): ?>
                                 <span style="float: right; margin-top: 1px;">
                                     <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
@@ -255,7 +252,6 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
-
                     <?php if (count($history_off) > 5): ?>
                         <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px; border-top: 1px dashed #ddd; padding-top: 2px;">
                             ... a dalších <?= count($history_off) - 5 ?> starších záznamů (viz detail)
@@ -264,12 +260,12 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                 </div>
             <?php endif; ?>
 
-            <div class="chat-flex-container">
-                <input type="text" class="form-control inline-comment-text" data-id="<?= $p_id ?>" data-type="nabidka" placeholder="Napsat k nabídce...">
-                <button class="btn btn-warning btn-urgent btn-inline-comment" data-id="<?= $p_id ?>" data-type="nabidka" data-urgent="1" title="Odeslat jako URGENTNÍ">
+            <div class="chat-flex-container" style="display: flex; gap: 4px; align-items: center; margin-top: 8px;">
+                <button class="btn btn-link btn-inline-comment" data-id="<?= $p_id ?>" data-type="nabidka" data-urgent="1" title="Odeslat jako URGENTNÍ" style="padding: 0 8px; color: #d9534f; font-size: 16px; text-decoration: none;">
                     <i class="glyphicon glyphicon-flash"></i>
                 </button>
-                <button class="btn btn-default btn-send btn-inline-comment" data-id="<?= $p_id ?>" data-type="nabidka" data-urgent="0" title="Odeslat">
+                <input type="text" class="form-control inline-comment-text" data-id="<?= $p_id ?>" data-type="nabidka" placeholder="Napsat k nabídce..." style="height: 30px; font-size: 11px; flex: 1;">
+                <button class="btn btn-default btn-send btn-inline-comment" data-id="<?= $p_id ?>" data-type="nabidka" data-urgent="0" title="Odeslat" style="padding: 2px 10px; height: 30px;">
                     <i class="glyphicon glyphicon-send text-primary"></i>
                 </button>
             </div>

@@ -205,7 +205,7 @@ if ($result) {
                         $badge_text_color = getContrastColor($row['color_bg']);
                         ?>
 
-                        <div class="<?= $card_classes ?>" data-req-id="<?= $row['id'] ?>" data-req-name="<?= htmlspecialchars(strtolower($row['surovina_nazev'])) ?>" style="background-color: <?= $card_bg ?>; border-top-color: <?= $border_top_color ?>;">
+                        <div class="<?= $card_classes ?>" data-req-id="<?= $row['id'] ?>" data-req-name="<?= htmlspecialchars(strtolower($row['surovina_nazev'])) ?>" data-urgent="<?= $row['priorita'] ?>" style="background-color: <?= $card_bg ?>; border-top-color: <?= $border_top_color ?>;">
 
                             <div class="req-header">
                                 <div class="req-title-row btn-open-detail" data-id="<?= $row['id'] ?>" style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#337ab7'" onmouseout="this.style.color=''">
@@ -362,12 +362,12 @@ if ($result) {
                                 <?php endif; ?>
 
                                 <?php if (!$is_total_cancel): ?>
-                                    <div class="chat-flex-container">
-                                        <input type="text" class="form-control inline-comment-text" data-id="<?= $row['id'] ?>" data-type="pozadavek" placeholder="Napsat poznámku k zadání...">
-                                        <button class="btn btn-warning btn-urgent btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="1" title="Odeslat jako URGENTNÍ">
+                                    <div class="chat-flex-container" style="display: flex; gap: 4px; align-items: center; margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;">
+                                        <button class="btn btn-link btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="1" title="Odeslat jako URGENTNÍ" style="padding: 0 8px; color: #d9534f; font-size: 18px; text-decoration: none; opacity: 1;">
                                             <i class="glyphicon glyphicon-flash"></i>
                                         </button>
-                                        <button class="btn btn-default btn-send btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="0" title="Odeslat">
+                                        <input type="text" class="form-control inline-comment-text" data-id="<?= $row['id'] ?>" data-type="pozadavek" placeholder="Napsat k zadání (požadavku)..." style="height: 30px; font-size: 11px; flex: 1; border-color: #e0e0e0;">
+                                        <button class="btn btn-default btn-send btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="0" title="Odeslat" style="padding: 2px 10px; height: 30px;">
                                             <i class="glyphicon glyphicon-send text-primary"></i>
                                         </button>
                                     </div>
@@ -435,6 +435,7 @@ if ($result) {
 
     var showRejected = false;
     var showOnlyMyTasks = false;
+    var showUrgentOnly = false;
     var currentSearchFilter = '';
 
     var cur = { id: 0, st: 0, hasLab: false };
@@ -468,8 +469,11 @@ if ($result) {
                     matchesMyTasks = false;
                 }
             }
-
-            if (matchesSearch && matchesRejected && matchesMyTasks) {
+            var matchesUrgent = true;
+            if (showUrgentOnly && card.data('urgent') != 1) {
+                matchesUrgent = false;
+            }
+            if (matchesSearch && matchesRejected && matchesMyTasks && matchesUrgent) {
                 card.show();
 
                 if (showOnlyMyTasks) {
@@ -505,6 +509,11 @@ if ($result) {
             var el = $(this);
             if (this.scrollHeight > 66) el.addClass('can-expand'); else el.removeClass('can-expand');
         });
+        if(showUrgentOnly) {
+            $('#btnToggleUrgent').html('<i class="glyphicon glyphicon-flash text-white"></i> Zrušit filtr URGENT').addClass('btn-danger').removeClass('btn-default');
+        } else {
+            $('#btnToggleUrgent').html('<i class="glyphicon glyphicon-flash text-danger"></i> Jen URGENTNÍ').removeClass('btn-danger').addClass('btn-default');
+        }
     }
 
     function safeReload() {
@@ -562,41 +571,40 @@ if ($result) {
 
     $(document).on('click', '.btn-ping-purchasing', function(e) {
         e.preventDefault();
-        e.stopPropagation();
-        var btn = $(this);
-        $('#pingReqId').val(btn.data('id'));
-        $('#pingSurRaw').val(btn.data('sur'));
-        $('#pingSurName').text(btn.data('sur'));
-        $('#mPingPurchasing').modal('show');
+        e.stopImmediatePropagation(); // Zabije probublání kliknutí do detailu
+
+        var reqId = $(this).data('id');
+        var surName = $(this).data('sur');
+
+        sysPrompt(
+            "VYŽÁDAT DALŠÍ NABÍDKU OD NÁKUPU<br>Napište Nákupu, co přesně mají dohledat (např. 'potřebujeme jiný původ', 'jiné balení', 'lepší cena' atd.):",
+            function(reason) {
+                var originalBtn = $('.btn-ping-purchasing[data-id="'+reqId+'"]');
+                originalBtn.removeClass('glyphicon-bell text-info').addClass('glyphicon-refresh spinning text-muted');
+
+                // Odesíláme ID, surovinu a nově i POZNÁMKU
+                $.post('includes/ajax_ping_purchasing.php', { id: reqId, surovina: surName, poznamka: reason }, function(r) {
+                    if (r.trim() === "OK") {
+                        safeReload();
+                    } else {
+                        if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
+                        originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-bell text-info');
+                    }
+                });
+            },
+            "Odeslat požadavek Nákupu",
+            "btn-info"
+        );
     });
 
-    $('#btnConfirmPing').on('click', function() {
-        var reqId = $('#pingReqId').val();
-        var sur = $('#pingSurRaw').val();
-        var modalBtn = $(this);
+    // POZOR: Blok kódu začínající $('#btnConfirmPing').on('click', function() { ... })
+    // můžeš úplně smazat, sysPrompt už si to tlačítko na odeslání řeší sám uvnitř!
 
-        var originalBtn = $('.btn-ping-purchasing[data-id="'+reqId+'"]');
-        modalBtn.prop('disabled', true).text('Odesílám...');
-        originalBtn.removeClass('glyphicon-bell text-info').addClass('glyphicon-refresh spinning text-muted');
 
-        $.post('includes/ajax_ping_purchasing.php', { id: reqId, surovina: sur }, function(r) {
-            if (r.trim() === "OK") {
-                $('#mPingPurchasing').modal('hide');
-                modalBtn.prop('disabled', false).text('Ano, odeslat');
-                originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
-                setTimeout(function() { safeReload(); }, 1500);
-            } else {
-                if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
-                modalBtn.prop('disabled', false).text('Ano, odeslat');
-                originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-bell text-info');
-            }
-        });
-    });
 
     $(document).on('click', '.btn-urge-task', function(e) {
         e.preventDefault();
-        e.stopImmediatePropagation();
-
+        e.stopImmediatePropagation(); // <-- TADY ZMĚNA
         var btn = $(this);
         $('#mUrgeReqId').val(btn.data('id'));
         $('#mUrgeSurRaw').val(btn.data('sur'));
@@ -746,7 +754,7 @@ if ($result) {
             }
         });
 
-        
+
 
 
         $(document).on('click', '.btn-edit-offer', function() {
@@ -1066,5 +1074,9 @@ if ($result) {
             btn.prop('disabled', false).text('Potvrdit schválení');
             safeReload();
         });
+    });
+    $(document).on('click', '#btnToggleUrgent', function() {
+        showUrgentOnly = !showUrgentOnly;
+        applyFilters();
     });
 </script>
