@@ -13,44 +13,52 @@ $is_cumil = (!empty($_SESSION['cumil']) && $_SESSION['cumil'] == 1);
 
 $last_change_time = file_exists('last_change.txt') ? file_get_contents('last_change.txt') : time();
 
-$sql = "SELECT p.*, s.nazev AS surovina_nazev, 
+// ==============================================================================
+// 1. ČISTÝ DOTAZ NA POŽADAVKY
+// ==============================================================================
+$sql_req = "SELECT p.*, s.nazev AS surovina_nazev, 
         (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ') 
          FROM pozadavky_zakaznici pz 
          JOIN zakaznici z ON pz.id_zakaznik = z.id 
          WHERE pz.id_pozadavek = p.id) as zakaznici_seznam,
          (SELECT GROUP_CONCAT(pz.id_zakaznik SEPARATOR ',') 
          FROM pozadavky_zakaznici pz 
-         WHERE pz.id_pozadavek = p.id) as zakaznici_ids,
-         
-        GROUP_CONCAT(CONCAT(
-            IFNULL(d.nazev, 'Neznámý'), '|', 
-            IFNULL(pn.cena_nabidka, '0'), '|', 
-            IFNULL(pn.mena, 'CZK'), '|', 
-            IFNULL(pn.id, '0'), '|', 
-            IFNULL(cs.barva_hex, '#ccc'), '|', 
-            IFNULL(pn.vzorek_dorazil, ''), '|', 
-            IFNULL(pn.id, '0'), '|', 
-            IFNULL(pn.id_status, '0'), '|', 
-            IFNULL(pn.updated_at, ''), '|', 
-            IFNULL(pn.poznamka_cena, ''), '|', 
-            IFNULL(pn.poznamka_vzorek, ''), '|', 
-            IFNULL(pn.vzorek_objednan, ''), '|', 
-            IFNULL(pn.link_dokumentace, ''), '|', 
-            IFNULL(pn.seznam_souboru, ''), '|', 
-            IFNULL(pn.sarze, ''), '|', 
-            IFNULL(pn.pozadovane_mnozstvi, ''), '|',
-            IFNULL(pn.moq_mnozstvi, ''), '|',
-            IFNULL(pn.moq_mj, 'kg'), '|',
-            IFNULL(pn.poznamka_nakup, '')
-        ) SEPARATOR ';;') as nabidky_raw
+         WHERE pz.id_pozadavek = p.id) as zakaznici_ids
         FROM pozadavky p 
         LEFT JOIN suroviny s ON p.id_surovina = s.id 
-        LEFT JOIN pozadavky_nabidky pn ON pn.id_pozadavek = p.id
-        LEFT JOIN dodavatele d ON pn.id_dodavatel = d.id
-        LEFT JOIN ciselnik_statusu cs ON pn.id_status = cs.id
-        GROUP BY p.id HAVING p.id_status != 6 ORDER BY p.datumPozadavek DESC";
+        WHERE p.id_status != 6 ORDER BY p.datumPozadavek DESC";
 
-$result = mysqli_query($conn, $sql);
+$res_req = mysqli_query($conn, $sql_req);
+$pozadavky = [];
+$req_ids = [];
+
+if ($res_req) {
+    while ($row = mysqli_fetch_assoc($res_req)) {
+        $row['nabidky_pole'] = [];
+        $pozadavky[$row['id']] = $row;
+        $req_ids[] = $row['id'];
+    }
+}
+
+// ==============================================================================
+// 2. ČISTÝ DOTAZ NA NABÍDKY (Asociativní pole!)
+// ==============================================================================
+if (!empty($req_ids)) {
+    $ids_str = implode(',', $req_ids);
+    $sql_off = "SELECT pn.*, d.nazev AS dodavatel_nazev, cs.barva_hex 
+                FROM pozadavky_nabidky pn
+                LEFT JOIN dodavatele d ON pn.id_dodavatel = d.id
+                LEFT JOIN ciselnik_statusu cs ON pn.id_status = cs.id
+                WHERE pn.id_pozadavek IN ($ids_str)";
+
+    $res_off = mysqli_query($conn, $sql_off);
+    if ($res_off) {
+        while ($off = mysqli_fetch_assoc($res_off)) {
+            $pozadavky[$off['id_pozadavek']]['nabidky_pole'][] = $off;
+        }
+    }
+}
+
 $f1 = $f2 = $f3 = [];
 
 $history_req = [];
@@ -66,65 +74,54 @@ if ($res_hist) {
     }
 }
 
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
+foreach ($pozadavky as $row) {
+    $p1_active = $p2_active = $p3_active = $has_any_active = false;
+    $p1_visible = $p2_visible = $p3_visible = false;
 
-        $p1_active = $p2_active = $p3_active = $has_any_active = false;
-        $p1_visible = $p2_visible = $p3_visible = false;
+    // Odloženo nebo zrušeno
+    $is_req_cancelled = in_array((int)$row['id_status'], [5, 7, 8]);
 
-        // Přidáno číslo 8 = Odloženo k ledu
-        $is_req_cancelled = in_array((int)$row['id_status'], [5, 7, 8]);
+    if (!empty($row['nabidky_pole'])) {
+        foreach ($row['nabidky_pole'] as $pts) {
+            if (empty($pts['id'])) continue;
 
-        if (!empty($row['nabidky_raw'])) {
-            foreach (explode(';;', $row['nabidky_raw']) as $o) {
-                $pts = explode('|', $o);
-                if (count($pts) < 8 || $pts[6] == '0') continue;
-                $s_id = (int)$pts[7];
-                if (!in_array($s_id, [5, 7, 8])) {
-                    $has_any_active = true;
+            $s_id = (int)$pts['id_status'];
+            if (!in_array($s_id, [5, 7, 8])) {
+                $has_any_active = true;
 
-                    if (in_array($s_id, [10, 4])) {
-                        $p3_active = true; $p3_visible = true;
-                    } elseif (in_array($s_id, [3, 8, 9, 11, 12, 13])) {
-                        $p2_active = true; $p2_visible = true;
-                    } else {
-                        $p1_active = true; $p1_visible = true;
-                    }
+                if (in_array($s_id, [10, 4])) {
+                    $p3_active = true; $p3_visible = true;
+                } elseif (in_array($s_id, [3, 8, 9, 11, 12, 13])) {
+                    $p2_active = true; $p2_visible = true;
                 } else {
-                    $p1_active = true;
+                    $p1_active = true; $p1_visible = true;
                 }
+            } else {
+                $p1_active = true;
             }
         }
+    }
 
-        if (!$has_any_active) {
-            $p1_active = true;
-            $row['buyer_must_act'] = !$is_req_cancelled;
-        } else {
-            $row['buyer_must_act'] = false;
-        }
+    if (!$has_any_active) {
+        $p1_active = true;
+        $row['buyer_must_act'] = !$is_req_cancelled;
+    } else {
+        $row['buyer_must_act'] = false;
+    }
 
-        $visible_phases = ($p1_visible ? 1 : 0) + ($p2_visible ? 1 : 0) + ($p3_visible ? 1 : 0);
-        $is_spread = ($visible_phases > 1);
-        $row['color_bg'] = getUniqueColor($row['id'], $is_spread);
+    $visible_phases = ($p1_visible ? 1 : 0) + ($p2_visible ? 1 : 0) + ($p3_visible ? 1 : 0);
+    $is_spread = ($visible_phases > 1);
+    $row['color_bg'] = getUniqueColor($row['id'], $is_spread);
 
-        if ($is_req_cancelled) {
-            $f1[] = $row;
-        } else {
-            if ($p1_active) $f1[] = $row;
-            if ($p2_active) $f2[] = $row;
-            if ($p3_active) $f3[] = $row;
-        }
+    if ($is_req_cancelled) {
+        $f1[] = $row;
+    } else {
+        if ($p1_active) $f1[] = $row;
+        if ($p2_active) $f2[] = $row;
+        if ($p3_active) $f3[] = $row;
     }
 }
 ?>
-
-<?php if ($is_orders || $is_adm): ?>
-    <div class="row" style="margin-bottom: 15px; padding: 0 15px;">
-        <button id="btnOpenExportModal" class="btn btn-primary" style="float: right;">
-            <i class="glyphicon glyphicon-list-alt"></i> Generátor "Co sháníme"
-        </button>
-    </div>
-<?php endif; ?>
 
 <div class="row" id="board-container">
     <?php
@@ -156,11 +153,10 @@ if ($result) {
 
                         $all_offers_for_this = [];
 
-                        if (!empty($row['nabidky_raw'])) {
-                            foreach(explode(';;', $row['nabidky_raw']) as $o) {
-                                $pts = explode('|', $o);
-                                if (count($pts) > 6 && $pts[6] != '0') {
-                                    $s_id = (int)$pts[7];
+                        if (!empty($row['nabidky_pole'])) {
+                            foreach($row['nabidky_pole'] as $pts) {
+                                if (!empty($pts['id'])) {
+                                    $s_id = (int)$pts['id_status'];
                                     $is_ko = in_array($s_id, [5, 7, 8]);
 
                                     $phase_of_offer = 1;
@@ -195,7 +191,7 @@ if ($result) {
                         $border_top_color = $is_total_cancel ? '#ccc' : ($is_grey ? '#d1d5da' : $row['color_bg']);
 
                         $all_ko = (!empty($all_offers_for_this));
-                        foreach ($all_offers_for_this as $pt) { if (!in_array((int)$pt[7], [5, 7, 8])) $all_ko = false; }
+                        foreach ($all_offers_for_this as $pt) { if (!in_array((int)$pt['id_status'], [5, 7, 8])) $all_ko = false; }
                         $card_classes = "req-card " . ($is_urgent ? 'req-card-urgent needs-my-action ' : '');
                         if ($is_total_cancel || ($col['id'] == 1 && $all_ko && !$is_urgent && empty($all_offers_for_this) == false)) {
                             $card_classes .= ' offer-rejected';
@@ -377,7 +373,7 @@ if ($result) {
 
                             <div class="req-body">
                                 <?php if ($is_urgent): ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p[6]] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
                                     <button class="btn btn-sm btn-block btn-warning btn-add-offer btn-search-offer" data-id="<?= $row['id'] ?>">
                                         <i class="glyphicon glyphicon-search"></i> DOHLEDAT DODAVATELE
                                     </button>
@@ -386,7 +382,7 @@ if ($result) {
                                         <?= $is_postponed ? 'Požadavek je odložen (Čeká se na lepší časy).' : ($is_total_cancel ? 'Požadavek byl zrušen.' : 'Čeká se na vložení nabídky...') ?>
                                     </div>
                                 <?php else: ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p[6]] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
                                     <?php if ($col['id'] == 3 && !$is_total_cancel): ?>
                                         <a href="technologie.php" class="btn btn-sm btn-block btn-primary btn-goto-lab">
                                             <i class="glyphicon glyphicon-flask"></i> PŘEJÍT DO LABORATOŘE
@@ -407,31 +403,9 @@ if ($result) {
 
 <?php include_once("boardModals.php"); ?>
 
-<div id="mEditHistoryModal" class="modal fade" role="dialog">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title"><i class="glyphicon glyphicon-pencil"></i> Upravit poznámku</h4>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="mEditHistoryId">
-                <textarea id="mEditHistoryText" class="form-control" rows="3"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
-                <button type="button" class="btn btn-primary" id="mEditHistorySave">Uložit</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
     window.manualRefreshHandling = true;
     var localLastChange = <?= $last_change_time ?? time() ?>;
-
-    const CNB_EUR_RATE = 25.10;
-    const CNB_USD_RATE = 23.50;
 
     var showRejected = false;
     var showOnlyMyTasks = false;
@@ -524,6 +498,12 @@ if ($result) {
         });
     }
 
+    // TADY BYLA TA CHYBA: Přidána obsluha pro #btnToggleMyTasks!
+    $(document).on('click', '#btnToggleMyTasks', function() {
+        showOnlyMyTasks = !showOnlyMyTasks;
+        applyFilters();
+    });
+
     $(document).on('click', '#btnToggleRejected', function() {
         showRejected = !showRejected;
         applyFilters();
@@ -531,6 +511,11 @@ if ($result) {
 
     $(document).on('input', '#searchInput', function() {
         currentSearchFilter = $(this).val();
+        applyFilters();
+    });
+
+    $(document).on('click', '#btnToggleUrgent', function() {
+        showUrgentOnly = !showUrgentOnly;
         applyFilters();
     });
 
@@ -571,7 +556,7 @@ if ($result) {
 
     $(document).on('click', '.btn-ping-purchasing', function(e) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // Zabije probublání kliknutí do detailu
+        e.stopImmediatePropagation();
 
         var reqId = $(this).data('id');
         var surName = $(this).data('sur');
@@ -582,7 +567,6 @@ if ($result) {
                 var originalBtn = $('.btn-ping-purchasing[data-id="'+reqId+'"]');
                 originalBtn.removeClass('glyphicon-bell text-info').addClass('glyphicon-refresh spinning text-muted');
 
-                // Odesíláme ID, surovinu a nově i POZNÁMKU
                 $.post('includes/ajax_ping_purchasing.php', { id: reqId, surovina: surName, poznamka: reason }, function(r) {
                     if (r.trim() === "OK") {
                         safeReload();
@@ -597,14 +581,9 @@ if ($result) {
         );
     });
 
-    // POZOR: Blok kódu začínající $('#btnConfirmPing').on('click', function() { ... })
-    // můžeš úplně smazat, sysPrompt už si to tlačítko na odeslání řeší sám uvnitř!
-
-
-
     $(document).on('click', '.btn-urge-task', function(e) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // <-- TADY ZMĚNA
+        e.stopImmediatePropagation();
         var btn = $(this);
         $('#mUrgeReqId').val(btn.data('id'));
         $('#mUrgeSurRaw').val(btn.data('sur'));
@@ -656,11 +635,9 @@ if ($result) {
         });
     });
 
-    // JS PRO ODLOŽENÍ
     $(document).on('click', '.btn-postpone-req', function(e) {
         e.stopPropagation();
         var reqId = $(this).data('id');
-        // ZMĚNA: Voláme sysPrompt místo sysConfirm, aby se ukázalo textové pole
         sysPrompt(
             "Opravdu chcete tento požadavek ODLOŽIT k ledu?<br>Zmizí z nástěnky, ale půjde kdykoliv znovu oživit.",
             function(reason) {
@@ -673,7 +650,6 @@ if ($result) {
         );
     });
 
-    // JS PRO OŽIVENÍ
     $(document).on('click', '.btn-revive-req', function(e) {
         e.stopPropagation();
         var reqId = $(this).data('id');
@@ -682,7 +658,7 @@ if ($result) {
             function(reason) {
                 $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1, poznamka: reason }, function(r) {
                     if(r.trim() === "OK") {
-                        showRejected = false; // Automaticky zruší filtr KO
+                        showRejected = false;
                         safeReload();
                     } else {
                         sysAlert(r, "danger");
@@ -753,9 +729,6 @@ if ($result) {
                 $('.btn-inline-comment[data-id="'+$(this).data('id')+'"][data-type="'+$(this).data('type')+'"][data-urgent="0"]').click();
             }
         });
-
-
-
 
         $(document).on('click', '.btn-edit-offer', function() {
             var b = $(this);
@@ -1074,9 +1047,5 @@ if ($result) {
             btn.prop('disabled', false).text('Potvrdit schválení');
             safeReload();
         });
-    });
-    $(document).on('click', '#btnToggleUrgent', function() {
-        showUrgentOnly = !showUrgentOnly;
-        applyFilters();
     });
 </script>

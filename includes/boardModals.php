@@ -31,8 +31,8 @@ if ($need_fetch) {
                     $usd_rate = (float)str_replace(',', '.', trim($parts[4]));
                 }
             }
-            // Uložíme do cache pro zbytek dne
-            file_put_contents($cache_file, json_encode(['date' => $today, 'eur' => $eur_rate, 'usd' => $usd_rate]));
+            // Uložíme do cache pro zbytek dne (Přidán zavináč proti Warningu s právy)
+            @file_put_contents($cache_file, json_encode(['date' => $today, 'eur' => $eur_rate, 'usd' => $usd_rate]));
         }
     } catch (Exception $e) {}
 }
@@ -327,6 +327,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mEditReq" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius: 12px; border: none;">
@@ -368,7 +369,6 @@ if ($need_fetch) {
                     </select>
                 </div>
                 <script>
-                    // Exkluzivní inicializace pro editaci, spustí se až po otevření okna
                     $(document).ready(function() {
                         $('#mEditReq').on('shown.bs.modal', function () {
                             $('#mEditReqZakaznici').select2({
@@ -416,6 +416,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mFullComments" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -431,6 +432,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mReqDetail" tabindex="-1">
     <div class="modal-dialog" style="width: 95%; max-width: 1400px;">
         <div class="modal-content" style="border-radius: 8px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
@@ -443,6 +445,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mOfferFiles" tabindex="-1" style="z-index: 9999;">
     <div class="modal-dialog modal-sm">
         <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
@@ -455,6 +458,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mQualityModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content">
@@ -477,6 +481,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mDuplicateWarning" tabindex="-1" role="dialog" style="z-index: 1060;">
     <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content">
@@ -492,47 +497,6 @@ if ($need_fetch) {
                 <button type="button" class="btn btn-default btn-block" id="btnDupGoTo">Zrušit a přejít na existující</button>
                 <button type="button" class="btn btn-success btn-block" id="btnDupAppend" style="margin-top: 5px;">Jen připojit zákazníky</button>
                 <button type="button" class="btn btn-warning btn-block" id="btnDupForce" style="margin-top: 5px;">Založit jako ÚPLNĚ NOVÝ</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="modal fade" id="mPingPurchasing" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-sm" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="background-color: #5bc0de; color: white;">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title"><i class="glyphicon glyphicon-bell"></i> Vyžádat nabídku</h4>
-            </div>
-            <div class="modal-body">
-                <p>Odeslat Nákupu upozornění, že potřebujete vyhledat další alternativu/nabídku pro surovinu <strong><span id="pingSurName"></span></strong>?</p>
-                <input type="hidden" id="pingReqId">
-                <input type="hidden" id="pingSurRaw">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
-                <button type="button" class="btn btn-info" id="btnConfirmPing">Ano, odeslat</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="modal fade" id="mCancelReqModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-sm" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="background-color: #d9534f; color: white;">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title"><i class="glyphicon glyphicon-trash"></i> Zrušit požadavek</h4>
-            </div>
-            <div class="modal-body">
-                <p>Opravdu chcete tento požadavek trvale zrušit (označit jako KO)?</p>
-                <input type="hidden" id="mCancelReqId">
-                <div class="form-group">
-                    <label>Důvod zrušení:</label>
-                    <textarea id="mCancelReqReason" class="form-control" rows="3" placeholder="Např.: Už surovinu nepotřebujeme..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Zpět</button>
-                <button type="button" class="btn btn-danger" id="mCancelReqSave">Zrušit požadavek</button>
             </div>
         </div>
     </div>
@@ -579,6 +543,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mDeleteHistoryModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content">
@@ -620,6 +585,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mHistorieSuroviny" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -634,6 +600,7 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="mSystemAlert" tabindex="-1" role="dialog" style="z-index: 100000;">
     <div class="modal-dialog modal-sm" role="document" style="margin-top: 15vh;">
         <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 15px 35px rgba(0,0,0,0.3);">
@@ -648,20 +615,45 @@ if ($need_fetch) {
         </div>
     </div>
 </div>
+
+<div class="feedback-btn-wrapper">
+    <button class="btn btn-primary btn-feedback" id="btnOpenFeedback">
+        <i class="glyphicon glyphicon-comment"></i> Nápady a úpravy
+        <span class="badge-pulse">!</span>
+    </button>
+</div>
+
+<div class="modal fade" id="mFeedback" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content feedback-modal-content">
+            <div class="modal-header feedback-modal-header">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff; opacity:0.8;">&times;</button>
+                <h4 class="modal-title feedback-modal-title"><i class="glyphicon glyphicon-comment"></i> Nápady a úpravy nástěnky</h4>
+            </div>
+            <div class="modal-body feedback-modal-body">
+                <div class="feedback-form-box">
+                    <textarea id="feedbackText" class="form-control feedback-textarea" rows="3" placeholder="Napadlo vás vylepšení? Narazili jste na chybu? Napište to sem..."></textarea>
+                    <div style="text-align: right;">
+                        <button class="btn btn-success btn-feedback-submit" id="btnSaveFeedback">Odeslat nápad</button>
+                    </div>
+                </div>
+                <div class="feedback-list-title">Historie úprav a nápadů:</div>
+                <div id="feedbackList" class="feedback-list-container">
+                    <div class="feedback-msg"><i class="glyphicon glyphicon-refresh spinning"></i> Načítám...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     $(document).ready(function() {
         // Kliknutí na modrý (TDS) nebo červený (COA) štítek na malé kartičce
         $(document).on('click', '.btn-open-files-modal', function(e) {
             e.preventDefault();
             var offerId = $(this).data('id');
-
-            // Zobrazíme "načítací" text
             $('#mOfferFilesContent').html('<div style="text-align:center; color:#999; padding: 20px;"><i class="glyphicon glyphicon-refresh spinning"></i> Načítám seznam...</div>');
-
-            // Otevřeme modál
             $('#mOfferFiles').modal('show');
-
-            // Zavoláme náš nový skript pro získání odkazů
             $.post('includes/ajax_offer_files_modal.php', { id: offerId }, function(data) {
                 $('#mOfferFilesContent').html(data);
             }).fail(function() {
@@ -669,18 +661,11 @@ if ($need_fetch) {
             });
         });
 
-        // ----------------------------------------------------
-        // ZMĚNA: Přidán JS pro vytvoření (uložení) nového požadavku
-        // ----------------------------------------------------
+        // Přidání požadavku
         $('#mAddReqSave').on('click', function() {
             var btn = $(this);
             var idSurovina = $('#mAddReqSurovina').val();
-
-            if (!idSurovina) {
-                alert("Musíte vybrat surovinu!");
-                return;
-            }
-
+            if (!idSurovina) { alert("Musíte vybrat surovinu!"); return; }
             btn.prop('disabled', true).text('Zakládám...');
 
             $.post('includes/ajax_add_request.php', {
@@ -692,7 +677,7 @@ if ($need_fetch) {
                 halal: $('#mAddReqHalal').is(':checked') ? 1 : 0,
                 priorita: $('#mAddReqPrio').val(),
                 poznamka: $('#mAddReqNote').val(),
-                zakaznik: $('#mAddReqZakaznik').val() // Předáváme zákazníka
+                zakaznik: $('#mAddReqZakaznik').val()
             }, function(r) {
                 if(r.trim() == "OK") {
                     $('#mAddReq').modal('hide');
@@ -702,6 +687,45 @@ if ($need_fetch) {
                     btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK');
                 }
             });
+        });
+
+        // Feedback modál akce
+        function loadFeedback() {
+            $.get('includes/ajax_feedback.php', function(data) {
+                $('#feedbackList').html(data);
+            }).fail(function() {
+                $('#feedbackList').html('<div class="alert alert-warning">Nepodařilo se načíst historii úprav.</div>');
+            });
+        }
+
+        $('#btnOpenFeedback').click(function() {
+            $('#mFeedback').modal('show');
+            loadFeedback();
+        });
+
+        $('#btnSaveFeedback').click(function() {
+            var text = $('#feedbackText').val().trim();
+            if(!text) { alert("Napište prosím text nápadu."); return; }
+            var btn = $(this); btn.prop('disabled', true).text('Odesílám...');
+            $.post('includes/ajax_feedback.php', { action: 'add', text: text }, function(r) {
+                if(r.trim() === "OK") {
+                    $('#feedbackText').val('');
+                    loadFeedback();
+                } else {
+                    alert(r);
+                }
+                btn.prop('disabled', false).text('Odeslat nápad');
+            });
+        });
+
+        $(document).on('click', '.btn-feedback-resolve', function() {
+            var id = $(this).data('id');
+            var txt = prompt("Důvod vyřešení / odpověď (např. 'Opraveno', 'Bude nasazeno zítra'):", "Vyřešeno");
+            if(txt !== null) {
+                $.post('includes/ajax_feedback.php', { action: 'resolve', id: id, reply: txt }, function(r) {
+                    if(r.trim() === "OK") { loadFeedback(); } else { alert(r); }
+                });
+            }
         });
     });
 </script>

@@ -1,13 +1,36 @@
 <?php
 function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter_phase, $req_color_hex = '#eee', $history_off = []) {
-    $p_id = $p[6];
-    $p_status_id = (int)$p[7];
-    $p_link = $p[12] ?? '';
-    $p_files_str = $p[13] ?? '';
-    $p_sarze = $p[14] ?? '';
+    // 100% CISTE PROPOJENI S DATABAZI - zadne ciselne indexy
+    $p_id = (int)($p['id'] ?? 0);
+    $p_status_id = (int)($p['id_status'] ?? 0);
+    $p_link = $p['link_dokumentace'] ?? '';
+    $p_files_str = $p['seznam_souboru'] ?? '';
+    $p_sarze = $p['sarze'] ?? '';
+    $p_moq_qty = $p['moq_mnozstvi'] ?? '0';
+    $p_moq_mj = $p['moq_mj'] ?? 'kg';
+    $vlozena_cena = (float)($p['cena_nabidka'] ?? 0);
+    $mena = $p['mena'] ?? 'CZK';
+    $dodavatel_nazev = $p['dodavatel_nazev'] ?? 'Neznámý';
+    $poznamka_nakup = $p['poznamka_nakup'] ?? '';
+    $id_resitel = (int)($p['id_resitel'] ?? 0);
 
-    $p_moq_qty = $p[16] ?? '0';
-    $p_moq_mj = $p[17] ?? 'kg';
+    // LOGIKA PRO PRAZDNOU NABIDKU ("Hledá se dodavatel...")
+    $current_uid = $_SESSION['uid'] ?? 0;
+    if (strpos($poznamka_nakup, '[Hledá se dodavatel]') !== false) {
+        $is_my_dummy = ($id_resitel == $current_uid || $is_adm || $is_orders);
+        ?>
+        <div class="offer-row <?= $is_my_dummy ? 'needs-my-action' : '' ?>" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: #2196f3; font-weight: bold;"><i class="glyphicon glyphicon-hourglass"></i> Hledá se dodavatel...</span>
+            <?php if ($is_my_dummy): ?>
+                <div>
+                    <button class="btn btn-xs btn-default btn-return-request" data-offer-id="<?= $p_id ?>">Vzdávám to</button>
+                    <button class="btn btn-xs btn-warning btn-edit-offer" data-id="<?= $p_id ?>" data-dodavatel="" data-cena="" data-mena="CZK" data-resitel="<?= $id_resitel ?>"><i class="glyphicon glyphicon-pencil"></i> Vložit</button>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+        return; // Dál už normální nabídku nekreslíme
+    }
 
     $spec_files = []; $lab_files = []; $other_files = [];
     foreach(explode('^', $p_files_str) as $f) {
@@ -79,7 +102,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
 
     ob_start();
     if (($is_orders || $is_adm) && in_array($p_status_id, [2, 3])): ?>
-        <button class="btn btn-xs btn-block btn-info btn-edit-offer" data-id="<?= $p_id ?>" data-dodavatel="<?= htmlspecialchars($p[0]) ?>" data-cena="<?= $p[1] ?>" data-moq-qty="<?= $p_moq_qty ?>" data-moq-mj="<?= $p_moq_mj ?>" data-poznamka="">
+        <button class="btn btn-xs btn-block btn-info btn-edit-offer" data-id="<?= $p_id ?>" data-dodavatel="<?= htmlspecialchars($dodavatel_nazev) ?>" data-cena="<?= $vlozena_cena ?>" data-moq-qty="<?= $p_moq_qty ?>" data-moq-mj="<?= $p_moq_mj ?>" data-poznamka="">
             <i class="glyphicon glyphicon-pencil"></i> UPRAVIT CENU
         </button>
         <?php if (!$has_user_activity): ?>
@@ -142,9 +165,9 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
 
             <div class="offer-title-row">
                 <div class="offer-title-group">
-                    <span class="offer-title" title="<?= htmlspecialchars($p[0]) ?>">
+                    <span class="offer-title" title="<?= htmlspecialchars($dodavatel_nazev) ?>">
                         <span class="text-muted" style="font-size: 1em; margin-right: 4px;">#<?= $p_id ?></span>
-                        <?= htmlspecialchars($p[0]) ?>
+                        <?= htmlspecialchars($dodavatel_nazev) ?>
                     </span>
                     <div class="offer-files-row">
                         <?= $tds_badge ?>
@@ -154,11 +177,8 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                 </div>
                 <div class="offer-price-box" style="text-align: right;">
                     <?php
-                    $vlozena_cena = (float)$p[1];
-                    $mena = $p[2];
-
                     $dopravne = 0;
-                    if (!empty($p[15]) && preg_match('/\[Dopravné:\s*([0-9.,]+)\s*Kč\/MJ\]/ui', $p[15], $m)) {
+                    if (!empty($poznamka_nakup) && preg_match('/\[Dopravné:\s*([0-9.,]+)\s*Kč\/MJ\]/ui', $poznamka_nakup, $m)) {
                         $dopravne = (float)str_replace(',', '.', $m[1]);
                     }
 
@@ -176,12 +196,12 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     $finalni_all_in = $cena_v_czk + $dopravne;
 
                     if ($is_vyvoj && !$is_adm): ?>
-                        <span class="offer-price" style="color: #2c3e50;" title="Finální cena vč. dopravy (přepočteno z <?= $mena ?>)">
+                        <span class="offer-price" style="color: #2c3e50;" title="Finální cena vč. dopravy (přepočteno z <?= htmlspecialchars($mena) ?>)">
                             <?= number_format($finalni_all_in, 2, ',', ' ') ?>&nbsp;CZK
                         </span>
                     <?php else: ?>
                         <span class="offer-price">
-                            <?= number_format($vlozena_cena, (floor($vlozena_cena) == $vlozena_cena ? 0 : 2), ',', ' ') ?>&nbsp;<?= $mena ?>
+                            <?= number_format($vlozena_cena, (floor($vlozena_cena) == $vlozena_cena ? 0 : 2), ',', ' ') ?>&nbsp;<?= htmlspecialchars($mena) ?>
                         </span>
                         <?php if ($is_adm): ?>
                             <div style="font-size: 10px; color: #95a5a6; margin-top: -2px;">
@@ -191,7 +211,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     <?php endif; ?>
 
                     <?php if ((float)$p_moq_qty > 0): ?>
-                        <div class="offer-moq" title="MOQ"><i class="glyphicon glyphicon-scale"></i> MOQ: <?= $p_moq_qty ?>&nbsp;<?= $p_moq_mj ?></div>
+                        <div class="offer-moq" title="MOQ"><i class="glyphicon glyphicon-scale"></i> MOQ: <?= htmlspecialchars($p_moq_qty) ?>&nbsp;<?= htmlspecialchars($p_moq_mj) ?></div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -208,7 +228,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     case 13: echo '<span class="text-primary"><i class="glyphicon glyphicon-apple"></i> Vývoj: Kontrola nutričních hodnot</span>'; break;
                     case 10: case 4: echo '<b style="color:#2980b9;"><i class="glyphicon glyphicon-flask"></i> TECHNOLOGICKÝ TEST</b>'; break;
                     case 2: echo '<span class="text-warning">Čeká na schválení ceny</span>'; break;
-                    default: echo '<span class="text-muted">'.$p[3].'</span>';
+                    default: echo '<span class="text-muted">ID Statusu: '.$p_status_id.'</span>';
                 }
                 ?>
             </div>
