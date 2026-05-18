@@ -217,7 +217,7 @@ foreach ($pozadavky as $row) {
                         <div class="<?= $card_classes ?>" data-req-id="<?= $row['id'] ?>" data-req-name="<?= htmlspecialchars(strtolower($row['surovina_nazev'])) ?>" data-urgent="<?= $row['priorita'] ?>" style="background-color: <?= $card_bg ?>; border-top-color: <?= $border_top_color ?>;">
 
                             <div class="req-header">
-                                <div class="req-title-row btn-open-detail" data-id="<?= $row['id'] ?>" style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#337ab7'" onmouseout="this.style.color=''">
+                                <div class="req-title-row btn-open-detail hover-text-primary" data-id="<?= $row['id'] ?>">
 
                                     <?php
                                     $date_created = strtotime($row['datumPozadavek']);
@@ -238,8 +238,8 @@ foreach ($pozadavky as $row) {
                                     <strong class="req-title <?= $status_class ?>" style="pointer-events: none; <?= $aging_style ?>">
                                         <?= htmlspecialchars($row['surovina_nazev']) ?>
                                         <span class="text-muted" style="font-weight:normal; font-size: 11px; margin-left: 5px; <?= $aging_style ? 'color:inherit;' : '' ?>">
-                                            (<?= date('j.n.', $date_created) ?>)
-                                        </span>
+                (<?= date('j.n.', $date_created) ?>)
+            </span>
                                         <?= $aging_icon ?>
                                     </strong>
 
@@ -302,8 +302,8 @@ foreach ($pozadavky as $row) {
                                         <?php endif; ?>
 
                                         <span class="req-id-badge <?= $status_class ?> no-detail-trigger" <?php if(!$is_total_cancel) echo "style='background-color: ".$row['color_bg']."; color: ".$badge_text_color.";'"; ?> title="Otevřít detail">
-                                            <i class="glyphicon glyphicon-zoom-in" style="font-size: 11px; margin-right: 2px;"></i><?= $row['id'] ?>
-                                        </span>
+                <i class="glyphicon glyphicon-zoom-in" style="font-size: 11px; margin-right: 2px;"></i><?= $row['id'] ?>
+            </span>
                                     </div>
                                 </div>
 
@@ -325,20 +325,12 @@ foreach ($pozadavky as $row) {
                                 <?php if (!empty($history_req[$row['id']])): ?>
                                     <div class="offer-sys-msg-container">
                                         <?php
-                                        $all_req_hist = $history_req[$row['id']];
-                                        $zobrazeno_req_hist = array_slice($all_req_hist, 0, 5);
+                                        // ZOBRAZENÍ VŠECH ZÁZNAMŮ (Akordeon Zoom to v CSS schová)
                                         $current_uid = $_SESSION['uid'] ?? 0;
-
-                                        foreach($zobrazeno_req_hist as $h) {
+                                        foreach($history_req[$row['id']] as $h) {
                                             renderHistoryRow($h, $is_adm, $current_uid);
                                         }
                                         ?>
-
-                                        <?php if (count($all_req_hist) > 5): ?>
-                                            <div class="history-more-link">
-                                                ... a dalších <?= count($all_req_hist) - 5 ?> starších záznamů (viz detail)
-                                            </div>
-                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
 

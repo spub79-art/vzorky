@@ -491,4 +491,35 @@ $(document).ready(function() {
             $.get('includes/check_changes.php', function(s) { if (s > localLastChange) { localLastChange = s; safeReload(); } });
         }
     }, 2000);
+// Obsluha kliknutí na box historie (NABÍDKY i POŽADAVKY)
+    $(document).on('click', '.offer-comments-wrapper, .offer-sys-msg-container', function(e) {
+
+        // 1. Ochrana kopírování
+        if (window.getSelection().toString().length > 0) {
+            return;
+        }
+
+        // 2. Ochrana tlačítek
+        if ($(e.target).closest('a, button, i, .btn, .chat-del-btn, .history-action-btn').length > 0) {
+            return;
+        }
+
+        var $this = $(this);
+        var isExpanded = $this.hasClass('is-expanded');
+
+        // 3. Zavřít ostatní
+        $('.offer-comments-wrapper.is-expanded, .offer-sys-msg-container.is-expanded').removeClass('is-expanded');
+
+        // 4. Rozbalit aktuální
+        if (!isExpanded) {
+            $this.addClass('is-expanded');
+        }
+    });
+
+    // 5. Automatické zavření klikem mimo
+    $(document).on('click', function(e) {
+        if ($(e.target).closest('.offer-comments-wrapper, .offer-sys-msg-container').length === 0) {
+            $('.offer-comments-wrapper.is-expanded, .offer-sys-msg-container.is-expanded').removeClass('is-expanded');
+        }
+    });
 });

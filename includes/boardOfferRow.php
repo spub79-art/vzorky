@@ -240,21 +240,14 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
             <?php endif; ?>
 
             <?php if (!empty($history_off)): ?>
-                <div class="offer-sys-msg-container">
+                <div class="offer-comments-wrapper">
                     <?php
-                    $zobrazeno_off_hist = array_slice($history_off, 0, 5);
+                    // ZOBRAZENÍ VŠECH ZÁZNAMŮ (Akordeon Zoom to v CSS schová)
                     $current_uid = $_SESSION['uid'] ?? 0;
-
-                    foreach($zobrazeno_off_hist as $h) {
+                    foreach($history_off as $h) {
                         renderHistoryRow($h, $is_adm, $current_uid);
                     }
                     ?>
-
-                    <?php if (count($history_off) > 5): ?>
-                        <div class="history-more-link">
-                            ... a dalších <?= count($history_off) - 5 ?> starších záznamů (viz detail)
-                        </div>
-                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
