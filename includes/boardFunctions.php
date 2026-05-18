@@ -92,4 +92,57 @@ function getStatusHtml($conn, $status_id) {
 
     return '<span class="badge" style="background-color: #999;">Neznámý stav</span>';
 }
+// =========================================================================
+// VYKRESLENÍ JEDNOHO ŘÁDKU HISTORIE (DRY PRINCIP)
+// =========================================================================
+function renderHistoryRow($h, $is_adm, $current_uid) {
+    $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
+    $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
+    $is_mine = ($current_uid > 0 && $h['id_user'] == $current_uid);
+    $can_delete = ($is_mine || $is_adm);
+
+    // Ikony podle typu záznamu
+    $icon = 'glyphicon-cog text-muted';
+    if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
+    if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';
+    if ($h['typ_zaznamu'] == 'soubor') $icon = 'glyphicon-file text-info';
+    if ($h['typ_zaznamu'] == 'status') {
+        if (in_array($h['nova_hodnota'], ['5', '7'])) $icon = 'glyphicon-ban-circle text-danger';
+        elseif (in_array($h['nova_hodnota'], ['6', '8'])) $icon = 'glyphicon-ok-sign text-success';
+        else $icon = 'glyphicon-share-alt text-primary';
+    }
+    if (!$is_system) {
+        $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
+    }
+
+    // Přiřazení čistých CSS tříd místo inline stylů
+    $row_class = $is_system ? 'sys-text' : 'usr-text';
+    if (isset($h['skryto']) && $h['skryto'] == 1) {
+        $row_class .= ' is-hidden';
+        $is_hidden = true;
+    } else {
+        $is_hidden = false;
+    }
+
+    $text_class = $is_urgent_msg ? 'history-urgent-text' : '';
+
+    ?>
+    <div class="history-row <?= $row_class ?>">
+        <i class="glyphicon <?= $icon ?> history-row-icon"></i>
+        [<?= htmlspecialchars($h['jmeno_user']) ?> - <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>]
+        <?= $is_hidden ? '<b class="text-danger" style="text-decoration: none;">(SKRYTO)</b>' : '' ?>:
+
+        <span class="<?= $text_class ?>" id="comment_text_<?= $h['id'] ?>"><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
+
+        <?php if ($can_delete && !$is_hidden): ?>
+            <span class="history-actions">
+                <?php if (!$is_system): ?>
+                    <i class="glyphicon glyphicon-pencil text-primary history-action-btn btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku"></i>
+                <?php endif; ?>
+                <i class="glyphicon glyphicon-remove text-danger history-action-btn btn-delete-history" data-id="<?= $h['id'] ?>" title="Skrýt záznam"></i>
+            </span>
+        <?php endif; ?>
+    </div>
+    <?php
+}
 ?>

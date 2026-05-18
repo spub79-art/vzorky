@@ -333,7 +333,7 @@ $(document).ready(function() {
     $(document).on('click', '.btn-delete-history', function(e) {
         e.stopPropagation();
         var id = $(this).data('id');
-        sysConfirm("Opravdu chcete trvale smazat tuto poznámku z historie?", function() {
+        sysConfirm("Opravdu chcete skrýt tento záznam pro ostatní uživatele?", function() {
             $.post('includes/ajax_delete_comment.php', { id: id }, function(r) {
                 if (r.trim() === "OK") {
                     refreshAfterHistoryChange();
@@ -341,6 +341,6 @@ $(document).ready(function() {
                     sysAlert(r, "danger");
                 }
             });
-        });
+        }, "Ano, skrýt", "btn-danger");
     });
 });

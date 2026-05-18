@@ -240,46 +240,18 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
             <?php endif; ?>
 
             <?php if (!empty($history_off)): ?>
-                <div class="offer-sys-msg" style="margin-top: 6px; padding: 4px 6px; background: #fafafa; border: 1px solid #e3e3e3; border-radius: 3px; max-height: 120px; overflow-y: auto;">
+                <div class="offer-sys-msg-container">
                     <?php
                     $zobrazeno_off_hist = array_slice($history_off, 0, 5);
-                    foreach($zobrazeno_off_hist as $h):
-                        $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
-                        $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
-                        $is_mine = (isset($_SESSION['uid']) && $h['id_user'] == $_SESSION['uid']);
-                        $can_delete = ($is_mine || $is_adm);
+                    $current_uid = $_SESSION['uid'] ?? 0;
 
-                        $icon = 'glyphicon-cog text-muted';
-                        if ($h['typ_zaznamu'] == 'status') {
-                            if (in_array($h['nova_hodnota'], ['5', '7'])) $icon = 'glyphicon-ban-circle text-danger';
-                            elseif (in_array($h['nova_hodnota'], ['6', '8'])) $icon = 'glyphicon-ok-sign text-success';
-                            else $icon = 'glyphicon-share-alt text-primary';
-                        }
-                        if ($h['typ_zaznamu'] == 'soubor') $icon = 'glyphicon-file text-info';
-                        if (!$is_system) $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
+                    foreach($zobrazeno_off_hist as $h) {
+                        renderHistoryRow($h, $is_adm, $current_uid);
+                    }
+                    ?>
 
-                        $text_style = $is_urgent_msg ? 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;' : '';
-
-                        $is_hidden = (isset($h['skryto']) && $h['skryto'] == 1);
-                        $hidden_style = $is_hidden ? 'opacity: 0.4; text-decoration: line-through;' : '';
-                        ?>
-                        <div style="font-size: 11px; line-height: 1.3; margin-bottom: 4px; <?= $is_system ? 'color: #666;' : 'color: #333;' ?> <?= $hidden_style ?>">
-                            <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 2px;"></i>
-                            [<?= htmlspecialchars($h['jmeno_user']) ?> - <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>]
-                            <?= $is_hidden ? '<b class="text-danger" style="text-decoration: none;">(SKRYTO)</b>' : '' ?>:
-
-                            <span style="<?= $text_style ?>"><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
-
-                            <?php if ($can_delete && !$is_hidden): ?>
-                                <span style="float: right; margin-top: 1px; text-decoration: none;">
-                                    <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
-                                    <i class="glyphicon glyphicon-remove text-danger btn-delete-history" data-id="<?= $h['id'] ?>" title="Skrýt záznam" style="cursor: pointer; font-size: 10px;"></i>
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
                     <?php if (count($history_off) > 5): ?>
-                        <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px; border-top: 1px dashed #ddd; padding-top: 2px;">
+                        <div class="history-more-link">
                             ... a dalších <?= count($history_off) - 5 ?> starších záznamů (viz detail)
                         </div>
                     <?php endif; ?>

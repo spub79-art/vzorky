@@ -323,53 +323,19 @@ foreach ($pozadavky as $row) {
                                 <?php endif; ?>
 
                                 <?php if (!empty($history_req[$row['id']])): ?>
-                                    <div class="offer-sys-msg" style="margin-top: 6px; padding: 4px 6px; background: #fafafa; border: 1px solid #e3e3e3; border-radius: 3px; max-height: 120px; overflow-y: auto;">
+                                    <div class="offer-sys-msg-container">
                                         <?php
                                         $all_req_hist = $history_req[$row['id']];
                                         $zobrazeno_req_hist = array_slice($all_req_hist, 0, 5);
+                                        $current_uid = $_SESSION['uid'] ?? 0;
 
-                                        foreach($zobrazeno_req_hist as $h):
-                                            $is_system = !in_array($h['typ_zaznamu'], ['komentar', 'komentar_urgentni']);
-                                            $is_urgent_msg = ($h['typ_zaznamu'] === 'komentar_urgentni');
-                                            $is_mine = (isset($_SESSION['uid']) && $h['id_user'] == $_SESSION['uid']);
-                                            // Povolení křížku pro vlastní a systémové záznamy
-                                            $can_delete = ($is_mine || $is_adm);
-
-                                            $icon = 'glyphicon-cog text-muted';
-                                            if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
-                                            if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';
-
-                                            if (!$is_system) {
-                                                $icon = $is_urgent_msg ? 'glyphicon-exclamation-sign text-danger' : 'glyphicon-pencil text-primary';
-                                            }
-
-                                            $text_style = '';
-                                            if ($is_urgent_msg) {
-                                                $text_style = 'color: #c9302c; font-weight: bold; background: #fff0f0; padding: 1px 4px; border-radius: 3px; border: 1px solid #f5c6c6;';
-                                            }
-
-                                            // Detekce a stylování pro administrátory
-                                            $is_hidden = (isset($h['skryto']) && $h['skryto'] == 1);
-                                            $hidden_style = $is_hidden ? 'opacity: 0.4; text-decoration: line-through;' : '';
-                                            ?>
-                                            <div style="font-size: 11px; line-height: 1.3; margin-bottom: 4px; <?= $is_system ? 'color: #666;' : 'color: #333;' ?> <?= $hidden_style ?>">
-                                                <i class="glyphicon <?= $icon ?>" style="font-size: 9px; margin-right: 2px;"></i>
-                                                [<?= htmlspecialchars($h['jmeno_user']) ?> - <?= date('j.n. H:i', strtotime($h['vytvoreno'])) ?>]
-                                                <?= $is_hidden ? '<b class="text-danger" style="text-decoration: none;">(SKRYTO)</b>' : '' ?>:
-
-                                                <span <?= $is_urgent_msg ? 'style="'.$text_style.'"' : '' ?> id="comment_text_<?= $h['id'] ?>"><?= nl2br(htmlspecialchars($h['text_hodnota'])) ?></span>
-
-                                                <?php if ($can_delete && !$is_hidden): ?>
-                                                    <span style="float: right; margin-top: 1px; text-decoration: none;">
-                                                        <i class="glyphicon glyphicon-pencil text-primary btn-edit-history" data-id="<?= $h['id'] ?>" data-text="<?= htmlspecialchars($h['text_hodnota'], ENT_QUOTES) ?>" title="Upravit poznámku" style="cursor: pointer; font-size: 10px; margin-right: 6px;"></i>
-                                                        <i class="glyphicon glyphicon-remove text-danger btn-delete-history" data-id="<?= $h['id'] ?>" title="Skrýt záznam" style="cursor: pointer; font-size: 10px;"></i>
-                                                    </span>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endforeach; ?>
+                                        foreach($zobrazeno_req_hist as $h) {
+                                            renderHistoryRow($h, $is_adm, $current_uid);
+                                        }
+                                        ?>
 
                                         <?php if (count($all_req_hist) > 5): ?>
-                                            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px; border-top: 1px dashed #ddd; padding-top: 2px;">
+                                            <div class="history-more-link">
                                                 ... a dalších <?= count($all_req_hist) - 5 ?> starších záznamů (viz detail)
                                             </div>
                                         <?php endif; ?>

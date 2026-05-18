@@ -591,3 +591,103 @@ tbody tr td.poznamka {
 	text-shadow: 0 0 10px rgba(217, 83, 79, 0.8); /* Červený "glow" efekt okolo */
 	transform: scale(1.2); /* Mírné zvětšení ikonky */
 }
+/* =========================================================
+   HISTORIE POŽADAVKŮ A NABÍDEK (Záznamy, komentáře)
+========================================================= */
+.history-row { font-size: 11px; line-height: 1.3; margin-bottom: 4px; }
+.history-row.sys-text { color: #666; }
+.history-row.usr-text { color: #333; }
+.history-row.is-hidden { opacity: 0.4; text-decoration: line-through; }
+
+.history-row-icon { font-size: 9px; margin-right: 2px; }
+
+.history-urgent-text {
+	color: #c9302c;
+	font-weight: bold;
+	background: #fff0f0;
+	padding: 1px 4px;
+	border-radius: 3px;
+	border: 1px solid #f5c6c6;
+}
+
+.history-actions { float: right; margin-top: 1px; text-decoration: none; }
+.history-action-btn { cursor: pointer; font-size: 10px; }
+.history-action-btn.btn-edit-history { margin-right: 6px; }
+
+.offer-sys-msg-container {
+	margin-top: 6px;
+	padding: 4px 6px;
+	background: #fafafa;
+	border: 1px solid #e3e3e3;
+	border-radius: 3px;
+	max-height: 120px;
+	overflow-y: auto;
+}
+
+.history-more-link {
+	font-size: 10px;
+	color: #999;
+	text-align: center;
+	margin-top: 4px;
+	border-top: 1px dashed #ddd;
+	padding-top: 2px;
+}
+/* =========================================================
+   MODERNÍ UNIVERZÁLNÍ MODÁLY A PRVKY (DRY PRINCIP)
+========================================================= */
+/* Obaly modálů */
+.modal-modern { border-radius: 12px; border: none !important; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; background: #fff; }
+.modal-modern.shadow-danger { box-shadow: 0 10px 30px rgba(217, 83, 79, 0.4); }
+.modal-modern.shadow-heavy { box-shadow: 0 15px 35px rgba(0,0,0,0.25); }
+
+/* Hlavičky modálů */
+.modal-header-modern { padding: 15px 20px; border-bottom: none; border-radius: 0; }
+.modal-header-modern .close { color: inherit; opacity: 0.8; text-shadow: none; margin-top: -2px; }
+.modal-header-modern .close:hover { opacity: 1; }
+.modal-header-modern .modal-title { font-weight: bold; }
+
+/* Barvy hlaviček */
+.header-primary { background-color: #337ab7; color: #fff; }
+.header-success { background-color: #5cb85c; color: #fff; }
+.header-success-dark { background-color: #28a745; color: #fff; }
+.header-warning { background-color: #f0ad4e; color: #fff; }
+.header-danger { background-color: #d9534f; color: #fff; }
+.header-info { background-color: #5bc0de; color: #fff; }
+.header-dark { background-color: #2c3e50; color: #fff; }
+.header-light { background-color: #f4f6f9; color: #333; border-bottom: 1px solid #ddd; }
+
+/* Těla a patičky modálů */
+.modal-body-modern { padding: 20px; }
+.modal-body-gray { background-color: #f4f6f9; padding: 0; }
+.modal-footer-modern { padding: 15px 20px; border-top: 1px solid #f5f5f5; }
+.modal-footer-flex { display: flex; justify-content: space-between; gap: 10px; }
+
+/* Tlačítka a inputy */
+.btn-modern { border-radius: 8px; font-weight: bold; }
+.btn-modern-tall { height: 40px; }
+.input-modern { border-radius: 8px; }
+.textarea-modern { border-radius: 8px; resize: none; }
+
+/* Vnitřní informační boxíky (např. pro šarže, zákazníky) */
+.box-modern { padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+.box-light { background: #fcfcfc; border: 1px solid #eee; }
+.box-dashed { background: #fcfcfc; border: 1px dashed #ced4da; margin-top: 15px; }
+.box-warning { background: #fff4e5; border: 1px solid #f0ad4e; }
+.box-success { background: #f8fff8; border: 1px solid #28a745; }
+
+/* Speciální rozměry a panely */
+.label-uppercase { text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 5px; }
+.modal-dialog-420 { width: 420px; max-width: 95%; margin: 30px auto; }
+.modal-dialog-1400 { width: 95%; max-width: 1400px; margin: 30px auto; }
+.margin-top-15vh { margin-top: 15vh; }
+
+.panel-modern { border-radius: 8px; overflow: hidden; margin-bottom: 5px; border: 1px solid #ddd; }
+.panel-heading-modern { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #fcfcfc; border-bottom: 1px solid #ddd; }
+.panel-title-modern { margin: 0; font-size: 13px; font-weight: bold; }
+.panel-body-modern { padding: 10px; }
+.btn-xs-modern { border-radius: 4px; }
+
+/* Skupiny inputů (Cena + Měna atd.) */
+.input-group-addon-transparent { padding: 0; border: none; border-radius: 0 8px 8px 0; background: transparent; }
+.input-group-addon-modern { border-radius: 0 8px 8px 0; background: #eee; }
+.select-currency-modern { border-radius: 0 8px 8px 0; border-left: 1px solid #ddd; background: #f0f7ff; color: #337ab7; font-weight: bold; width: 90px; box-shadow: none; }
