@@ -1,0 +1,494 @@
+// ==============================================================
+// HLAVNÍ LOGIKA PRO NÁSTĚNKU (Filtry, Akce, Modály)
+// ==============================================================
+
+// 1. STAVOVÝ OBJEKT PRO FILTRY
+var filters = {
+    search: '',
+    rejected: false,
+    myTasks: false,
+    urgent: false
+};
+
+var cur = { id: 0, st: 0, hasLab: false };
+
+// 2. HLAVNÍ FUNKCE FILTROVÁNÍ
+function applyFilters() {
+    var term = filters.search.toLowerCase().trim();
+    var cleanTerm = term.replace('#', '');
+
+    $('.req-card').each(function() {
+        var card = $(this);
+        var isRejected = card.hasClass('offer-rejected');
+
+        var id = card.data('req-id') ? card.data('req-id').toString() : '';
+        var name = card.data('req-name') ? card.data('req-name').toString() : '';
+
+        var matchesSearch = (term === '' || id.indexOf(cleanTerm) > -1 || name.indexOf(term) > -1);
+        var matchesRejected = (!isRejected || filters.rejected);
+        var matchesUrgent = (!filters.urgent || card.data('urgent') == 1);
+
+        var matchesMyTasks = true;
+        if (filters.myTasks) {
+            var cardNeedsAction = card.hasClass('needs-my-action');
+            var hasOfferNeedingAction = card.find('.offer-row.needs-my-action').length > 0;
+            matchesMyTasks = (cardNeedsAction || hasOfferNeedingAction);
+        }
+
+        if (matchesSearch && matchesRejected && matchesMyTasks && matchesUrgent) {
+            card.show();
+
+            card.find('.offer-row').each(function() {
+                var offerRow = $(this);
+                var offerIsRejected = offerRow.hasClass('offer-rejected');
+
+                if (filters.myTasks) {
+                    offerRow.toggle(offerRow.hasClass('needs-my-action'));
+                } else {
+                    if (offerIsRejected && !filters.rejected) {
+                        offerRow.hide();
+                    } else {
+                        offerRow.show();
+                    }
+                }
+            });
+
+        } else {
+            card.hide();
+        }
+    });
+
+    $('#btnToggleRejected')
+        .html(filters.rejected ? '<i class="glyphicon glyphicon-eye-close"></i> Skrýt KO' : '<i class="glyphicon glyphicon-eye-open"></i> Zamítnuté / Odložené')
+        .toggleClass('btn-danger', filters.rejected)
+        .toggleClass('btn-default', !filters.rejected);
+
+    $('#btnToggleMyTasks')
+        .html(filters.myTasks ? '<i class="glyphicon glyphicon-filter"></i> Zobrazit VŠE' : '<i class="glyphicon glyphicon-filter"></i> Jen k řešení')
+        .toggleClass('btn-primary', filters.myTasks)
+        .toggleClass('btn-default', !filters.myTasks);
+
+    $('#btnToggleUrgent')
+        .html(filters.urgent ? '<i class="glyphicon glyphicon-flash text-white"></i> Zrušit filtr URGENT' : '<i class="glyphicon glyphicon-flash text-danger"></i> Jen URGENTNÍ')
+        .toggleClass('btn-danger', filters.urgent)
+        .toggleClass('btn-default', !filters.urgent);
+
+    $('.offer-comments-wrapper').each(function() {
+        $(this).toggleClass('can-expand', this.scrollHeight > 66);
+    });
+}
+
+function safeReload() {
+    if ($('.modal.in').length > 0) return;
+    $('#board-container').load(window.location.href + ' #board-container > *', function() {
+        applyFilters();
+        if (typeof $.fn.select2 !== 'undefined') { $('.select2-dod').select2({ dropdownParent: $('#mNN'), tags: true }); }
+    });
+}
+
+// ==============================================================
+// 3. DELEGOVANÉ UDÁLOSTI A EVENT LISTENERY
+// ==============================================================
+$(document).ready(function() {
+
+    // --- Filtry v horní liště ---
+    $(document).on('click', '#btnToggleMyTasks', function(e) { e.preventDefault(); filters.myTasks = !filters.myTasks; applyFilters(); });
+    $(document).on('click', '#btnToggleRejected', function(e) { e.preventDefault(); filters.rejected = !filters.rejected; applyFilters(); });
+    $(document).on('click', '#btnToggleUrgent', function(e) { e.preventDefault(); filters.urgent = !filters.urgent; applyFilters(); });
+    $(document).on('input', '#searchInput', function() { filters.search = $(this).val(); applyFilters(); });
+
+    // --- Inicializace Select2 ---
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('.select2-dod').select2({ dropdownParent: $('#mNN'), tags: true, placeholder: "Napište nebo vyberte...", allowClear: true });
+    }
+
+    // --- Export ---
+    $(document).on('click', '#btnOpenExportModal', function() {
+        $('#mExportModal').modal('show');
+        $('#mExportModalBody').html('<div class="text-center text-muted" style="padding: 40px;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Sestavuji seznam...</div>');
+        $.ajax({
+            url: 'includes/ajax_export_wanted.php', type: 'GET',
+            success: function(data) { $('#mExportModalBody').html(data); },
+            error: function() { $('#mExportModalBody').html('<div class="alert alert-danger">Chyba spojení.</div>'); }
+        });
+    });
+
+    $(document).on('click', '#btnCopyExport', function() {
+        var textToCopy = $('#exportTextarea').val();
+        if (!textToCopy) return;
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            var btn = $('#btnCopyExport'); var originalText = btn.html();
+            btn.removeClass('btn-success').addClass('btn-info').html('<i class="glyphicon glyphicon-ok"></i> Zkopírováno!');
+            setTimeout(function() { btn.removeClass('btn-info').addClass('btn-success').html(originalText); }, 2000);
+        });
+    });
+
+    // --- Komentáře a Urgence ---
+    $(document).on('click', '.offer-comments-wrapper.can-expand', function() {
+        $('#mFullCommentsBody').html($(this).html());
+        $('#mFullCommentsBody').find('.offer-comments-wrapper').css({'max-height': 'none', 'overflow': 'visible'});
+        $('#mFullComments').modal('show');
+    });
+
+    $(document).on('click', '.btn-urge-task', function(e) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        $('#mUrgeReqId').val($(this).data('id'));
+        $('#mUrgeSurRaw').val($(this).data('sur'));
+        $('#mUrgeTaskModal').modal('show');
+    });
+
+    $('#btnConfirmUrge').on('click', function() {
+        var reqId = $('#mUrgeReqId').val(), sur = $('#mUrgeSurRaw').val();
+        var modalBtn = $(this), originalBtn = $('.btn-urge-task[data-id="'+reqId+'"]');
+        modalBtn.prop('disabled', true).text('Odesílám...');
+        originalBtn.removeClass('glyphicon-flash text-warning').addClass('glyphicon-refresh spinning text-muted');
+
+        $.post('includes/ajax_urge_task.php', { id: reqId, surovina: sur }, function(r) {
+            modalBtn.prop('disabled', false).text('Ano, urgovat');
+            if (r.trim() === "OK") {
+                $('#mUrgeTaskModal').modal('hide');
+                originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-ok text-success');
+                setTimeout(function() { safeReload(); }, 2000);
+            } else {
+                if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
+                originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-flash text-warning');
+            }
+        });
+    });
+
+    // --- Stavy a priority požadavků ---
+    $(document).on('click', '.btn-toggle-priority', function(e) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        var icon = $(this), reqId = icon.data('id'), newPrio = (icon.data('prio') == 1) ? 0 : 1;
+        icon.removeClass('glyphicon-exclamation-sign glyphicon-unchecked text-danger text-muted').addClass('glyphicon-refresh spinning');
+        $.post('includes/ajax_update_priority.php', { id: reqId, priorita: newPrio }, function(r) {
+            if (r.trim() === "OK") safeReload(); else { if (typeof sysAlert === "function") sysAlert("Chyba: " + r, "danger"); safeReload(); }
+        });
+    });
+
+    $(document).on('click', '.btn-postpone-req', function(e) {
+        e.stopPropagation(); var reqId = $(this).data('id');
+        sysPrompt("Opravdu chcete tento požadavek ODLOŽIT k ledu?", function(reason) {
+            $.post('includes/ajax_set_req_status.php', { id: reqId, status: 8, poznamka: reason }, function(r) {
+                if(r.trim() === "OK") safeReload(); else sysAlert(r, "danger");
+            });
+        }, "Ano, odložit", "btn-warning");
+    });
+
+    $(document).on('click', '.btn-revive-req', function(e) {
+        e.stopPropagation(); var reqId = $(this).data('id');
+        sysPrompt("OŽIVENÍ POŽADAVKU<br>Napište kolegům krátký důvod:", function(reason) {
+            $.post('includes/ajax_set_req_status.php', { id: reqId, status: 1, poznamka: reason }, function(r) {
+                if(r.trim() === "OK") { filters.rejected = false; safeReload(); } else sysAlert(r, "danger");
+            });
+        }, "Ano, oživit", "btn-success");
+    });
+
+    $(document).on('click', '.btn-delete-req', function(e) {
+        e.stopPropagation();
+        $('#mCancelReqId').val($(this).data('id'));
+        $('#mCancelReqReason').val('');
+        $('#mCancelReqModal').modal('show');
+    });
+
+    // --- Inline komentáře ---
+    $(document).on('click', '.btn-inline-comment', function() {
+        var btn = $(this), id = btn.data('id'), type = btn.data('type'), urgent = btn.data('urgent') || 0;
+        var text = $('.inline-comment-text[data-id="'+id+'"][data-type="'+type+'"]').val().trim();
+        if (!text) return;
+        btn.prop('disabled', true);
+        $.post('includes/ajax_add_comment.php', { id_entity: id, typ_entity: type, text: text, is_urgent: urgent }, function(r) {
+            if (r.trim() === "OK") safeReload();
+            else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); btn.prop('disabled', false); }
+        });
+    });
+
+    $(document).on('keypress', '.inline-comment-text', function(e) {
+        if(e.which == 13) $('.btn-inline-comment[data-id="'+$(this).data('id')+'"][data-type="'+$(this).data('type')+'"][data-urgent="0"]').click();
+    });
+
+    // --- Práce s nabídkou (Cenotvorba, měny) ---
+    $(document).on('click', '.btn-edit-offer', function() {
+        var b = $(this);
+        $('#mNN').modal('show').attr('data-mode', 'edit');
+        $('#mNN .modal-title').html('<i class="glyphicon glyphicon-pencil"></i> Upravit nabídku');
+        $('#mNNSave').text('ULOŽIT ZMĚNY').addClass('btn-warning').removeClass('btn-primary');
+        $('#mNNId').val(b.data('id'));
+        $('#mNNDod').val(b.data('dodavatel')).trigger('change');
+        $('#mNNCena').val(b.data('cena'));
+        $('#mNNMena').val(b.data('mena') || 'CZK').trigger('change');
+        $('#mNNMoqQty').val(b.data('moq-qty'));
+        $('#mNNMoqMj').val(b.data('moq-mj'));
+        $('#mNNPozn').val('');
+        if (b.data('moq-qty') !== "") $('#mNNMoqMjWrapper').show(); else $('#mNNMoqMjWrapper').hide();
+    });
+
+    $(document).on('click', '.btn-add-offer', function() {
+        $('#mNN').attr('data-mode', 'add').modal('show');
+        $('#mNN .modal-title').html('<i class="glyphicon glyphicon-plus"></i> Nová nabídka');
+        $('#mNNSave').text('Uložit nabídku').addClass('btn-primary').removeClass('btn-warning');
+        $('#mNNId').val($(this).data('id'));
+        $('#mNNCena, #mNNMoqQty, #mNNPozn').val('');
+        $('#mNNDod').val('').trigger('change');
+        $('#mNNMena').val('CZK').trigger('change');
+        $('#mNNMoqMjWrapper').hide();
+    });
+
+    $('#mNNCena, #mNNMena').on('input change', function() {
+        var cena = parseFloat($('#mNNCena').val()) || 0, mena = $('#mNNMena').val();
+        if (cena > 0) $('#mNNDopravaWrapper').slideDown(200); else $('#mNNDopravaWrapper').slideUp(200);
+        if ((mena === 'EUR' || mena === 'USD') && cena > 0) {
+            var czk = cena * ((mena === 'EUR') ? CNB_EUR_RATE : CNB_USD_RATE);
+            $('#mNNCzkCalc').text(czk.toFixed(2));
+            $('#mNNKurzInfo').slideDown(200);
+        } else $('#mNNKurzInfo').slideUp(200);
+    });
+
+    $('#mNNDoprava').on('change', function() {
+        if ($(this).val() === 'custom') $('#mNNDopravaCustomWrapper').slideDown(200); else $('#mNNDopravaCustomWrapper').slideUp(200);
+    });
+
+    $('#mNN').on('show.bs.modal', function () {
+        $('#mNNDoprava, #mNNDopravaCustom').val('');
+        $('#mNNDopravaWrapper, #mNNDopravaCustomWrapper, #mNNKurzInfo').hide();
+        if ($(this).attr('data-mode') === 'add') $('#mNNMena').val('CZK');
+    });
+
+    $(document).on('input', '#mNNMoqQty', function() {
+        if ($(this).val() !== "") $('#mNNMoqMjWrapper').fadeIn(200); else $('#mNNMoqMjWrapper').fadeOut(200);
+    });
+
+    // --- Práce s Požadavkem (Úprava, rušení) ---
+    $(document).on('click', '.btn-edit-req', function() {
+        var b = $(this);
+        $('#mEditReqId').val(b.data('id')); $('#mEditReqTitle').text(b.data('sur'));
+        $('#mEditReqBio').prop('checked', b.data('bio') == 1); $('#mEditReqVegan').prop('checked', b.data('vegan') == 1);
+        $('#mEditReqBezlepek').prop('checked', b.data('bezlepek') == 1); $('#mEditReqKosher').prop('checked', b.data('kosher') == 1);
+        $('#mEditReqHalal').prop('checked', b.data('halal') == 1); $('#mEditReqPrio').val(b.data('prio'));
+        $('#mEditReqNote').val((b.data('note') === null || b.data('note') === 'null') ? '' : b.data('note'));
+        var zakIdsRaw = b.data('zakaznici-ids'), selectedIds = (zakIdsRaw && zakIdsRaw.toString().trim() !== "") ? zakIdsRaw.toString().split(',') : [];
+        $('#mEditReqZakaznici').val(selectedIds).trigger('change');
+        $('#mEditReq').modal('show');
+    });
+
+    $('#mEditReqSave').on('click', function() {
+        var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
+        $.post('includes/ajax_update_request.php', {
+            id: $('#mEditReqId').val(), bio: $('#mEditReqBio').is(':checked') ? 1 : 0, vegan: $('#mEditReqVegan').is(':checked') ? 1 : 0,
+            bezlepek: $('#mEditReqBezlepek').is(':checked') ? 1 : 0, kosher: $('#mEditReqKosher').is(':checked') ? 1 : 0, halal: $('#mEditReqHalal').is(':checked') ? 1 : 0,
+            priorita: $('#mEditReqPrio').val(), poznamka: $('#mEditReqNote').val(), zakaznici: $('#mEditReqZakaznici').val()
+        }, function(r) {
+            if(r.trim() == "OK") { $('#mEditReq').modal('hide'); safeReload(); }
+            else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); }
+            btn.prop('disabled', false).text('ULOŽIT ZMĚNY');
+        });
+    });
+
+    $('#btnOpenCancelReq').click(function() {
+        $('#mCancelReqId').val($('#mEditReqId').val()); $('#mCancelReqReason').val('');
+        $('#mEditReq').modal('hide');
+        setTimeout(function() { $('#mCancelReqModal').modal('show'); }, 400);
+    });
+
+    $('#mCancelReqSave').click(function() {
+        var reason = $('#mCancelReqReason').val().trim();
+        if(!reason) { sysAlert("Vyplňte prosím důvod zrušení.", "warning"); return; }
+        $.post('includes/ajax_cancel_request.php', { id: $('#mCancelReqId').val(), poznamka: reason }, function(r) {
+            if(r.trim() === "OK") { $('#mCancelReqModal').modal('hide'); safeReload(); }
+            else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); }
+        });
+    });
+
+    $('#mAddReqSave').on('click', function() {
+        var btn = $(this), idSurovina = $('#mAddReqSurovina').val();
+        if (!idSurovina) { sysAlert("Musíte vybrat surovinu!", "warning"); return; }
+        btn.prop('disabled', true).text('Zakládám...');
+        $.post('includes/ajax_add_request.php', {
+            id_surovina: idSurovina, bio: $('#mAddReqBio').is(':checked') ? 1 : 0, vegan: $('#mAddReqVegan').is(':checked') ? 1 : 0,
+            bezlepek: $('#mAddReqBezlepek').is(':checked') ? 1 : 0, kosher: $('#mAddReqKosher').is(':checked') ? 1 : 0, halal: $('#mAddReqHalal').is(':checked') ? 1 : 0,
+            priorita: $('#mAddReqPrio').val(), poznamka: $('#mAddReqNote').val(), zakaznik: $('#mAddReqZakaznik').val()
+        }, function(r) {
+            if(r.trim() == "OK") { $('#mAddReq').modal('hide'); safeReload(); }
+            else { sysAlert(r, "danger"); btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK'); }
+        });
+    });
+
+    // --- Změny stavů a workflow ---
+    $(document).on('click', '.btn-prompt-qty-note', function() {
+        $('#mQNId').val($(this).data('id')); $('#mQNStatus').val($(this).data('status')); $('#mQNQty, #mQNNote').val(''); $('#mQtyNote').modal('show');
+    });
+
+    $('#mQNSave').on('click', function() {
+        var qty = $('#mQNQty').val().trim(); if(!qty) { sysAlert("Zadejte požadované množství.", "warning"); return; }
+        var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
+        $.post('includes/update_status_nabidka.php', { id: $('#mQNId').val(), status: $('#mQNStatus').val(), qty: qty, poznamka: $('#mQNNote').val() }, function() {
+            $('#mQtyNote').modal('hide'); btn.prop('disabled', false).text('Potvrdit schválení'); safeReload();
+        });
+    });
+
+    $(document).on('click', '.btn-wf-direct, .btn-wf-check', function(e) {
+        e.preventDefault(); var btn = $(this); btn.prop('disabled', true).html('<i class="glyphicon glyphicon-refresh spinning"></i>');
+        $.post('includes/update_status_nabidka.php', { id: btn.data('id'), status: btn.data('status'), poznamka: 'Systémová akce: ' + btn.text().trim() }, function() { safeReload(); });
+    });
+
+    $(document).on('click', '.btn-prompt-reason', function() {
+        var b = $(this); $('#mReasonId').val(b.data('id')); $('#mReasonStatus').val(b.data('status')); $('#mReasonText').val('');
+        $('#mReason .modal-header').css('background', b.data('status') == 9 ? '#f0ad4e' : '#d9534f'); $('#mReason').modal('show');
+    });
+
+    $('#mReasonSave').on('click', function() {
+        var txt = $('#mReasonText').val().trim(); if(!txt) { sysAlert("Zadejte prosím důvod.", "warning"); return; }
+        var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
+        $.post('includes/update_status_nabidka.php', { id: $('#mReasonId').val(), status: $('#mReasonStatus').val(), poznamka: txt }, function() {
+            $('#mReason').modal('hide'); btn.prop('disabled', false).text('Potvrdit akci'); safeReload();
+        });
+    });
+
+    $(document).on('click', '.btn-quality-approve', function() {
+        var b = $(this); $('#mQualId').val(b.data('id')); $('#mQualStatus').val(b.data('status')); $('#mQualSarze').val(b.data('sarze') || ''); $('#mQualityModal').modal('show');
+    });
+
+    $('#mQualSave').on('click', function() {
+        var sarze = $('#mQualSarze').val().trim(); if(!sarze) { sysAlert("Vyplňte prosím číslo šarže z COA dokumentu.", "warning"); $('#mQualSarze').focus(); return; }
+        var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
+        $.post('includes/update_status_nabidka.php', { id: $('#mQualId').val(), status: $('#mQualStatus').val(), sarze: sarze, poznamka: 'Systémová akce: KVALITA OK (Šarže: ' + sarze + ')' }, function() {
+            $('#mQualityModal').modal('hide'); btn.prop('disabled', false).text('Potvrdit schválení'); safeReload();
+        });
+    });
+
+    // --- Nahrávání souborů a zobrazení ---
+    $(document).on('click', '.btn-open-files-modal', function(e) {
+        e.preventDefault();
+        $('#mOfferFilesContent').html('<div style="text-align:center; color:#999; padding: 20px;"><i class="glyphicon glyphicon-refresh spinning"></i> Načítám seznam...</div>');
+        $('#mOfferFiles').modal('show');
+        $.post('includes/ajax_offer_files_modal.php', { id: $(this).data('id') }, function(data) { $('#mOfferFilesContent').html(data); }).fail(function() { $('#mOfferFilesContent').html('<div class="alert alert-danger">Chyba při načítání souborů ze serveru.</div>'); });
+    });
+
+    $(document).on('click', '.btn-toggle-upload', function(e) { e.preventDefault(); $('#upload' + $(this).data('target')).slideToggle(); $('#btnDoUpload').slideDown(); });
+    $(document).on('change', '#mWFFileLab', function() { if (this.files.length > 0) $('#mWFSarzeBox').slideDown(); else if (!cur.hasLab) $('#mWFSarzeBox').slideUp(); });
+
+    $(document).on('click', '.btn-wf', function() {
+        var b = $(this); cur.id = b.data('id'); cur.st = b.data('status');
+        $('#mWFNote').val(''); $('#mWFSarze').val(b.data('sarze') || '');
+        $('#mWFQty, #mWFFileSpec, #mWFFileLab, #mWFFileOther').val(''); $('#mWFFileStatus').html('');
+        $('#btnDoUpload, #uploadTDS, #uploadCOA, #uploadOther').hide();
+        $('#mWFQtyBox').toggle(b.data('need-qty') == 1); $('#mWFItemCodeBox').toggle(b.data('final') == 1);
+        var fStr = b.data('files'); cur.hasLab = (fStr && fStr.toString().indexOf('~lab') !== -1);
+        var h = { TDS: '', COA: '', Other: '' };
+        if (fStr && fStr.toString().length > 0) {
+            fStr.toString().split('^').forEach(function(f) {
+                if(!f) return; var p = f.split('~');
+                var html = '<div style="display:flex; justify-content:space-between; margin-bottom:2px; font-size:11px; background:#f9f9f9; padding:2px 5px; border-radius:3px;"><span><i class="glyphicon glyphicon-file"></i> ' + p[0] + '</span><i class="glyphicon glyphicon-remove text-danger btn-delete-file" style="cursor:pointer;" data-id="'+cur.id+'" data-file="'+f+'"></i></div>';
+                if (p[1] === 'spec') h.TDS += html; else if (p[1] === 'lab') h.COA += html; else h.Other += html;
+            });
+        }
+        $('#listTDS').html(h.TDS || '<em class="text-muted small">Žádný</em>'); $('#listCOA').html(h.COA || '<em class="text-muted small">Žádný</em>'); $('#listOther').html(h.Other || '<em class="text-muted small">Žádný</em>');
+        if (cur.hasLab || b.data('sarze')) $('#mWFSarzeBox').show(); else $('#mWFSarzeBox').hide(); $('#mWF').modal('show');
+    });
+
+    function executeUpload(callback) {
+        var fd = new FormData(); fd.append('id_nabidka', cur.id); var hasFiles = false;
+        var iS = $('#mWFFileSpec')[0]; for(var i=0; i<iS.files.length; i++) { fd.append('files_spec[]', iS.files[i]); hasFiles=true; }
+        var iL = $('#mWFFileLab')[0]; for(var i=0; i<iL.files.length; i++) { fd.append('files_lab[]', iL.files[i]); hasFiles=true; }
+        var iO = $('#mWFFileOther')[0]; for(var i=0; i<iO.files.length; i++) { fd.append('files_other[]', iO.files[i]); hasFiles=true; }
+
+        if(!hasFiles) { if(callback) callback(); return; }
+        $('#mWFFileStatus').html('<span class="text-info"><i class="glyphicon glyphicon-refresh spinning"></i> Nahrávám...</span>');
+
+        $.ajax({
+            url: 'includes/upload_to_nextcloud.php', type: 'POST', data: fd, contentType: false, processData: false,
+            success: function(response) {
+                if (response.trim() === "OK") {
+                    $('#mWFFileStatus').html('<b class="text-success">Nahráno.</b>');
+                    $.post('includes/ajax_get_offer_files.php', { id_nabidka: cur.id }, function(data) {
+                        try {
+                            var json = JSON.parse(data);
+                            $('#listTDS').html(json.TDS || '<em class="text-muted small">Žádný</em>'); $('#listCOA').html(json.COA || '<em class="text-muted small">Žádný</em>'); $('#listOther').html(json.Other || '<em class="text-muted small">Žádný</em>');
+                            if (json.hasLab) { cur.hasLab = true; $('#mWFSarzeBox').slideDown(); }
+                        } catch(e) {}
+                    });
+                    $('#mWFFileSpec, #mWFFileLab, #mWFFileOther').val(''); $('#btnDoUpload, #uploadTDS, #uploadCOA, #uploadOther').hide();
+                    setTimeout(function() { $('#mWFFileStatus').empty(); }, 3000);
+                    safeReload(); if(callback) callback();
+                } else { $('#mWFFileStatus').html('<b class="text-danger">' + response + '</b>'); }
+            }
+        });
+    }
+
+    $('#btnDoUpload').on('click', function() { executeUpload(); });
+    $('#mWFSave').on('click', function() {
+        var btn = $(this); var sarzeVal = $('#mWFSarze').val(); btn.prop('disabled', true).text('Ukládám...');
+        executeUpload(function() {
+            $.post('includes/update_status_nabidka.php', { id: cur.id, status: cur.st, poznamka: $('#mWFNote').val(), qty: $('#mWFQty').val(), sarze: sarzeVal }, function() { $('#mWF').modal('hide'); btn.prop('disabled', false).text('Potvrdit'); safeReload(); });
+        });
+    });
+    $(document).on('click', '.btn-delete-file', function() {
+        var fileId = $(this).data('id'), fileName = $(this).data('file');
+        sysConfirm("Opravdu chcete smazat tento soubor?", function() { $.post('includes/delete_file.php', { id: fileId, file: fileName }, function() { $('#mWF').modal('hide'); safeReload(); }); });
+    });
+
+    // --- Otevření detailu požadavku ---
+    $(document).on('click', '.btn-open-detail', function(e) {
+        if ($(e.target).closest('.btn-edit-req, .btn-delete-req, .btn-ping-purchasing, .btn-urge-task, .btn-toggle-priority, .btn-postpone-req, .btn-revive-req').length > 0) return;
+        var reqId = $(this).data('id');
+        $('#mReqDetailContent').html('<div style="padding:50px; text-align:center; color:#777;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Načítám detail požadavku...</div>');
+        $('#mReqDetail').modal('show');
+        $.post('includes/ajax_request_detail.php', { id: reqId }, function(data) { $('#mReqDetailContent').html(data); }).fail(function() { $('#mReqDetailContent').html('<div class="alert alert-danger" style="margin:20px;">Chyba při načítání dat.</div>'); });
+    });
+
+    var urlParams = new URLSearchParams(window.location.search);
+    var autoOpenId = urlParams.get('req_id');
+    if (autoOpenId) {
+        setTimeout(function() {
+            if ($('#mReqDetail').length === 0) return;
+            $('#mReqDetailContent').html('<div style="padding:50px; text-align:center; color:#777;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Načítám detail...</div>');
+            $('#mReqDetail').modal('show');
+            $.post('includes/ajax_request_detail.php', { id: autoOpenId }, function(data) { $('#mReqDetailContent').html(data); });
+            window.history.replaceState(null, null, 'index.php?Pozadavek=1');
+        }, 500);
+    }
+
+    // --- Dev Feedback Modál ---
+    function loadDevTasks() {
+        $('#feedbackList').html('<div class="feedback-msg" style="text-align:center; padding:15px;"><i class="glyphicon glyphicon-refresh spinning"></i> Načítám historii úprav...</div>');
+        $.post('includes/ajax_dev_pozadavky.php', { action: 'load' }, function(html) { $('#feedbackList').html(html); });
+    }
+
+    $(document).on('click', '#btnOpenFeedback', function() { $('#mFeedback').modal('show'); loadDevTasks(); });
+
+    $(document).on('click', '#btnSaveFeedback', function() {
+        var text = $('#feedbackText').val().trim(); if (!text) return;
+        var btn = $(this); btn.prop('disabled', true).text('Odesílám...');
+        $.post('includes/ajax_dev_pozadavky.php', { action: 'add', text: text }, function(r) {
+            btn.prop('disabled', false).text('Odeslat nápad');
+            if (r.trim() === "OK") { $('#feedbackText').val(''); loadDevTasks(); }
+            else { if (typeof sysAlert === "function") sysAlert("Chyba: " + r, "danger"); else alert("Chyba: " + r); }
+        });
+    });
+
+    $(document).on('click', '.btn-update-dev-task', function() {
+        var id = $(this).data('id'), newStatus = $(this).data('status'), btn = $(this), reakce = "";
+        if (newStatus == 2) {
+            reakce = prompt("Uveďte prosím důvod zamítnutí (povinné):");
+            if (reakce === null) return;
+            if (reakce.trim() === "") { if (typeof sysAlert === "function") sysAlert("Důvod zamítnutí musí být vyplněn!", "warning"); else alert("Důvod zamítnutí musí být vyplněn!"); return; }
+        } else {
+            reakce = prompt("Můžete přidat krátký komentář (nepovinné):"); if (reakce === null) return;
+        }
+        btn.prop('disabled', true).text('...');
+        $.post('includes/ajax_dev_pozadavky.php', { action: 'update_status', id: id, status: newStatus, reakce: reakce }, function(r) {
+            if (r.trim() === "OK") loadDevTasks();
+            else { if (typeof sysAlert === "function") sysAlert("Chyba: " + r, "danger"); else alert("Chyba: " + r); btn.prop('disabled', false).text(newStatus == 1 ? '✔ Vyřešit' : '✖ Zamítnout'); }
+        });
+    });
+
+    // Prvotní aplikace filtrů
+    applyFilters();
+
+    // Timer pro automatický reload změn na pozadí
+    setInterval(function() {
+        if ($('.modal.in').length === 0) {
+            $.get('includes/check_changes.php', function(s) { if (s > localLastChange) { localLastChange = s; safeReload(); } });
+        }
+    }, 2000);
+});

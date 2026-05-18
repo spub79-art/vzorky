@@ -40,7 +40,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <meta charset="utf-8">
     <title>Lifefood - <?php echo htmlspecialchars($page); ?></title>
     <?php include("./includes/header_assets.php"); ?>
-    <link rel="stylesheet" type="text/css" href="styles/vzorky.css">
+    <link rel="stylesheet" type="text/css" href="styles/vzorky.css?v=<?php echo filemtime('styles/vzorky.css'); ?>">
     <script>var CURRENT_TABLE = "<?php echo $jsTableAction; ?>";</script>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
@@ -52,6 +52,8 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="js/main.js?v=<?php echo filemtime('js/main.js'); ?>"></script>
+    <script src="js/board.js?v=<?php echo filemtime('js/board.js'); ?>"></script>
 </head>
 <body>
 

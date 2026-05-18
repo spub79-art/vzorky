@@ -91,3 +91,13 @@ $res = mysqli_query($conn, $sql);
         </div>
     </div>
 </div>
+<div class="modal fade" id="remoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div id="modal-loader" style="display:none; padding: 50px; text-align: center; color: #777;">
+                <i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Načítám formulář...
+            </div>
+            <div id="modal-dynamic-content"></div>
+        </div>
+    </div>
+</div>

@@ -9,12 +9,21 @@ $data = [
     'kontaktni_osoba' => '',
     'email' => '',
     'telefon' => '',
-    'poznamka' => ''
+    'poznamka' => '',
+    'pocet_vzorku' => 0
 ];
 
+$is_locked = false;
+
 if ($id > 0) {
-    $res = mysqli_query($conn, "SELECT * FROM dodavatele WHERE id = $id");
-    $data = mysqli_fetch_assoc($res);
+    // Přidán sub-dotaz pro zjištění počtu vzorků přímo při načítání formuláře
+    $res = mysqli_query($conn, "SELECT d.*, (SELECT COUNT(id) FROM pozadavky_nabidky pn WHERE pn.id_dodavatel = d.id) as pocet_vzorku FROM dodavatele d WHERE d.id = $id");
+    if ($res && mysqli_num_rows($res) > 0) {
+        $data = mysqli_fetch_assoc($res);
+        if ($data['pocet_vzorku'] > 0) {
+            $is_locked = true;
+        }
+    }
 }
 
 // Zpracování uložení
@@ -57,7 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_dodavatel'])) {
     <div class="modal-body">
         <div class="form-group">
             <label>Název firmy / Dodavatele</label>
-            <input type="text" name="nazev" class="form-control" value="<?= htmlspecialchars($data['nazev']) ?>" required>
+            <?php if ($is_locked): ?>
+                <input type="text" name="nazev" class="form-control" value="<?= htmlspecialchars($data['nazev']) ?>" readonly style="background-color: #eee; cursor: not-allowed;">
+                <small class="text-danger" style="display: block; margin-top: 5px;"><i class="glyphicon glyphicon-lock"></i> Název nelze upravovat, protože dodavatel už má v systému přiřazené nabídky/vzorky.</small>
+            <?php else: ?>
+                <input type="text" name="nazev" class="form-control" value="<?= htmlspecialchars($data['nazev']) ?>" required>
+            <?php endif; ?>
         </div>
 
         <div class="row">

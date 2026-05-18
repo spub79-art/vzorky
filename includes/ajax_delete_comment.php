@@ -5,11 +5,12 @@ if (empty($_SESSION['uid'])) die("Nepovolený přístup.");
 
 $id = intval($_POST['id']);
 
-// Ochrana: Lze smazat pouze ruční komentáře (normální i urgentní)! Systémová historie je svatá a nevratná.
-$sql = "DELETE FROM historie_pozadavku WHERE id = $id AND typ_zaznamu IN ('komentar', 'komentar_urgentni')";
+// Nyní záznamy nemažeme fyzicky, pouze je označíme jako skryté.
+// Odebrána restrikce na typ záznamu, takže uživatelé mohou skrýt i systémové zprávy.
+$sql = "UPDATE historie_pozadavku SET skryto = 1 WHERE id = $id";
 
 if (mysqli_query($conn, $sql)) {
-    @file_put_contents('../last_change.txt', time()); // Upravena cesta k last_change.txt, pokud je script v includes/
+    @file_put_contents('../last_change.txt', time());
     echo "OK";
 } else {
     echo "Chyba: " . mysqli_error($conn);
