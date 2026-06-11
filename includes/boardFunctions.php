@@ -19,7 +19,7 @@ function getUniqueColor($id, $is_spread = true) {
 // VYKRESLENÍ ŠTÍTKŮ (BIO, Vegan, atd.)
 // =========================================================================
 function renderBadges($row) {
-    if (isset($row['urgent']) && $row['urgent'] == 1) {
+    if (isset($row['priorita']) && $row['priorita'] == 1) {
         echo '<span class="badge-modern badge-urgent"><i class="glyphicon glyphicon-flash"></i> URGENTNÍ</span>';
     }
     if (isset($row['bio']) && $row['bio'] == 1) {
