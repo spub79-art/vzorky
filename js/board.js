@@ -448,13 +448,23 @@ $(document).ready(function() {
         }, 500);
     }
 
-    // --- Dev Feedback Modál ---
+    // --- Dev Feedback Modál (Původní plovoucí tlačítko na nápady dole) ---
     function loadDevTasks() {
         $('#feedbackList').html('<div class="feedback-msg" style="text-align:center; padding:15px;"><i class="glyphicon glyphicon-refresh spinning"></i> Načítám historii úprav...</div>');
         $.post('includes/ajax_dev_pozadavky.php', { action: 'load' }, function(html) { $('#feedbackList').html(html); });
     }
 
+    // Toto patří původnímu plovoucímu tlačítku dole:
     $(document).on('click', '#btnOpenFeedback', function() { $('#mFeedback').modal('show'); loadDevTasks(); });
+
+    // Toto je náš nový handler pro Novinky nahoře:
+    $(document).on('click', '#btnOpenNews', function(e) {
+        e.preventDefault();
+        $.post('includes/ajax_mark_as_read.php', {}, function() {
+            $('#btnOpenNews .badge').text('');
+            window.location.href = 'index.php?Aktuality=1';
+        });
+    });
 
     $(document).on('click', '#btnSaveFeedback', function() {
         var text = $('#feedbackText').val().trim(); if (!text) return;
@@ -491,7 +501,11 @@ $(document).ready(function() {
             $.get('includes/check_changes.php', function(s) { if (s > localLastChange) { localLastChange = s; safeReload(); } });
         }
     }, 2000);
-// Obsluha kliknutí na box historie (NABÍDKY i POŽADAVKY)
+
+    // =========================================================================
+    // AKORDEON ZOOM PRO HISTORII CHATU U NABÍDEK A POŽADAVKŮ
+    // =========================================================================
+    // Obsluha kliknutí na box historie (NABÍDKY i POŽADAVKY)
     $(document).on('click', '.offer-comments-wrapper, .offer-sys-msg-container', function(e) {
 
         // 1. Ochrana kopírování
@@ -522,4 +536,5 @@ $(document).ready(function() {
             $('.offer-comments-wrapper.is-expanded, .offer-sys-msg-container.is-expanded').removeClass('is-expanded');
         }
     });
-});
+
+}); // KONEC $(document).ready()

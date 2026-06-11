@@ -19,6 +19,7 @@ if (isset($_GET['Users']))         $page = 'Users';
 if (isset($_GET['Vzorek']))        $page = 'Vzorek';
 if (isset($_GET['Produkt']))       $page = 'Produkt';
 if (isset($_GET['Technologie']))   $page = 'Technologie';
+if (isset($_GET['Aktuality']))     $page = 'Aktuality';
 
 function btnActive($current, $targetArray) {
     return in_array($current, $targetArray) ? ' active' : '';
@@ -30,7 +31,7 @@ $mapping = [
     'Pozadavek' => 'pozadavky', 'Archiv' => 'pozadavky',
     'Zakaznik' => 'zakaznik', 'Suroviny' => 'suroviny', 'Users' => 'users',
     'Vzorek' => 'vzorky', 'Produkt' => 'produkt', 'Dodavatele' => 'dodavatele',
-    'Technologie' => 'technologie'
+    'Technologie' => 'technologie', 'Aktuality' => 'aktuality'
 ];
 $jsTableAction = $mapping[$page] ?? strtolower($page);
 ?>
@@ -98,8 +99,31 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
         </div>
 
         <div class="top-header-right">
-            <span class="dev-badge"><i class="glyphicon glyphicon-warning-sign"></i> DEV PROSTŘEDÍ</span>
-            <button class="btn btn-news"><i class="glyphicon glyphicon-bullhorn"></i> Novinky <span class="badge-pulse">1</span></button>
+            <?php
+            // Přesná detekce prostředí podle adresy URL
+            $is_dev_env = ($_SERVER['SERVER_NAME'] === 'localhost' || strpos($_SERVER['REQUEST_URI'], 'dev-vzorky') !== false);
+            if ($is_dev_env): ?>
+                <span class="dev-badge"><i class="glyphicon glyphicon-warning-sign"></i> DEV PROSTŘEDÍ</span>
+            <?php endif; ?>
+
+            <?php
+            // Bezpečné zjištění počtu nepřečtených novinek s potlačením chyby
+            $neprectene = 0;
+            $uid_safe = (isset($_SESSION['uid'])) ? (int)$_SESSION['uid'] : 0;
+            $res_count = @mysqli_query($conn, "SELECT COUNT(*) FROM aktuality WHERE id NOT IN (SELECT id_aktualita FROM aktuality_cteni WHERE id_uzivatel = '{$uid_safe}')");
+
+            if ($res_count) {
+                $row = mysqli_fetch_row($res_count);
+                if ($row) {
+                    $neprectene = (int)$row[0];
+                }
+            }
+            ?>
+
+            <button class="btn btn-news" id="btnOpenNews">
+                <i class="glyphicon glyphicon-bullhorn"></i> Novinky
+                <span class="badge" style="background:#d9534f;"><?= $neprectene > 0 ? $neprectene : '' ?></span>
+            </button>
 
             <?php if ($is_adm || $is_kvalita): ?>
                 <a class="btn btn-info<?php echo btnActive($page, ['Users']); ?>" href="./index.php?Users=1">Uživatelé</a>
@@ -143,6 +167,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
             case 'Produkt':       include("includes/listProdukty.php"); break;
             case 'Technologie':   if ($is_adm || $is_vyvoj) include("includes/listTechnologie.php"); break;
             case 'Users':         if ($is_adm || $is_kvalita) include("includes/listUsers.php"); break;
+            case 'Aktuality':     include("includes/aktuality.php"); break;
             default:              include("includes/listPozadavky.php"); break;
         }
         ?>
