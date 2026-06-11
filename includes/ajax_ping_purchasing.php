@@ -21,8 +21,8 @@ if (!empty($poznamka)) {
     $hist_text .= "\nPoznámka k dohledání: " . $poznamka;
 }
 
-// Zápis do historie
-zapis_do_historie($conn, $id, 0, 'urgence', $hist_text);
+// Zápis do historie (typ ping_nakup = používá i ranní e-mailový souhrn)
+zapis_do_historie($conn, $id, 0, 'ping_nakup', $hist_text);
 
 // 2. Sestavení a odeslání Telegram zprávy
 $url = "https://docs.lifefood.eu/" . (strpos($_SERVER['REQUEST_URI'], 'dev-vzorky') ? "dev-vzorky" : "vzorky");
