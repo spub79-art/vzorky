@@ -94,6 +94,8 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .offer-price-box { text-align: right; flex-shrink: 0; line-height: 1; }
 .offer-price { font-size: 11px; font-weight: bold; color: #444; }
 .offer-moq { font-size: 9px; color: #777; margin-top: 2px; }
+.offer-poptavka { font-size: 10px; color: #6f42c1; font-weight: bold; margin-top: 3px; }
+.req-poptavka-summary { font-size: 11px; color: #6f42c1; font-weight: bold; margin-bottom: 6px; padding: 4px 6px; background: #f9f5fc; border-radius: 3px; border-left: 3px solid #8e44ad; }
 .offer-status-row { font-size: 9px; margin-top: 3px; }
 .offer-alert { background: #fdf2f2; color: #d9534f; padding: 2px 4px; border: 1px solid #ebccd1; border-radius: 3px; margin-top: 4px; font-size: 9px; font-weight: bold; }
 
@@ -333,6 +335,7 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .rd-offer-price-czk { font-size: 13px; color: #d9534f; font-weight: bold; margin-top: 2px; }
 .rd-offer-price-note { font-size: 10px; font-weight: normal; color: #999; }
 .rd-offer-moq { font-size: 12px; color: #777; margin-top: 4px; }
+.rd-offer-poptavka { font-size: 12px; color: #6f42c1; font-weight: bold; margin-top: 4px; }
 
 .rd-offer-note-buyer { background: #fffdfa; padding: 8px 12px; border-left: 3px solid #f0ad4e; font-size: 12px; margin-bottom: 15px; color: #666; border-radius: 0 4px 4px 0; }
 .rd-offer-syslog { background: #f9f9f9; border: 1px solid #e3e3e3; padding: 6px 10px; font-size: 11px; color: #555; margin-bottom: 15px; border-radius: 4px; white-space: pre-wrap; font-family: Consolas, monospace; line-height: 1.4; max-height: 150px; overflow-y: auto; }

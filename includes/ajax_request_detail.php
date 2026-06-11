@@ -1,6 +1,7 @@
 <?php
 session_start();
 include_once("db_connect.php");
+include_once("boardFunctions.php");
 @mysqli_query($conn, "SET SESSION group_concat_max_len = 10000");
 
 if (!isset($_POST['id'])) exit;
@@ -91,6 +92,19 @@ if ($q_off) {
                 <?= !empty(trim($req['poznamka'])) ? nl2br(htmlspecialchars(trim($req['poznamka']))) : '<i class="text-muted">Bez zadání</i>' ?>
             </div>
         </div>
+
+        <?php
+        $poptavky_detail = summarizePoptavkyVyvoje($offers);
+        if (!empty($poptavky_detail)): ?>
+        <div class="panel panel-default" style="border-color: #8e44ad;">
+            <div class="panel-heading" style="background: #f9f5fc; color: #6f42c1;"><b><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje</b></div>
+            <div class="panel-body" style="font-size: 13px; padding: 10px 15px;">
+                <?php foreach ($poptavky_detail as $line): ?>
+                    <div style="margin-bottom: 4px;"><?= $line ?></div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <h4 class="rd-disc-title"><i class="glyphicon glyphicon-time" style="color:#999; font-size:12px;"></i> Historie požadavku</h4>
         <div class="rd-disc-scroll" style="background: #fff; border: 1px solid #eee; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto;">
@@ -218,6 +232,12 @@ if ($q_off) {
                                     <div class="rd-offer-moq">
                                         MOQ: <?= $off['moq_mnozstvi'] ? $off['moq_mnozstvi'].' '.htmlspecialchars($off['moq_mj']) : '-' ?>
                                     </div>
+                                    <?php $popt_qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? ''); ?>
+                                    <?php if ($popt_qty !== null): ?>
+                                    <div class="rd-offer-poptavka">
+                                        <i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje: <?= htmlspecialchars($popt_qty) ?>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 

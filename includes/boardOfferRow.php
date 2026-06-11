@@ -8,6 +8,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
     $p_sarze = $p['sarze'] ?? '';
     $p_moq_qty = $p['moq_mnozstvi'] ?? '0';
     $p_moq_mj = $p['moq_mj'] ?? 'kg';
+    $p_poptavka_qty = formatPozadovaneMnozstvi($p['pozadovane_mnozstvi'] ?? '');
     $vlozena_cena = (float)($p['cena_nabidka'] ?? 0);
     $mena = $p['mena'] ?? 'CZK';
     $dodavatel_nazev = $p['dodavatel_nazev'] ?? 'Neznámý';
@@ -211,7 +212,10 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     <?php endif; ?>
 
                     <?php if ((float)$p_moq_qty > 0): ?>
-                        <div class="offer-moq" title="MOQ"><i class="glyphicon glyphicon-scale"></i> MOQ: <?= htmlspecialchars($p_moq_qty) ?>&nbsp;<?= htmlspecialchars($p_moq_mj) ?></div>
+                        <div class="offer-moq" title="Minimální objednací množství dodavatele"><i class="glyphicon glyphicon-scale"></i> MOQ: <?= htmlspecialchars($p_moq_qty) ?>&nbsp;<?= htmlspecialchars($p_moq_mj) ?></div>
+                    <?php endif; ?>
+                    <?php if ($p_poptavka_qty !== null): ?>
+                        <div class="offer-poptavka" title="Množství požadované vývojem"><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka: <?= htmlspecialchars($p_poptavka_qty) ?></div>
                     <?php endif; ?>
                 </div>
             </div>

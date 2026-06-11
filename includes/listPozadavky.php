@@ -315,6 +315,15 @@ foreach ($pozadavky as $row) {
                                     </div>
                                 <?php endif; ?>
 
+                                <?php
+                                $poptavky_lines = summarizePoptavkyVyvoje($row['nabidky_pole'] ?? []);
+                                if (!empty($poptavky_lines)): ?>
+                                    <div class="req-poptavka-summary">
+                                        <i class="glyphicon glyphicon-shopping-cart"></i>
+                                        <strong>Poptávka vývoje:</strong> <?= implode(' · ', $poptavky_lines) ?>
+                                    </div>
+                                <?php endif; ?>
+
                                 <?php if (!empty(trim($row['poznamka']))): ?>
                                     <div class="req-note-box <?= $status_class ?>">
                                         <i class="glyphicon glyphicon-info-sign req-note-icon <?= $status_class ?>"></i>

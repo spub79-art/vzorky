@@ -18,6 +18,29 @@ function getUniqueColor($id, $is_spread = true) {
 // =========================================================================
 // VYKRESLENÍ ŠTÍTKŮ (BIO, Vegan, atd.)
 // =========================================================================
+/**
+ * Množství zadané vývojem (při schválení ceny / objednávce vzorku).
+ */
+function formatPozadovaneMnozstvi($qty) {
+    $qty = trim((string)($qty ?? ''));
+    return $qty !== '' ? $qty : null;
+}
+
+/**
+ * Shrnutí poptávek vývoje z pole nabídek pro zobrazení na kartě požadavku.
+ */
+function summarizePoptavkyVyvoje($offers) {
+    $lines = [];
+    foreach ($offers as $off) {
+        $qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? '');
+        if ($qty === null) continue;
+        if (in_array((int)($off['id_status'] ?? 0), [5, 7])) continue;
+        $dod = htmlspecialchars($off['dodavatel_nazev'] ?? 'Dodavatel');
+        $lines[] = "<strong>$dod</strong>: " . htmlspecialchars($qty);
+    }
+    return $lines;
+}
+
 function renderBadges($row) {
     if (isset($row['priorita']) && $row['priorita'] == 1) {
         echo '<span class="badge-modern badge-urgent"><i class="glyphicon glyphicon-flash"></i> URGENTNÍ</span>';
