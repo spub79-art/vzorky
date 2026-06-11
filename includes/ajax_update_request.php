@@ -16,9 +16,13 @@ $priorita = isset($_POST['priorita']) ? (int)$_POST['priorita'] : 0;
 
 $poznamka = isset($_POST['poznamka']) ? mysqli_real_escape_string($conn, trim($_POST['poznamka'])) : '';
 
+$mnozstvi_raw = trim($_POST['mnozstvi'] ?? '');
+$mnozstvi = ($mnozstvi_raw !== '') ? floatval(str_replace(',', '.', $mnozstvi_raw)) : 0;
+$mj = mysqli_real_escape_string($conn, trim($_POST['mj'] ?? 'kg'));
+
 $q = "UPDATE pozadavky SET 
         bio=$bio, vegan=$vegan, bezlepek=$bezlepek, kosher=$kosher, halal=$halal, 
-        priorita=$priorita, poznamka='$poznamka'
+        priorita=$priorita, Mnozstvi=$mnozstvi, mj='$mj', poznamka='$poznamka'
       WHERE id=$id";
 
 if (mysqli_query($conn, $q)) {

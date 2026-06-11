@@ -264,7 +264,9 @@ $(document).ready(function() {
         $('#mEditReqId').val(b.data('id')); $('#mEditReqTitle').text(b.data('sur'));
         $('#mEditReqBio').prop('checked', b.data('bio') == 1); $('#mEditReqVegan').prop('checked', b.data('vegan') == 1);
         $('#mEditReqBezlepek').prop('checked', b.data('bezlepek') == 1); $('#mEditReqKosher').prop('checked', b.data('kosher') == 1);
-        $('#mEditReqHalal').prop('checked', b.data('halal') == 1); $('#mEditReqPrio').val(b.data('prio'));
+        $('#mEditReqHalal').prop('checked', b.data('halal') == 1);         $('#mEditReqPrio').val(b.data('prio'));
+        $('#mEditReqMnozstvi').val(b.data('mnozstvi') || '');
+        $('#mEditReqMj').val(b.data('mj') || 'kg');
         $('#mEditReqNote').val((b.data('note') === null || b.data('note') === 'null') ? '' : b.data('note'));
         var zakIdsRaw = b.data('zakaznici-ids'), selectedIds = (zakIdsRaw && zakIdsRaw.toString().trim() !== "") ? zakIdsRaw.toString().split(',') : [];
         $('#mEditReqZakaznici').val(selectedIds).trigger('change');
@@ -276,7 +278,8 @@ $(document).ready(function() {
         $.post('includes/ajax_update_request.php', {
             id: $('#mEditReqId').val(), bio: $('#mEditReqBio').is(':checked') ? 1 : 0, vegan: $('#mEditReqVegan').is(':checked') ? 1 : 0,
             bezlepek: $('#mEditReqBezlepek').is(':checked') ? 1 : 0, kosher: $('#mEditReqKosher').is(':checked') ? 1 : 0, halal: $('#mEditReqHalal').is(':checked') ? 1 : 0,
-            priorita: $('#mEditReqPrio').val(), poznamka: $('#mEditReqNote').val(), zakaznici: $('#mEditReqZakaznici').val()
+            priorita: $('#mEditReqPrio').val(), mnozstvi: $('#mEditReqMnozstvi').val(), mj: $('#mEditReqMj').val(),
+            poznamka: $('#mEditReqNote').val(), zakaznici: $('#mEditReqZakaznici').val()
         }, function(r) {
             if(r.trim() == "OK") { $('#mEditReq').modal('hide'); safeReload(); }
             else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); }
@@ -306,7 +309,8 @@ $(document).ready(function() {
         $.post('includes/ajax_add_request.php', {
             id_surovina: idSurovina, bio: $('#mAddReqBio').is(':checked') ? 1 : 0, vegan: $('#mAddReqVegan').is(':checked') ? 1 : 0,
             bezlepek: $('#mAddReqBezlepek').is(':checked') ? 1 : 0, kosher: $('#mAddReqKosher').is(':checked') ? 1 : 0, halal: $('#mAddReqHalal').is(':checked') ? 1 : 0,
-            priorita: $('#mAddReqPrio').val(), poznamka: $('#mAddReqNote').val(), zakaznik: $('#mAddReqZakaznik').val()
+            priorita: $('#mAddReqPrio').val(), mnozstvi: $('#mAddReqMnozstvi').val(), mj: $('#mAddReqMj').val(),
+            poznamka: $('#mAddReqNote').val(), zakaznik: $('#mAddReqZakaznik').val()
         }, function(r) {
             if(r.trim() == "OK") { $('#mAddReq').modal('hide'); safeReload(); }
             else { sysAlert(r, "danger"); btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK'); }

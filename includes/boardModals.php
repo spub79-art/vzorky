@@ -316,6 +316,21 @@ if ($need_fetch) {
                 </div>
 
                 <div class="form-group">
+                    <label class="small text-muted label-uppercase">Požadované množství</label>
+                    <div class="input-group">
+                        <input type="text" id="mAddReqMnozstvi" class="form-control input-modern" placeholder="např. 500">
+                        <span class="input-group-addon" style="padding: 0; border: none; background: transparent;">
+                            <select id="mAddReqMj" class="form-control input-modern" style="width: 80px; border-radius: 0 4px 4px 0;">
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="l">l</option>
+                                <option value="ks">ks</option>
+                            </select>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label>Poznámka / Zadání:</label>
                     <textarea id="mAddReqNote" class="form-control textarea-modern" rows="4"></textarea>
                 </div>
@@ -367,6 +382,21 @@ if ($need_fetch) {
                         }
                         ?>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="small text-muted label-uppercase">Požadované množství</label>
+                    <div class="input-group">
+                        <input type="text" id="mEditReqMnozstvi" class="form-control input-modern" placeholder="např. 500">
+                        <span class="input-group-addon" style="padding: 0; border: none; background: transparent;">
+                            <select id="mEditReqMj" class="form-control input-modern" style="width: 80px; border-radius: 0 4px 4px 0;">
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="l">l</option>
+                                <option value="ks">ks</option>
+                            </select>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="form-group">

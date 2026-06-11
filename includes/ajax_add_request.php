@@ -13,6 +13,10 @@ $bezlepek = !empty($_POST['bezlepek']) ? 1 : 0;
 $kosher = !empty($_POST['kosher']) ? 1 : 0;
 $halal    = intval($_POST['halal']);
 
+$mnozstvi_raw = trim($_POST['mnozstvi'] ?? '');
+$mnozstvi = ($mnozstvi_raw !== '') ? floatval(str_replace(',', '.', $mnozstvi_raw)) : 0;
+$mj = mysqli_real_escape_string($conn, trim($_POST['mj'] ?? 'kg'));
+
 // LOGIKA PRO NOVOU SUROVINU
 if (!is_numeric($sur_raw)) {
     $sur_name = mysqli_real_escape_string($conn, $sur_raw);
@@ -53,8 +57,8 @@ if (!empty($_SESSION['orders'])) $zadavatel_role = 'orders';
 if (!empty($_SESSION['kvalita'])) $zadavatel_role = 'kvalita';
 if (!empty($_SESSION['adm'])) $zadavatel_role = 'adm';
 
-$sql = "INSERT INTO pozadavky (id_surovina, id_status, bio, vegan, bezlepek, kosher, halal, priorita, poznamka, datumPozadavek, zadavatel_role, zadavatel_jmeno) 
-        VALUES ($id_surovina, 1, $bio, $vegan, $bezlepek, $kosher, $halal, $priorita, '$poznamka', NOW(), '$zadavatel_role', '$zadavatel_jmeno_db')";
+$sql = "INSERT INTO pozadavky (id_surovina, id_status, bio, vegan, bezlepek, kosher, halal, priorita, Mnozstvi, mj, poznamka, datumPozadavek, zadavatel_role, zadavatel_jmeno) 
+        VALUES ($id_surovina, 1, $bio, $vegan, $bezlepek, $kosher, $halal, $priorita, $mnozstvi, '$mj', '$poznamka', NOW(), '$zadavatel_role', '$zadavatel_jmeno_db')";
 
 if (mysqli_query($conn, $sql)) {
     $new_req_id = mysqli_insert_id($conn);
