@@ -214,8 +214,12 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     <?php if ((float)$p_moq_qty > 0): ?>
                         <div class="offer-moq" title="Minimální objednací množství dodavatele"><i class="glyphicon glyphicon-scale"></i> MOQ: <?= htmlspecialchars($p_moq_qty) ?>&nbsp;<?= htmlspecialchars($p_moq_mj) ?></div>
                     <?php endif; ?>
-                    <?php if ($p_poptavka_qty !== null): ?>
+                    <?php if ($p_status_id == 2): ?>
+                        <div class="offer-poptavka offer-poptavka-pending" title="Množství zadá vývoj při schválení ceny"><i class="glyphicon glyphicon-time"></i> Poptávka: po CENA OK</div>
+                    <?php elseif ($p_poptavka_qty !== null): ?>
                         <div class="offer-poptavka" title="Množství požadované vývojem"><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka: <?= htmlspecialchars($p_poptavka_qty) ?></div>
+                    <?php elseif (nabidkaPotrebujePoptavku($p_status_id)): ?>
+                        <div class="offer-poptavka offer-poptavka-missing" title="Chybí množství — mělo být zadáno při CENA OK"><i class="glyphicon glyphicon-warning-sign"></i> Poptávka: <strong>nezadáno</strong></div>
                     <?php endif; ?>
                 </div>
             </div>

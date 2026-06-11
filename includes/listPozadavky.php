@@ -291,6 +291,8 @@ foreach ($pozadavky as $row) {
                                                data-kosher="<?= $row['kosher'] ?>"
                                                data-halal="<?= $row['halal'] ?>"
                                                data-prio="<?= $row['priorita'] ?>"
+                                               data-mnozstvi="<?= htmlspecialchars($row['Mnozstvi'] ?? $row['mnozstvi'] ?? '') ?>"
+                                               data-mj="<?= htmlspecialchars($row['mj'] ?? 'kg') ?>"
                                                data-note="<?= htmlspecialchars($row['poznamka'] ?? '') ?>"
                                                data-zakaznici-ids="<?= htmlspecialchars($row['zakaznici_ids'] ?? '') ?>"
                                                title="Editovat požadavek"></i>
@@ -312,6 +314,15 @@ foreach ($pozadavky as $row) {
                                 <?php if (!empty($row['zakaznici_seznam'])): ?>
                                     <div style="font-size: 11px; color: #8e44ad; font-weight: bold; margin-bottom: 4px; padding-left: 2px;">
                                         <i class="glyphicon glyphicon-user"></i> Zákazníci: <?= htmlspecialchars($row['zakaznici_seznam']) ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php
+                                $zadane_mnozstvi = formatPozadavekMnozstvi($row);
+                                if ($zadane_mnozstvi): ?>
+                                    <div class="req-mnozstvi-summary">
+                                        <i class="glyphicon glyphicon-scale"></i>
+                                        <strong>Zadání množství:</strong> <?= htmlspecialchars($zadane_mnozstvi) ?>
                                     </div>
                                 <?php endif; ?>
 

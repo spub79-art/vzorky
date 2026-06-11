@@ -27,16 +27,44 @@ function formatPozadovaneMnozstvi($qty) {
 }
 
 /**
- * Shrnutí poptávek vývoje z pole nabídek pro zobrazení na kartě požadavku.
+ * Množství zadané při zakládání požadavku (sloupce Mnozstvi + mj).
+ */
+function formatPozadavekMnozstvi($row) {
+    $m = $row['Mnozstvi'] ?? $row['mnozstvi'] ?? null;
+    if ($m === null || $m === '' || (float)$m == 0) return null;
+    $mj = trim((string)($row['mj'] ?? 'kg'));
+    $num = (float)$m;
+    $formatted = (floor($num) == $num)
+        ? (string)(int)$num
+        : rtrim(rtrim(number_format($num, 3, ',', ' '), '0'), ',');
+    return $formatted . ($mj !== '' ? ' ' . $mj : '');
+}
+
+/** Nabídka už prošla schválením ceny — měla by mít vyplněnou poptávku vývoje. */
+function nabidkaPotrebujePoptavku($status_id) {
+    return in_array((int)$status_id, [3, 4, 6, 8, 9, 10, 11, 12, 13]);
+}
+
+/**
+ * Shrnutí poptávek vývoje z pole nabídek (včetně chybějících hodnot).
  */
 function summarizePoptavkyVyvoje($offers) {
     $lines = [];
     foreach ($offers as $off) {
-        $qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? '');
-        if ($qty === null) continue;
-        if (in_array((int)($off['id_status'] ?? 0), [5, 7])) continue;
+        if (empty($off['id'])) continue;
+        $st = (int)($off['id_status'] ?? 0);
+        if (in_array($st, [5, 7])) continue;
+
         $dod = htmlspecialchars($off['dodavatel_nazev'] ?? 'Dodavatel');
-        $lines[] = "<strong>$dod</strong>: " . htmlspecialchars($qty);
+        $qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? '');
+
+        if ($st == 2) {
+            $lines[] = "<strong>$dod</strong>: <span class='text-muted'>čeká na CENA OK</span>";
+        } elseif ($qty !== null) {
+            $lines[] = "<strong>$dod</strong>: " . htmlspecialchars($qty);
+        } elseif (nabidkaPotrebujePoptavku($st)) {
+            $lines[] = "<strong>$dod</strong>: <span class='text-danger'>⚠ nezadáno</span>";
+        }
     }
     return $lines;
 }
@@ -137,6 +165,7 @@ function renderHistoryRow($h, $is_adm, $current_uid) {
     // Ikony podle typu záznamu
     $icon = 'glyphicon-cog text-muted';
     if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
+    if ($h['typ_zaznamu'] == 'poptavka') $icon = 'glyphicon-scale text-info';
     if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';
     if ($h['typ_zaznamu'] == 'soubor') $icon = 'glyphicon-file text-info';
     if ($h['typ_zaznamu'] == 'status') {

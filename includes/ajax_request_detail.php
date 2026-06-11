@@ -89,22 +89,27 @@ if ($q_off) {
         <div class="panel panel-default">
             <div class="panel-heading"><b>Zadání požadavku</b></div>
             <div class="panel-body rd-task-body" style="background-color: #fcfcfc;">
-                <?= !empty(trim($req['poznamka'])) ? nl2br(htmlspecialchars(trim($req['poznamka']))) : '<i class="text-muted">Bez zadání</i>' ?>
+                <?php $zadane_mnoz = formatPozadavekMnozstvi($req); ?>
+                <?php if ($zadane_mnoz): ?>
+                    <div class="rd-zadani-mnozstvi"><i class="glyphicon glyphicon-scale"></i> <strong>Zadání množství:</strong> <?= htmlspecialchars($zadane_mnoz) ?></div>
+                <?php endif; ?>
+                <?= !empty(trim($req['poznamka'])) ? nl2br(htmlspecialchars(trim($req['poznamka']))) : '<i class="text-muted">Bez textového zadání</i>' ?>
             </div>
         </div>
 
-        <?php
-        $poptavky_detail = summarizePoptavkyVyvoje($offers);
-        if (!empty($poptavky_detail)): ?>
+        <?php $poptavky_detail = summarizePoptavkyVyvoje($offers); ?>
         <div class="panel panel-default" style="border-color: #8e44ad;">
-            <div class="panel-heading" style="background: #f9f5fc; color: #6f42c1;"><b><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje</b></div>
+            <div class="panel-heading" style="background: #f9f5fc; color: #6f42c1;"><b><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje (po schválení ceny)</b></div>
             <div class="panel-body" style="font-size: 13px; padding: 10px 15px;">
-                <?php foreach ($poptavky_detail as $line): ?>
-                    <div style="margin-bottom: 4px;"><?= $line ?></div>
-                <?php endforeach; ?>
+                <?php if (!empty($poptavky_detail)): ?>
+                    <?php foreach ($poptavky_detail as $line): ?>
+                        <div style="margin-bottom: 4px;"><?= $line ?></div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <span class="text-muted">Zatím žádná nabídka ve fázi schvalování.</span>
+                <?php endif; ?>
             </div>
         </div>
-        <?php endif; ?>
 
         <h4 class="rd-disc-title"><i class="glyphicon glyphicon-time" style="color:#999; font-size:12px;"></i> Historie požadavku</h4>
         <div class="rd-disc-scroll" style="background: #fff; border: 1px solid #eee; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto;">
@@ -232,10 +237,19 @@ if ($q_off) {
                                     <div class="rd-offer-moq">
                                         MOQ: <?= $off['moq_mnozstvi'] ? $off['moq_mnozstvi'].' '.htmlspecialchars($off['moq_mj']) : '-' ?>
                                     </div>
-                                    <?php $popt_qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? ''); ?>
-                                    <?php if ($popt_qty !== null): ?>
+                                    <?php
+                                    $popt_qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? '');
+                                    $off_st = (int)$off['id_status'];
+                                    ?>
+                                    <?php if ($off_st == 2): ?>
+                                    <div class="rd-offer-poptavka rd-offer-poptavka-pending">Poptávka: <em>po schválení ceny (CENA OK)</em></div>
+                                    <?php elseif ($popt_qty !== null): ?>
                                     <div class="rd-offer-poptavka">
                                         <i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje: <?= htmlspecialchars($popt_qty) ?>
+                                    </div>
+                                    <?php elseif (nabidkaPotrebujePoptavku($off_st)): ?>
+                                    <div class="rd-offer-poptavka rd-offer-poptavka-missing">
+                                        <i class="glyphicon glyphicon-warning-sign"></i> Poptávka vývoje: <strong>nezadáno</strong>
                                     </div>
                                     <?php endif; ?>
                                 </div>

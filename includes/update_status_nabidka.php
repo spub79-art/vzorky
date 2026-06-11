@@ -61,7 +61,15 @@ if ($id > 0) {
                 updated_at = NOW() 
                 WHERE id = $id";
     }
-    mysqli_query($conn, $sql);
+    if (!mysqli_query($conn, $sql)) {
+        ob_end_clean();
+        die('Chyba DB při ukládání nabídky: ' . mysqli_error($conn));
+    }
+
+    // Zápis množství do historie (viditelné v timeline)
+    if ($qty !== '' && $id_pozadavek) {
+        zapis_do_historie($conn, $id_pozadavek, $id, 'poptavka', "Požadované množství vzorku: $qty");
+    }
 
     // Pokud se jedná o testy, rovnou zakládáme záznam do technologických testů
     if (intval($status) == 10 || intval($status) == 4) {
