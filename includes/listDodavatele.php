@@ -1,6 +1,10 @@
 <?php
 include_once("db_connect.php");
-if (!$is_adm && !$is_orders) die("Nepovolený přístup.");
+if (!isset($can_nakup)) {
+    include_once("permissions.php");
+    $can_nakup = loadSessionPermissions()['can_nakup'];
+}
+if (!$can_nakup) die("Nepovolený přístup.");
 
 // SQL dotaz s přidaným zjištěním počtu vzorků
 $sql = "SELECT d.*, 

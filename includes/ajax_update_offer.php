@@ -1,8 +1,10 @@
 <?php
 include_once("db_connect.php");
+include_once("boardFunctions.php");
+include_once("permissions.php");
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-if (empty($_SESSION['orders']) && empty($_SESSION['adm'])) die("Nepovolený přístup.");
+requireNakupAccess();
 
 $id_nabidka = (int)$_POST['id_nabidka'];
 $cena_clean = floatval(str_replace(',', '.', $_POST['cena'] ?? '0'));
@@ -36,9 +38,25 @@ if (!empty($dodavatel_raw)) {
     }
 }
 
-// Podle toho, zda máme ID dodavatele, poskládáme SQL
+$res_cur = mysqli_query($conn, "SELECT id_status, id_pozadavek FROM pozadavky_nabidky WHERE id = $id_nabidka");
+$row_cur = mysqli_fetch_assoc($res_cur);
+if (!$row_cur) die('Nabídka nenalezena.');
+
+$cur_st = (int)$row_cur['id_status'];
+$allowed = [2, 3, STATUS_NABIDKA_BEZ_CENY, 12, 13];
+if (!in_array($cur_st, $allowed)) die('Tuto nabídku v tomto stavu nelze upravit.');
+
+if ($cur_st == STATUS_NABIDKA_BEZ_CENY && $cena_clean > 0) {
+    $new_status = 2;
+} elseif (in_array($cur_st, [12, 13])) {
+    $new_status = $cur_st;
+} else {
+    $new_status = 2;
+}
+
+$status_list = implode(',', $allowed);
+
 if ($id_dodavatel > 0) {
-    // 8 parametrů (iddsssii) - PŘIDÁNA MĚNA
     $sql = "UPDATE pozadavky_nabidky SET 
             id_dodavatel = ?,
             cena_nabidka = ?, 
@@ -47,13 +65,12 @@ if ($id_dodavatel > 0) {
             mena = ?,
             poznamka_nakup = CONCAT(IFNULL(poznamka_nakup, ''), ?),
             id_user_posledni_zmena = ?,
-            id_status = 2 
-            WHERE id = ? AND id_status IN (2, 3)";
+            id_status = ? 
+            WHERE id = ? AND id_status IN ($status_list)";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iddsssii", $id_dodavatel, $cena_clean, $moq_qty, $moq_mj, $mena, $audit_entry, $user_id, $id_nabidka);
+    $stmt->bind_param("iddsssiii", $id_dodavatel, $cena_clean, $moq_qty, $moq_mj, $mena, $audit_entry, $user_id, $new_status, $id_nabidka);
 } else {
-    // 7 parametrů (ddsssii) - PŘIDÁNA MĚNA
     $sql = "UPDATE pozadavky_nabidky SET 
             cena_nabidka = ?, 
             moq_mnozstvi = ?, 
@@ -61,11 +78,11 @@ if ($id_dodavatel > 0) {
             mena = ?,
             poznamka_nakup = CONCAT(IFNULL(poznamka_nakup, ''), ?),
             id_user_posledni_zmena = ?,
-            id_status = 2 
-            WHERE id = ? AND id_status IN (2, 3)";
+            id_status = ? 
+            WHERE id = ? AND id_status IN ($status_list)";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ddsssii", $cena_clean, $moq_qty, $moq_mj, $mena, $audit_entry, $user_id, $id_nabidka);
+    $stmt->bind_param("ddsssiii", $cena_clean, $moq_qty, $moq_mj, $mena, $audit_entry, $user_id, $new_status, $id_nabidka);
 }
 
 if ($stmt->execute()) {
@@ -86,7 +103,7 @@ if ($stmt->execute()) {
         $dod_nazev = $r_info['dod_nazev'] ? $r_info['dod_nazev'] : $dodavatel_raw;
     }
 
-    if ($id_pozadavek > 0) {
+    if ($id_pozadavek > 0 && $new_status == 2 && in_array($cur_st, [2, 3, STATUS_NABIDKA_BEZ_CENY])) {
         mysqli_query($conn, "UPDATE pozadavky SET id_status = 2 WHERE id = $id_pozadavek");
     }
 
@@ -96,16 +113,26 @@ if ($stmt->execute()) {
     $kdo = is_array($_SESSION['username']) ? $_SESSION['username'][0] : ($_SESSION['username'] ?? 'Někdo z nákupu');
     $cena_formatovana = number_format($cena_clean, (floor($cena_clean) == $cena_clean ? 0 : 2), ',', ' ') . " " . $mena;
 
-    $msg = "✏️ <b>VÝVOJ: Nabídka byla upravena a vrácena ke schválení!</b>\n\n";
-    $msg .= "📌 <b>ID:</b> Požadavek #$id_pozadavek | Nabídka #$id_nabidka\n";
-    $msg .= "<b>Surovina:</b> " . htmlspecialchars($sur_nazev) . "\n";
-    $msg .= "<b>Dodavatel:</b> " . htmlspecialchars($dod_nazev) . "\n";
-    $msg .= "<b>Nová cena:</b> " . $cena_formatovana . "\n";
-    if ($moq_qty > 0) {
-        $msg .= "<b>MOQ:</b> $moq_qty " . htmlspecialchars($moq_mj) . "\n";
+    if (in_array($cur_st, [12, 13]) && $cena_clean > 0) {
+        $msg = "💰 <b>VÝVOJ: Nákup doplnil cenu k nabídce ve fázi dokumentace</b>\n\n";
+        $msg .= "📌 <b>ID:</b> Požadavek #$id_pozadavek | Nabídka #$id_nabidka\n";
+        $msg .= "<b>Surovina:</b> " . htmlspecialchars($sur_nazev) . "\n";
+        $msg .= "<b>Dodavatel:</b> " . htmlspecialchars($dod_nazev) . "\n";
+        $msg .= "<b>Cena:</b> " . $cena_formatovana . "\n";
+        $msg .= "<b>Upravil/a:</b> " . htmlspecialchars($kdo) . "\n";
+        $msg .= "\n<i>Před objednávkou vzorku je potřeba schválit cenu a množství (CENA OK / NUTRIČNÍ OK).</i>";
+    } else {
+        $msg = "✏️ <b>VÝVOJ: Nabídka byla upravena a vrácena ke schválení!</b>\n\n";
+        $msg .= "📌 <b>ID:</b> Požadavek #$id_pozadavek | Nabídka #$id_nabidka\n";
+        $msg .= "<b>Surovina:</b> " . htmlspecialchars($sur_nazev) . "\n";
+        $msg .= "<b>Dodavatel:</b> " . htmlspecialchars($dod_nazev) . "\n";
+        $msg .= "<b>Nová cena:</b> " . $cena_formatovana . "\n";
+        if ($moq_qty > 0) {
+            $msg .= "<b>MOQ:</b> $moq_qty " . htmlspecialchars($moq_mj) . "\n";
+        }
+        $msg .= "<b>Upravil/a:</b> " . htmlspecialchars($kdo) . "\n";
+        $msg .= "\n<i>Prosím o opětovné schválení ceny (Tlačítko CENA OK).</i>";
     }
-    $msg .= "<b>Upravil/a:</b> " . htmlspecialchars($kdo) . "\n";
-    $msg .= "\n<i>Prosím o opětovné schválení ceny (Tlačítko CENA OK).</i>";
 
     $is_dev = (strpos($_SERVER['REQUEST_URI'], 'dev-vzorky') !== false);
     $base_url = $is_dev ? "https://docs.lifefood.eu/dev-vzorky" : "https://docs.lifefood.eu/vzorky";

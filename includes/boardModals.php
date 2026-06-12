@@ -206,6 +206,13 @@ if ($need_fetch) {
                     </div>
                 </div>
 
+                <div class="checkbox" id="mNNBezCenyWrapper" style="margin: 8px 0 0;">
+                    <label style="font-weight: normal; font-size: 13px;">
+                        <input type="checkbox" id="mNNBezCeny">
+                        <strong>Zatím bez ceny</strong> — máme dokumentaci k posouzení (TDS/COA)
+                    </label>
+                </div>
+
                 <div id="mNNDopravaWrapper" class="box-modern box-dashed" style="display: none;">
                     <label class="small text-muted label-uppercase"><i class="glyphicon glyphicon-road"></i> Dopravné na suroviny</label>
                     <select id="mNNDoprava" class="form-control input-modern" style="font-weight: bold; color: #444;">
@@ -428,22 +435,6 @@ if ($need_fetch) {
             </div>
             <div class="modal-footer modal-footer-modern">
                 <button type="button" class="btn btn-danger btn-block btn-modern btn-modern-tall" id="mCancelReqSave">POTVRDIT ZRUŠENÍ</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="mFullComments" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content modal-modern">
-            <div class="modal-header modal-header-modern header-light">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title"><i class="glyphicon glyphicon-comment"></i> Celá historie poznámek</h4>
-            </div>
-            <div class="modal-body modal-body-modern" id="mFullCommentsBody" style="max-height: 70vh; overflow-y: auto;">
-            </div>
-            <div class="modal-footer modal-footer-modern">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Zavřít</button>
             </div>
         </div>
     </div>

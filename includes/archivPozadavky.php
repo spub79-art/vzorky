@@ -2,6 +2,11 @@
 include_once("includes/db_connect.php");
 
 // 1. DEFINICE ROLÍ
+if (!isset($can_nakup)) {
+    include_once("permissions.php");
+    $perms = loadSessionPermissions();
+    $can_nakup = $perms['can_nakup'];
+}
 $is_adm = (!empty($_SESSION['adm']) && $_SESSION['adm'] == 1);
 $is_orders = (!empty($_SESSION['orders']) && $_SESSION['orders'] == 1);
 
@@ -15,7 +20,7 @@ function renderBadges($row) { ?>
     </div>
 <?php }
 
-function renderOffers($rawString, $is_adm, $is_orders) {
+function renderOffers($rawString, $is_adm, $can_nakup) {
     if (empty($rawString)) {
         echo '<span class="text-muted small">Bez nabídek</span>';
         return;
@@ -42,7 +47,7 @@ function renderOffers($rawString, $is_adm, $is_orders) {
                 <?php endif; ?>
             </div>
 
-            <?php if ($is_adm || $is_orders): ?>
+            <?php if ($is_adm || $can_nakup): ?>
                 <div style="white-space: nowrap; margin-left: 5px;">
                     <a href="javascript:void(0);" class="text-warning btn-edit-offer" data-id="<?= $p[6] ?>" title="Upravit nabídku">
                         <i class="glyphicon glyphicon-pencil"></i>
@@ -59,9 +64,11 @@ function renderOffers($rawString, $is_adm, $is_orders) {
 }
 
 // 3. SQL DOTAZ
+$users_tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
 $sql = "SELECT p.*, 
                z.nazev AS zakaznik_nazev, 
                s.nazev AS surovina_nazev,
+               u_nak.jmeno AS nakupci_jmeno,
                cs_main.nazev AS status_nazev_hlavni,
                cs_main.barva_hex AS status_barva_hlavni,
                GROUP_CONCAT(
@@ -78,6 +85,7 @@ $sql = "SELECT p.*,
         FROM pozadavky p 
         LEFT JOIN zakaznik z ON p.id_zakaznik = z.id 
         LEFT JOIN suroviny s ON p.id_surovina = s.id 
+        LEFT JOIN $users_tbl u_nak ON p.id_nakupci = u_nak.id
         LEFT JOIN ciselnik_statusu cs_main ON p.id_status = cs_main.id 
         LEFT JOIN pozadavky_nabidky pn ON pn.id_pozadavek = p.id
         LEFT JOIN dodavatele d ON pn.id_dodavatel = d.id
@@ -131,6 +139,11 @@ while ($row = mysqli_fetch_assoc($result)) {
                                             </span>
                                         </div>
                                         <strong><?= htmlspecialchars($row['surovina_nazev'] ?? 'Neznámá') ?></strong>
+                                        <?php if (!empty($row['nakupci_jmeno'])): ?>
+                                            <div style="font-size: 10px; color: #555; margin-top: 4px;">
+                                                <i class="glyphicon glyphicon-briefcase"></i> Řešil/a: <?= htmlspecialchars($row['nakupci_jmeno']) ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php
@@ -141,8 +154,8 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         }
                                         ?>
                                         <div style="margin-top: 8px; padding-top: 5px; border-top: 1px dashed #ddd;">
-                                            <?php renderOffers($row['nabidky_raw'], $is_adm, $is_orders); ?>
-                                            <?php if ($is_adm || $is_orders): ?>
+                                            <?php renderOffers($row['nabidky_raw'], $is_adm, $can_nakup); ?>
+                                            <?php if ($is_adm || $can_nakup): ?>
                                                 <a href="index.php?add_Nabidka=1&id_pozadavek=<?= $row['id'] ?>" class="btn btn-link btn-xs" style="padding:0; font-size: 10px; margin-top: 5px; display: block;">
                                                     <i class="glyphicon glyphicon-plus"></i> Přidat nabídku
                                                 </a>

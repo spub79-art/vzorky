@@ -3,10 +3,15 @@ include("includes/authLF.php");
 include("includes/db_connect.php");
 
 // 1. Role a oprávnění
-$is_adm     = !empty($_SESSION['adm']);
-$is_vyvoj   = !empty($_SESSION['vyvoj']);
-$is_orders  = !empty($_SESSION['orders']);
-$is_kvalita = !empty($_SESSION['kvalita']);
+include_once("includes/permissions.php");
+$perms = loadSessionPermissions();
+$is_adm           = $perms['is_adm'];
+$is_vyvoj         = $perms['is_vyvoj'];
+$is_orders        = $perms['is_orders'];
+$is_kvalita       = $perms['is_kvalita'];
+$is_nakup_pristup = $perms['is_nakup_pristup'];
+$can_nakup        = $perms['can_nakup'];
+$current_uid      = $perms['current_uid'];
 
 // 2. Detekce aktuální stránky
 $page = 'Pozadavek';
@@ -56,7 +61,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <script src="js/main.js?v=<?php echo filemtime('js/main.js'); ?>"></script>
     <script src="js/board.js?v=<?php echo filemtime('js/board.js'); ?>"></script>
 </head>
-<body>
+<body data-current-uid="<?= (int)$current_uid ?>">
 
 <div id="sticky-header">
     <div class="top-header-bar">
@@ -148,7 +153,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
             <button class="btn btn-sm btn-warning btn-new-req"><i class="glyphicon glyphicon-plus"></i> Nový požadavek</button>
             <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Zakaznik']); ?>" href="./index.php?Zakaznik=1">Zákazník</a>
             <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Suroviny']); ?>" href="./index.php?Suroviny=1">Suroviny</a>
-            <?php if ($is_adm || $is_orders): ?>
+            <?php if ($can_nakup): ?>
                 <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Dodavatele']); ?>" href="./index.php?Dodavatele=1">Dodavatelé</a>
             <?php endif; ?>
         </div>
@@ -160,7 +165,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
         switch ($page) {
             case 'Pozadavek':     include("includes/listPozadavky.php"); break;
             case 'Archiv':        include("includes/archivPozadavky.php"); break;
-            case 'Dodavatele':    if ($is_adm || $is_orders) include("includes/listDodavatele.php"); break;
+            case 'Dodavatele':    if ($can_nakup) include("includes/listDodavatele.php"); break;
             case 'Zakaznik':      include("includes/listZakaznici.php"); break;
             case 'Suroviny':      include("includes/listSuroviny.php"); break;
             case 'Vzorek':        include("includes/listVzorky.php"); break;

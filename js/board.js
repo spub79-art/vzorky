@@ -73,9 +73,6 @@ function applyFilters() {
         .toggleClass('btn-danger', filters.urgent)
         .toggleClass('btn-default', !filters.urgent);
 
-    $('.offer-comments-wrapper').each(function() {
-        $(this).toggleClass('can-expand', this.scrollHeight > 66);
-    });
 }
 
 function safeReload() {
@@ -124,12 +121,6 @@ $(document).ready(function() {
     });
 
     // --- Komentáře a Urgence ---
-    $(document).on('click', '.offer-comments-wrapper.can-expand', function() {
-        $('#mFullCommentsBody').html($(this).html());
-        $('#mFullCommentsBody').find('.offer-comments-wrapper').css({'max-height': 'none', 'overflow': 'visible'});
-        $('#mFullComments').modal('show');
-    });
-
     $(document).on('click', '.btn-urge-task', function(e) {
         e.preventDefault(); e.stopImmediatePropagation();
         $('#mUrgeReqId').val($(this).data('id'));
@@ -207,6 +198,72 @@ $(document).ready(function() {
         if(e.which == 13) $('.btn-inline-comment[data-id="'+$(this).data('id')+'"][data-type="'+$(this).data('type')+'"][data-urgent="0"]').click();
     });
 
+    // --- Přiřazení nákupčího k požadavku ---
+    function getCurrentUid() {
+        return parseInt($('body').data('current-uid') || 0, 10);
+    }
+
+    $(document).on('click', '.btn-claim-request', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var b = $(this);
+        var reqId = b.data('id');
+        var resitelId = parseInt(b.data('resitel-id') || 0, 10);
+        var resitelJmeno = (b.data('resitel-jmeno') || '').toString().trim();
+        var currentUid = getCurrentUid();
+        var msg;
+
+        if (resitelId > 0 && resitelId !== currentUid) {
+            msg = 'Požadavek aktuálně řeší ' + (resitelJmeno || 'jiný nákupčí') + '.\n\nOpravdu ho chcete převzít?';
+        } else {
+            msg = 'Převzít tento požadavek k řešení?';
+        }
+        if (!confirm(msg)) return;
+
+        b.prop('disabled', true);
+        $.post('includes/ajax_claim_request.php', { id: reqId }, function(r) {
+            if (r.trim() === 'OK') {
+                if ($('#mReqDetail').hasClass('in')) {
+                    var detailId = $('#currentReqDetailId').val();
+                    if (detailId) {
+                        $.post('includes/ajax_request_detail.php', { id: detailId }, function(html) {
+                            $('#mReqDetailContent').html(html);
+                        });
+                    }
+                }
+                safeReload();
+            } else {
+                if (typeof sysAlert === 'function') sysAlert(r, 'danger'); else alert(r);
+                b.prop('disabled', false);
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-release-request', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var b = $(this);
+        if (!confirm('Opravdu chcete uvolnit tento požadavek? (Vzdávám to)')) return;
+
+        b.prop('disabled', true);
+        $.post('includes/ajax_release_request.php', { id: b.data('id') }, function(r) {
+            if (r.trim() === 'OK') {
+                if ($('#mReqDetail').hasClass('in')) {
+                    var detailId = $('#currentReqDetailId').val();
+                    if (detailId) {
+                        $.post('includes/ajax_request_detail.php', { id: detailId }, function(html) {
+                            $('#mReqDetailContent').html(html);
+                        });
+                    }
+                }
+                safeReload();
+            } else {
+                if (typeof sysAlert === 'function') sysAlert(r, 'danger'); else alert(r);
+                b.prop('disabled', false);
+            }
+        });
+    });
+
     // --- Práce s nabídkou (Cenotvorba, měny) ---
     $(document).on('click', '.btn-edit-offer', function() {
         var b = $(this);
@@ -221,6 +278,8 @@ $(document).ready(function() {
         $('#mNNMoqMj').val(b.data('moq-mj'));
         $('#mNNPozn').val('');
         if (b.data('moq-qty') !== "") $('#mNNMoqMjWrapper').show(); else $('#mNNMoqMjWrapper').hide();
+        $('#mNNBezCenyWrapper').hide();
+        $('#mNNCena').prop('disabled', false);
     });
 
     $(document).on('click', '.btn-add-offer', function() {
@@ -232,9 +291,25 @@ $(document).ready(function() {
         $('#mNNDod').val('').trigger('change');
         $('#mNNMena').val('CZK').trigger('change');
         $('#mNNMoqMjWrapper').hide();
+        $('#mNNBezCeny').prop('checked', false);
+        $('#mNNBezCenyWrapper').show();
+        toggleMNNBezCeny();
     });
 
+    function toggleMNNBezCeny() {
+        var bez = $('#mNNBezCeny').is(':checked');
+        if (bez) {
+            $('#mNNCena').val('').prop('disabled', true);
+            $('#mNNDopravaWrapper').hide();
+        } else {
+            $('#mNNCena').prop('disabled', false);
+        }
+    }
+
+    $('#mNNBezCeny').on('change', toggleMNNBezCeny);
+
     $('#mNNCena, #mNNMena').on('input change', function() {
+        if ($('#mNNBezCeny').is(':checked')) return;
         var cena = parseFloat($('#mNNCena').val()) || 0, mena = $('#mNNMena').val();
         if (cena > 0) $('#mNNDopravaWrapper').slideDown(200); else $('#mNNDopravaWrapper').slideUp(200);
         if ((mena === 'EUR' || mena === 'USD') && cena > 0) {
@@ -325,14 +400,37 @@ $(document).ready(function() {
     $('#mQNSave').on('click', function() {
         var qty = $('#mQNQty').val().trim(); if(!qty) { sysAlert("Zadejte požadované množství.", "warning"); return; }
         var btn = $(this); btn.prop('disabled', true).text('Ukládám...');
-        $.post('includes/update_status_nabidka.php', { id: $('#mQNId').val(), status: $('#mQNStatus').val(), qty: qty, poznamka: $('#mQNNote').val() }, function() {
+        $.post('includes/update_status_nabidka.php', { id: $('#mQNId').val(), status: $('#mQNStatus').val(), qty: qty, poznamka: $('#mQNNote').val() }, function(r) {
+            var msg = (typeof r === 'string') ? r.trim() : '';
+            if (msg && msg.indexOf('Nelze') === 0) {
+                if (typeof sysAlert === 'function') sysAlert(msg, 'danger'); else alert(msg);
+                btn.prop('disabled', false).text('Potvrdit schválení');
+                return;
+            }
             $('#mQtyNote').modal('hide'); btn.prop('disabled', false).text('Potvrdit schválení'); safeReload();
         });
     });
 
     $(document).on('click', '.btn-wf-direct, .btn-wf-check', function(e) {
         e.preventDefault(); var btn = $(this); btn.prop('disabled', true).html('<i class="glyphicon glyphicon-refresh spinning"></i>');
-        $.post('includes/update_status_nabidka.php', { id: btn.data('id'), status: btn.data('status'), poznamka: 'Systémová akce: ' + btn.text().trim() }, function() { safeReload(); });
+        $.post('includes/update_status_nabidka.php', { id: btn.data('id'), status: btn.data('status'), poznamka: 'Systémová akce: ' + btn.text().trim() }, function(r) {
+            var msg = (typeof r === 'string') ? r.trim() : '';
+            if (msg && (msg.indexOf('Nelze') === 0 || msg.indexOf('Chyba') === 0)) {
+                if (typeof sysAlert === 'function') sysAlert(msg, 'danger'); else alert(msg);
+            }
+            safeReload();
+        });
+    });
+
+    $(document).on('click', '.btn-wf-nutri-deferred', function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="glyphicon glyphicon-refresh spinning"></i>');
+        $.post('includes/update_status_nabidka.php', {
+            id: btn.data('id'),
+            status: 'no_change',
+            poznamka: 'Nutriční hodnoty schváleny — čeká se na doplnění ceny od Nákupu před objednávkou vzorku'
+        }, function() { safeReload(); });
     });
 
     $(document).on('click', '.btn-prompt-reason', function() {

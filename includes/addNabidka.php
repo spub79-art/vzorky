@@ -1,8 +1,8 @@
 <?php
 include_once("includes/db_connect.php");
 
-// 1. Ochrana přístupu
-if (!$is_adm && !$is_orders) {
+include_once("permissions.php");
+if (!userCanNakup()) {
     die("<div class='alert alert-danger'>Sem nemáte přístup.</div>");
 }
 

@@ -1,6 +1,10 @@
 <?php
 include_once("db_connect.php");
-if (!$is_adm && !$is_orders && !$is_dev) die("Nepovolený přístup.");
+if (!isset($can_nakup)) {
+    include_once("permissions.php");
+    $can_nakup = loadSessionPermissions()['can_nakup'];
+}
+if (!$is_adm && !$can_nakup && !$is_dev) die("Nepovolený přístup.");
 
 // SQL dotaz: Zjišťujeme počty požadavků (pro zámek) a nabídek (pro historii)
 $sql = "SELECT s.*, 

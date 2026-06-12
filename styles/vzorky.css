@@ -58,7 +58,7 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .req-card { background: #fff; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; border-top-width: 6px; border-top-style: solid; box-shadow: 0 2px 6px rgba(0,0,0,0.05); overflow: hidden; }
 .req-card.req-card-urgent { border: 2px solid #f0ad4e !important; background: #fffdfa !important; box-shadow: 0 4px 8px rgba(240,173,78,0.1); }
 .req-card.offer-rejected { display: none; }
-.req-header { padding: 10px 10px 6px 10px; border-bottom: none; }
+.req-header { padding: 8px 10px 4px 10px; border-bottom: none; }
 .req-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
 .req-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; flex: 1; }
 .req-title.is-cancelled { color: #777; }
@@ -69,7 +69,8 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .btn-delete-req:hover { opacity: 1; border-color: #d9534f; color: #d9534f; }
 .req-id-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; font-size: 13px; font-weight: bold; margin-left: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 .req-id-badge.is-cancelled { background-color: #ccc !important; }
-.req-note-box { margin-top: 8px; font-size: 11px; color: #444; background: rgba(255,255,255,0.6); padding: 6px 8px; border-radius: 4px; border-left-width: 3px; border-left-style: solid; line-height: 1.3; }
+.req-note-box { margin-top: 4px; font-size: 10px; color: #555; background: rgba(255,255,255,0.5); padding: 3px 6px; border-radius: 3px; border-left-width: 2px; border-left-style: solid; line-height: 1.25; max-height: 2.5em; overflow: hidden; }
+.req-card:hover .req-note-box { max-height: none; }
 .req-note-box.is-cancelled { border-left-color: #ccc; }
 .req-note-box.is-active { border-left-color: #f0ad4e; }
 .req-note-icon { margin-right: 3px; }
@@ -97,8 +98,29 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .offer-poptavka { font-size: 10px; color: #6f42c1; font-weight: bold; margin-top: 3px; }
 .offer-poptavka-pending { color: #777; font-weight: normal; }
 .offer-poptavka-missing { color: #d9534f; }
-.req-mnozstvi-summary { font-size: 11px; color: #2980b9; font-weight: bold; margin-bottom: 6px; padding: 4px 6px; background: #eef5fa; border-radius: 3px; border-left: 3px solid #337ab7; }
-.req-poptavka-summary { font-size: 11px; color: #6f42c1; font-weight: bold; margin-bottom: 6px; padding: 4px 6px; background: #f9f5fc; border-radius: 3px; border-left: 3px solid #8e44ad; }
+/* Kompaktní meta řádek pod štítky (nákup, zákazník, množství, poptávka) */
+.req-meta-compact {
+	font-size: 10px;
+	line-height: 1.3;
+	color: #666;
+	margin: 3px 0 2px 0;
+	padding: 0 1px;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+.req-card:hover .req-meta-compact {
+	-webkit-line-clamp: 4;
+}
+.req-meta-compact .meta-sep { color: #ccc; margin: 0 5px; font-weight: normal; }
+.req-meta-compact .meta-nakup { color: #337ab7; font-weight: bold; }
+.req-meta-compact .meta-nakup-mine { color: #1a6b3c; }
+.req-meta-compact .meta-nakup-free { color: #aaa; font-weight: normal; font-style: italic; }
+.req-meta-compact .meta-zak { color: #8e44ad; }
+.req-meta-compact .meta-qty { color: #2980b9; }
+.req-meta-compact .meta-pop { color: #6f42c1; }
+.req-meta-compact .glyphicon { font-size: 9px; margin-right: 1px; }
 .offer-status-row { font-size: 9px; margin-top: 3px; }
 .offer-alert { background: #fdf2f2; color: #d9534f; padding: 2px 4px; border: 1px solid #ebccd1; border-radius: 3px; margin-top: 4px; font-size: 9px; font-weight: bold; }
 
@@ -196,11 +218,21 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .offer-comments-wrapper .chat-text,
 .offer-comments-wrapper .chat-author,
 .offer-comments-wrapper .chat-time,
+.offer-comments-wrapper .history-row,
 .offer-sys-msg-container .history-row {
     transition: font-size 0.3s ease-in-out, padding 0.3s ease-in-out, line-height 0.3s ease-in-out;
 }
 
-/* Zvětšení zpráv u nabídek */
+/* Zvětšení po rozbalení — jednotně pro požadavek i nabídku (history-row + legacy chat bubliny) */
+.offer-comments-wrapper.is-expanded .history-row,
+.offer-sys-msg-container.is-expanded .history-row {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+}
+.offer-comments-wrapper.is-expanded .history-row-icon,
+.offer-sys-msg-container.is-expanded .history-row-icon {
+    font-size: 11px !important;
+}
 .offer-comments-wrapper.is-expanded .offer-chat-bubble,
 .offer-comments-wrapper.is-expanded .offer-sys-msg {
     font-size: 13px !important;
@@ -210,15 +242,6 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .offer-comments-wrapper.is-expanded .chat-text,
 .offer-comments-wrapper.is-expanded .chat-author { font-size: 13px !important; }
 .offer-comments-wrapper.is-expanded .chat-time { font-size: 11px !important; }
-
-/* Zvětšení zpráv z hlavní historie požadavku (přepsáno z 11px na 13px) */
-.offer-sys-msg-container.is-expanded .history-row {
-    font-size: 13px !important;
-    line-height: 1.4 !important;
-}
-.offer-sys-msg-container.is-expanded .history-row-icon {
-    font-size: 11px !important;
-}
 
 /* CHAT U POŽADAVKŮ */
 .chat-container { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -272,16 +295,6 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .feedback-msg { padding: 20px; text-align: center; color: #777; }
 
 /* KINO REŽIM: VELKÝ MODÁL PRO ČTENÍ */
-@media (min-width: 992px) { #mFullComments .modal-dialog { width: 95%; max-width: 1800px; } }
-#mFullCommentsBody { padding: 20px 30px; }
-#mFullCommentsBody .offer-comments-wrapper { max-height: none !important; overflow: visible !important; cursor: auto !important; background: transparent !important; border: none !important; }
-#mFullCommentsBody .offer-comments-wrapper::after { display: none !important; }
-#mFullCommentsBody .offer-sys-msg { font-size: 16px !important; line-height: 1.6; padding: 12px 15px !important; margin-bottom: 15px; }
-#mFullCommentsBody .offer-chat-bubble { font-size: 16px !important; line-height: 1.6; padding: 12px 18px !important; margin-bottom: 12px; }
-#mFullCommentsBody .chat-author { font-size: 17px !important; display: block; margin-bottom: 5px; }
-#mFullCommentsBody .chat-time { font-size: 14px !important; color: #777; }
-#mFullCommentsBody .chat-text { font-size: 16px !important; display: block; margin-top: 5px; }
-
 /* =========================================
    TOP HLAVIČKA A ROZLOŽENÍ
    ========================================= */
@@ -425,7 +438,8 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .history-action-btn { cursor: pointer; font-size: 10px; }
 .history-action-btn.btn-edit-history { margin-right: 6px; }
 
-.offer-sys-msg-container { margin-top: 6px; padding: 4px 6px; background: #fafafa; border: 1px solid #e3e3e3; border-radius: 3px; max-height: 120px; overflow-y: auto; }
+/* Vizuál historie požadavku — výšku řídí akordeon výše, nepřepisovat max-height/overflow */
+.offer-sys-msg-container { margin-top: 4px; padding: 4px 6px; background: #fafafa; border-color: #e3e3e3 !important; border-radius: 3px; }
 .history-more-link { font-size: 10px; color: #999; text-align: center; margin-top: 4px; border-top: 1px dashed #ddd; padding-top: 2px; }
 
 /* =========================================================

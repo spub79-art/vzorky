@@ -1,5 +1,5 @@
 <?php
-function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter_phase, $req_color_hex = '#eee', $history_off = []) {
+function renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $filter_phase, $req_color_hex = '#eee', $history_off = []) {
     // 100% CISTE PROPOJENI S DATABAZI - zadne ciselne indexy
     $p_id = (int)($p['id'] ?? 0);
     $p_status_id = (int)($p['id_status'] ?? 0);
@@ -18,7 +18,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
     // LOGIKA PRO PRAZDNOU NABIDKU ("Hledá se dodavatel...")
     $current_uid = $_SESSION['uid'] ?? 0;
     if (strpos($poznamka_nakup, '[Hledá se dodavatel]') !== false) {
-        $is_my_dummy = ($id_resitel == $current_uid || $is_adm || $is_orders);
+        $is_my_dummy = ($id_resitel == $current_uid || $is_adm || $can_nakup);
         ?>
         <div class="offer-row <?= $is_my_dummy ? 'needs-my-action' : '' ?>" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 11px; color: #2196f3; font-weight: bold;"><i class="glyphicon glyphicon-hourglass"></i> Hledá se dodavatel...</span>
@@ -59,8 +59,8 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
     $needs_action = false;
     if ($is_adm) {
         $needs_action = true;
-    } elseif ($is_orders) {
-        if ($filter_phase == 2 && (($p_status_id == 3 && !$has_spec) || in_array($p_status_id, [9, 8, 11]))) $needs_action = true;
+    } elseif ($can_nakup) {
+        if ($filter_phase == 2 && ((in_array($p_status_id, [3, STATUS_NABIDKA_BEZ_CENY]) && !$has_spec) || in_array($p_status_id, [9, 8, 11]))) $needs_action = true;
         if (!$has_lab && in_array($p_status_id, [12, 13, 10, 4, 8, 11])) $needs_action = true;
     } elseif ($is_quality) {
         if ($p_status_id == 12 && $has_spec) $needs_action = true;
@@ -69,7 +69,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
     }
 
     $is_rejected = in_array($p_status_id, [5, 7]);
-    $is_missing_coa_urgent = ($is_orders && !$has_lab && in_array($p_status_id, [10, 4]));
+    $is_missing_coa_urgent = ($can_nakup && !$has_lab && in_array($p_status_id, [10, 4]));
 
     $bg_color_offer = $is_rejected ? '#fdf2f2' : '#ffffff';
 
@@ -85,7 +85,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
 
     $show_manage = false;
     if ($is_adm) $show_manage = true;
-    elseif ($is_orders) { $show_manage = true; }
+    elseif ($can_nakup) { $show_manage = true; }
     elseif ($is_vyvoj && $filter_phase == 3) $show_manage = true;
 
     $wf_attrs = "class='offer-file-badge is-dashed btn-wf' data-id='$p_id' data-status='".($p_status_id == 9 ? 3 : 'no_change')."' data-upload='1' data-sarze='".htmlspecialchars($p_sarze)."' data-files='".htmlspecialchars($p_files_str)."'";
@@ -102,7 +102,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
         ? "<a href='#' class='offer-file-badge btn-open-files-modal' data-id='$p_id' style='color:#777; border-color:#999;' title='Ostatní soubory'><i class='glyphicon glyphicon-paperclip'></i></a>" : "";
 
     ob_start();
-    if (($is_orders || $is_adm) && in_array($p_status_id, [2, 3])): ?>
+    if ($can_nakup && in_array($p_status_id, [2, 3, STATUS_NABIDKA_BEZ_CENY, 12, 13])): ?>
         <button class="btn btn-xs btn-block btn-info btn-edit-offer" data-id="<?= $p_id ?>" data-dodavatel="<?= htmlspecialchars($dodavatel_nazev) ?>" data-cena="<?= $vlozena_cena ?>" data-moq-qty="<?= $p_moq_qty ?>" data-moq-mj="<?= $p_moq_mj ?>" data-poznamka="">
             <i class="glyphicon glyphicon-pencil"></i> UPRAVIT CENU
         </button>
@@ -127,7 +127,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
         <button class="btn btn-xs btn-block btn-danger btn-prompt-reason" data-id="<?= $p_id ?>" data-status="7">KO</button>
     <?php endif; ?>
 
-    <?php if ($p_status_id == 3 && ($is_orders || $is_adm) && $has_spec): ?>
+    <?php if (in_array($p_status_id, [3, STATUS_NABIDKA_BEZ_CENY]) && $can_nakup && $has_spec): ?>
         <button class="btn btn-xs btn-block btn-primary btn-wf-direct" data-id="<?= $p_id ?>" data-status="12">PŘEDAT KVALITĚ</button>
     <?php endif; ?>
 
@@ -136,22 +136,30 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
         <div style="display:flex; gap:2px;"><button class="btn btn-xs btn-warning btn-prompt-reason" data-id="<?= $p_id ?>" data-status="9" style="flex:1;">DOPLNIT</button><button class="btn btn-xs btn-danger btn-prompt-reason" data-id="<?= $p_id ?>" data-status="7" style="flex:1;">KO</button></div>
     <?php endif; ?>
 
-    <?php if ($p_status_id == 13 && ($is_vyvoj || $is_adm) && $has_spec): ?>
+    <?php if ($p_status_id == 13 && ($is_vyvoj || $is_adm) && $has_spec):
+        $has_poptavka = trim($p['pozadovane_mnozstvi'] ?? '') !== '';
+        if ($vlozena_cena <= 0): ?>
+        <button class="btn btn-xs btn-block btn-success btn-wf-nutri-deferred" data-id="<?= $p_id ?>">NUTRIČNÍ OK</button>
+        <div class="text-muted" style="font-size:9px; margin:2px 0;">Bez ceny — vzorek až po doplnění ceny Nákupu</div>
+        <?php elseif (!$has_poptavka): ?>
+        <button class="btn btn-xs btn-block btn-success btn-prompt-qty-note" data-id="<?= $p_id ?>" data-status="8">NUTRIČNÍ OK → VZOREK</button>
+        <?php else: ?>
         <button class="btn btn-xs btn-block btn-success btn-wf-check" data-id="<?= $p_id ?>" data-status="8">NUTRIČNÍ OK</button>
+        <?php endif; ?>
         <div style="display:flex; gap:2px;"><button class="btn btn-xs btn-warning btn-prompt-reason" data-id="<?= $p_id ?>" data-status="9" style="flex:1;">DOPLNIT</button><button class="btn btn-xs btn-danger btn-prompt-reason" data-id="<?= $p_id ?>" data-status="7" style="flex:1;">KO</button></div>
     <?php endif; ?>
 
-    <?php if ($p_status_id == 8 && ($is_orders || $is_adm)): ?>
+    <?php if ($p_status_id == 8 && $can_nakup): ?>
         <button class="btn btn-xs btn-block btn-warning btn-wf-direct" data-id="<?= $p_id ?>" data-status="11">OBJEDNÁNO</button>
     <?php endif; ?>
 
-    <?php if ($p_status_id == 11 && ($is_orders || $is_adm)): ?>
+    <?php if ($p_status_id == 11 && $can_nakup): ?>
         <button class="btn btn-xs btn-block btn-primary btn-wf-direct" data-id="<?= $p_id ?>" data-status="10">DORAZILO</button>
     <?php endif; ?>
 
     <?php if ($show_manage):
         $btn_class = 'btn-default'; $btn_text = '<i class="glyphicon glyphicon-cog"></i> SPRÁVA';
-        if ($needs_action && $is_orders) {
+        if ($needs_action && $can_nakup) {
             if (!$has_lab && in_array($p_status_id, [10, 4])) { $btn_class = 'btn-danger'; $btn_text = '<i class="glyphicon glyphicon-upload"></i> COA'; }
             else { $btn_class = 'btn-warning'; }
         }
@@ -196,7 +204,9 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
 
                     $finalni_all_in = $cena_v_czk + $dopravne;
 
-                    if ($is_vyvoj && !$is_adm): ?>
+                    if ($p_status_id == STATUS_NABIDKA_BEZ_CENY): ?>
+                        <span class="offer-price" style="color: #8e44ad; font-style: italic;" title="Cena bude doplněna později">bez ceny</span>
+                    <?php elseif ($is_vyvoj && !$is_adm): ?>
                         <span class="offer-price" style="color: #2c3e50;" title="Finální cena vč. dopravy (přepočteno z <?= htmlspecialchars($mena) ?>)">
                             <?= number_format($finalni_all_in, 2, ',', ' ') ?>&nbsp;CZK
                         </span>
@@ -216,6 +226,8 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     <?php endif; ?>
                     <?php if ($p_status_id == 2): ?>
                         <div class="offer-poptavka offer-poptavka-pending" title="Množství zadá vývoj při schválení ceny"><i class="glyphicon glyphicon-time"></i> Poptávka: po CENA OK</div>
+                    <?php elseif ($p_status_id == STATUS_NABIDKA_BEZ_CENY): ?>
+                        <div class="offer-poptavka offer-poptavka-pending" title="Množství až po doplnění a schválení ceny"><i class="glyphicon glyphicon-time"></i> Poptávka: po doplnění ceny</div>
                     <?php elseif ($p_poptavka_qty !== null): ?>
                         <div class="offer-poptavka" title="Množství požadované vývojem"><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka: <?= htmlspecialchars($p_poptavka_qty) ?></div>
                     <?php elseif (nabidkaPotrebujePoptavku($p_status_id)): ?>
@@ -232,6 +244,7 @@ function renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $filter
                     case 7: echo '<b class="text-danger">ZAMÍTNUTO (KO)</b>'; break;
                     case 9: echo '<b class="text-warning">NÁKUP: DOPLNIT DOKUMENTACI</b>'; break;
                     case 3: echo '<span class="text-info">Nákup: Čeká se na nahrání TDS a předání kvalitě</span>'; break;
+                    case STATUS_NABIDKA_BEZ_CENY: echo '<span style="color:#8e44ad;"><i class="glyphicon glyphicon-file"></i> Dokumentace bez ceny — nahrát TDS</span>'; break;
                     case 12: echo '<span class="text-primary"><i class="glyphicon glyphicon-search"></i> Kvalita: Kontrola TDS</span>'; break;
                     case 13: echo '<span class="text-primary"><i class="glyphicon glyphicon-apple"></i> Vývoj: Kontrola nutričních hodnot</span>'; break;
                     case 10: case 4: echo '<b style="color:#2980b9;"><i class="glyphicon glyphicon-flask"></i> TECHNOLOGICKÝ TEST</b>'; break;

@@ -276,8 +276,10 @@ $(document).ready(function() {
         var targetScript = (mode === 'edit') ? 'includes/ajax_update_offer.php' : 'includes/ajax_add_offer.php';
         var d = $('#mNNDod').val(), c = $('#mNNCena').val(), id = $('#mNNId').val();
 
-        // ZMĚNA: Cena už není povinná
         if(!d) { sysAlert("Vyplňte prosím dodavatele.", "warning"); return; }
+
+        var bezCeny = (mode === 'add') && $('#mNNBezCeny').is(':checked');
+        if (mode === 'add' && !bezCeny && !c) { sysAlert("Zadejte cenu, nebo zaškrtněte „Zatím bez ceny“.", "warning"); return; }
 
         var finalNote = $('#mNNPozn').val().trim();
         var dopravaVal = $('#mNNDoprava').val();
@@ -291,7 +293,8 @@ $(document).ready(function() {
             id_nabidka: (mode === 'edit' ? id : 0),
             id_pozadavek: (mode === 'add' ? id : 0),
             dodavatel_raw: d,
-            cena: c, // Může být prázdná
+            cena: c,
+            bez_ceny: bezCeny ? 1 : 0,
             mena: $('#mNNMena').val() || 'CZK',
             moq_qty: $('#mNNMoqQty').val(),
             moq_mj: $('#mNNMoqMj').val(),

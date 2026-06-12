@@ -9,7 +9,8 @@ include_once("includes/mail.php");
 $BASE_URL = defined('APP_BASE_URL') ? APP_BASE_URL : 'https://docs.lifefood.eu/vzorky';
 
 // Požadavky ve Fázi 1 (čeká na nabídku od Nákupu) + zákazníci + stav nabídek
-$sql = "SELECT p.*, s.nazev AS surovina_nazev,
+$users_tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
+$sql = "SELECT p.*, s.nazev AS surovina_nazev, u_nak.jmeno AS nakupci_jmeno,
         (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ')
          FROM pozadavky_zakaznici pz
          JOIN zakaznici z ON pz.id_zakaznik = z.id
@@ -19,6 +20,7 @@ $sql = "SELECT p.*, s.nazev AS surovina_nazev,
         COUNT(pn.id) AS pocet_nabidek
         FROM pozadavky p
         LEFT JOIN suroviny s ON p.id_surovina = s.id
+        LEFT JOIN $users_tbl u_nak ON p.id_nakupci = u_nak.id
         LEFT JOIN pozadavky_nabidky pn ON pn.id_pozadavek = p.id
         WHERE p.id_status NOT IN (5, 6, 7, 8)
         GROUP BY p.id
@@ -68,7 +70,16 @@ if ($result) {
 
 $celkem = count($urgentni) + count($standardni);
 
-if ($celkem === 0) {
+$is_preview = isset($_GET['preview']) && $_GET['preview'] == '1';
+if ($is_preview) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $is_dev = (strpos($_SERVER['REQUEST_URI'] ?? '', 'dev-vzorky') !== false);
+    if (!$is_dev && empty($_SESSION['adm'])) {
+        die('Náhled je dostupný jen pro administrátory (nebo na dev prostředí).');
+    }
+}
+
+if ($celkem === 0 && !$is_preview) {
     die("Vše je čisté, nic neodesílám.");
 }
 
@@ -93,6 +104,12 @@ $html = wrapDigestEmail(
     ],
     $BASE_URL
 );
+
+if ($is_preview) {
+    header('Content-Type: text/html; charset=utf-8');
+    echo $html;
+    exit;
+}
 
 $recipients = getEmailsForChannel('nakup');
 if (empty($recipients)) {

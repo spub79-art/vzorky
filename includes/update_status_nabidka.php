@@ -44,6 +44,20 @@ if ($id > 0) {
         $id_surovina = $row_sur['id_surovina'] ?? 0;
     }
 
+    // Tvrdá brána: objednávka vzorku (8) jen se schválenou cenou a množstvím
+    if ((int)$status === 8) {
+        $gate_q = mysqli_query($conn, "SELECT cena_nabidka, pozadovane_mnozstvi FROM pozadavky_nabidky WHERE id = $id");
+        $gate = mysqli_fetch_assoc($gate_q);
+        if (!$gate || (float)$gate['cena_nabidka'] <= 0) {
+            ob_end_clean();
+            die('Nelze pokračovat: chybí cena. Nákup musí doplnit cenu a vývoj ji schválit.');
+        }
+        if (empty(trim($gate['pozadovane_mnozstvi'] ?? ''))) {
+            ob_end_clean();
+            die('Nelze pokračovat: chybí požadované množství. Vývoj musí schválit cenu (CENA OK / NUTRIČNÍ OK).');
+        }
+    }
+
     // 1. AKTUALIZACE NABÍDKY
     if ($status === 'no_change') {
         $sql = "UPDATE pozadavky_nabidky SET 
@@ -84,7 +98,7 @@ if ($id > 0) {
 
     // Synchronizace hlavního statusu požadavku
     $new_main_status = null;
-    if (in_array((int)$status, [3, 8, 9, 11, 12, 13])) $new_main_status = 3;
+    if (in_array((int)$status, nabidkaFaze2Statusy())) $new_main_status = 3;
     elseif (in_array((int)$status, [10, 4])) $new_main_status = 10;
     elseif ((int)$status == 6) $new_main_status = 6;
 

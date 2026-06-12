@@ -4,7 +4,8 @@ include_once("db_connect.php");
 
 // Povolit jen pro Admina (1) nebo Nákup (orders=1)
 session_start();
-if (empty($_SESSION['adm']) && empty($_SESSION['orders'])) {
+include_once("permissions.php");
+if (!userCanNakup()) {
     http_response_code(403);
     die("Nemáte oprávnění mazat soubory.");
 }

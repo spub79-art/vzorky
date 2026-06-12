@@ -7,14 +7,19 @@ include_once("boardFunctions.php");
 if (!isset($_POST['id'])) exit;
 $id_pozadavek = (int)$_POST['id'];
 
-$is_adm = (!empty($_SESSION['adm']) && $_SESSION['adm'] == 1);
-$current_uid = $_SESSION['uid'] ?? 0;
+include_once("permissions.php");
+$perms = loadSessionPermissions();
+$is_adm = $perms['is_adm'];
+$can_nakup = $perms['can_nakup'];
+$current_uid = $perms['current_uid'];
+$users_tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
 
 // 1. Načtení detailu požadavku
-$q_req = mysqli_query($conn, "SELECT p.*, s.nazev AS surovina_nazev, cs.nazev as status_nazev, cs.barva_hex 
+$q_req = mysqli_query($conn, "SELECT p.*, s.nazev AS surovina_nazev, cs.nazev as status_nazev, cs.barva_hex, u_nak.jmeno AS nakupci_jmeno
                               FROM pozadavky p 
                               LEFT JOIN suroviny s ON p.id_surovina = s.id 
                               LEFT JOIN ciselnik_statusu cs ON p.id_status = cs.id
+                              LEFT JOIN $users_tbl u_nak ON p.id_nakupci = u_nak.id
                               WHERE p.id = $id_pozadavek");
 if (!$q_req || mysqli_num_rows($q_req) == 0) {
     echo "<div class='alert alert-danger' style='margin: 20px;'>Požadavek nenalezen.</div>";
@@ -74,6 +79,29 @@ if ($q_off) {
             ?>
             <small class="rd-header-id" style="display: block; margin-top: 5px; width: 100%;">
                 #<?= $req['id'] ?> &bull; Zadal/a: <strong><?= htmlspecialchars($zadavatel) ?></strong> &bull; <?= date('j.n.Y', strtotime($req['datumPozadavek'])) ?>
+                <?php
+                $id_nakupci = (int)($req['id_nakupci'] ?? 0);
+                $nakupci_jmeno = trim($req['nakupci_jmeno'] ?? '');
+                $is_my_nakup_req = ($id_nakupci > 0 && $id_nakupci === $current_uid);
+                ?>
+                &bull; Nákup:
+                <?php if ($id_nakupci > 0 && $nakupci_jmeno !== ''): ?>
+                    <strong style="color:#337ab7;"><?= htmlspecialchars($nakupci_jmeno) ?></strong>
+                <?php else: ?>
+                    <span class="text-muted" style="font-style:italic;">volné</span>
+                <?php endif; ?>
+                <?php if ($can_nakup): ?>
+                    <?php if (!$is_my_nakup_req): ?>
+                        <i class="glyphicon glyphicon-hand-up text-primary btn-claim-request" style="cursor:pointer; margin-left:4px;"
+                           data-id="<?= $req['id'] ?>" data-resitel-id="<?= $id_nakupci ?>"
+                           data-resitel-jmeno="<?= htmlspecialchars($nakupci_jmeno, ENT_QUOTES) ?>"
+                           title="<?= $id_nakupci > 0 ? 'Převzít (nyní: ' . htmlspecialchars($nakupci_jmeno, ENT_QUOTES) . ')' : 'Převzít' ?>"></i>
+                    <?php endif; ?>
+                    <?php if ($is_my_nakup_req || ($is_adm && $id_nakupci > 0)): ?>
+                        <i class="glyphicon glyphicon-log-out text-muted btn-release-request" style="cursor:pointer; margin-left:2px;"
+                           data-id="<?= $req['id'] ?>" title="Vzdávám to"></i>
+                    <?php endif; ?>
+                <?php endif; ?>
             </small>
         </h2>
 

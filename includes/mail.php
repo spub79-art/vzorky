@@ -19,7 +19,11 @@ function getEmailsForChannel($channel) {
     if (isset($role_map[$channel]) && isset($conn) && $conn) {
         $col = $role_map[$channel];
         $tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
-        $q = mysqli_query($conn, "SELECT email FROM $tbl WHERE `$col` = 1 AND email IS NOT NULL AND TRIM(email) != ''");
+        $where = "`$col` = 1";
+        if ($channel === 'nakup') {
+            $where = "(`$col` = 1 OR IFNULL(nakup_pristup, 0) = 1)";
+        }
+        $q = mysqli_query($conn, "SELECT email FROM $tbl WHERE $where AND email IS NOT NULL AND TRIM(email) != ''");
         if ($q) {
             while ($row = mysqli_fetch_assoc($q)) {
                 $emails[] = trim($row['email']);
@@ -68,6 +72,7 @@ function renderDigestTable($rows, $baseUrl) {
     $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Surovina</th>";
     $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Zákazník</th>";
     $html .= "<th style='padding:8px 6px;text-align:center;border-bottom:2px solid #ddd;width:70px;'>Čeká</th>";
+    $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Řeší</th>";
     $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Stav</th>";
     $html .= "</tr>";
 
@@ -94,11 +99,16 @@ function renderDigestTable($rows, $baseUrl) {
         if (!empty($r['vegan'])) $stav[] = 'Vegan';
         $stav_text = implode(' · ', $stav);
 
+        $resitel = !empty($r['nakupci_jmeno'])
+            ? htmlspecialchars($r['nakupci_jmeno'])
+            : '<span style="color:#d9534f;">Nepřevzato</span>';
+
         $html .= "<tr style='border-bottom:1px solid #eee;'>";
         $html .= "<td style='padding:8px 6px;'><a href='$link' style='color:#2c3e50;font-weight:bold;text-decoration:none;'>$sur</a>";
         $html .= "<br><span style='color:#999;font-size:11px;'>#$r[id]</span></td>";
         $html .= "<td style='padding:8px 6px;'>$zak</td>";
         $html .= "<td style='padding:8px 6px;text-align:center;color:$stari_color;font-weight:$stari_weight;white-space:nowrap;'>$stari</td>";
+        $html .= "<td style='padding:8px 6px;font-size:12px;'>$resitel</td>";
         $html .= "<td style='padding:8px 6px;color:#666;font-size:12px;'>$stav_text</td>";
         $html .= "</tr>";
     }

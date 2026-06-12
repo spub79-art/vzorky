@@ -25,9 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $orders  = ($role_novy === 'orders') ? 1 : 0;
         $kvalita = ($role_novy === 'kvalita') ? 1 : 0;
         $cumil   = ($role_novy === 'cumil') ? 1 : 0;
+        $nakup_pristup = !empty($_POST['nakup_pristup_novy']) ? 1 : 0;
 
-        $sqlIn = "INSERT INTO " . DB_TBL_USERS . " (jmeno, login, heslo, email, admin, vyvoj, orders, kvalita, cumil) 
-                  VALUES ('$jmeno', '$login', '$heslo', '$email', $admin, $vyvoj, $orders, $kvalita, $cumil)";
+        $sqlIn = "INSERT INTO " . DB_TBL_USERS . " (jmeno, login, heslo, email, admin, vyvoj, orders, kvalita, cumil, nakup_pristup) 
+                  VALUES ('$jmeno', '$login', '$heslo', '$email', $admin, $vyvoj, $orders, $kvalita, $cumil, $nakup_pristup)";
         if(mysqli_query($conn, $sqlIn)) {
             echo "<script>window.location.href='$current_page_url';</script>";
             exit;
@@ -51,9 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $orders  = ($role === 'orders') ? 1 : 0;
         $kvalita = ($role === 'kvalita') ? 1 : 0;
         $cumil   = ($role === 'cumil') ? 1 : 0;
+        $nakup_pristup = !empty($_POST['nakup_pristup']) ? 1 : 0;
 
         $sqlUpdate = "UPDATE " . DB_TBL_USERS . " SET jmeno='$jmeno', login='$login', heslo='$heslo', email='$email', 
-                      admin=$admin, vyvoj=$vyvoj, orders=$orders, kvalita=$kvalita, cumil=$cumil WHERE id=$id";
+                      admin=$admin, vyvoj=$vyvoj, orders=$orders, kvalita=$kvalita, cumil=$cumil, nakup_pristup=$nakup_pristup WHERE id=$id";
         mysqli_query($conn, $sqlUpdate);
     }
 }
@@ -96,6 +98,7 @@ if (!$resUsers) {
                 <th class="text-center" title="Orders">Ord</th>
                 <th class="text-center" title="Kvalita">Kva</th>
                 <th class="text-center" title="Čumil">Čum</th>
+                <th class="text-center" title="Rozšířený přístup k modulu Nákup">Nák+</th>
                 <th class="text-center" style="width: 120px;">Akce</th>
             </tr>
             </thead>
@@ -112,6 +115,7 @@ if (!$resUsers) {
                     <td class="text-center"><input type="radio" name="role_novy" value="orders"></td>
                     <td class="text-center"><input type="radio" name="role_novy" value="kvalita"></td>
                     <td class="text-center"><input type="radio" name="role_novy" value="cumil" checked></td>
+                    <td class="text-center"><input type="checkbox" name="nakup_pristup_novy" value="1" title="Přístup k nákupním funkcím bez role Orders"></td>
                     <td class="text-center">
                         <div class="btn-group">
                             <button type="submit" name="save_user" class="btn btn-success btn-sm"><i class="fa fa-check">Uložit</i></button>
@@ -135,6 +139,7 @@ if (!$resUsers) {
                         <td class="text-center"><input type="radio" name="role" value="orders" <?= $u['orders'] ? 'checked' : '' ?>></td>
                         <td class="text-center"><input type="radio" name="role" value="kvalita" <?= $u['kvalita'] ? 'checked' : '' ?>></td>
                         <td class="text-center"><input type="radio" name="role" value="cumil" <?= (isset($u['cumil']) && $u['cumil']) ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="checkbox" name="nakup_pristup" value="1" <?= !empty($u['nakup_pristup']) ? 'checked' : '' ?> title="Přístup k nákupním funkcím bez role Orders"></td>
                         <td class="text-center">
                             <div class="btn-group">
                                 <button type="submit" name="update_user" class="btn btn-success btn-sm"><i class="fa fa-save">Uložit</i></button>

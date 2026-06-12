@@ -1,6 +1,15 @@
 <?php
 // Pomocné funkce pro vizualizaci nástěnky
 
+if (!defined('STATUS_NABIDKA_BEZ_CENY')) {
+    define('STATUS_NABIDKA_BEZ_CENY', 14);
+}
+
+/** Statusy nabídky ve 2. fázi (dokumentace / TDS). */
+function nabidkaFaze2Statusy() {
+    return [3, 8, 9, 11, 12, 13, STATUS_NABIDKA_BEZ_CENY];
+}
+
 // Přidali jsme parametr $is_spread (ve výchozím stavu true, abychom nic nerozbili, než to propojíme)
 function getUniqueColor($id, $is_spread = true) {
     if (!$is_spread) {
@@ -60,6 +69,8 @@ function summarizePoptavkyVyvoje($offers) {
 
         if ($st == 2) {
             $lines[] = "<strong>$dod</strong>: <span class='text-muted'>čeká na CENA OK</span>";
+        } elseif ($st == STATUS_NABIDKA_BEZ_CENY) {
+            $lines[] = "<strong>$dod</strong>: <span class='text-muted'>bez ceny</span>";
         } elseif ($qty !== null) {
             $lines[] = "<strong>$dod</strong>: " . htmlspecialchars($qty);
         } elseif (nabidkaPotrebujePoptavku($st)) {
@@ -164,6 +175,7 @@ function renderHistoryRow($h, $is_adm, $current_uid) {
 
     // Ikony podle typu záznamu
     $icon = 'glyphicon-cog text-muted';
+    if ($h['typ_zaznamu'] == 'prirazeni') $icon = 'glyphicon-briefcase text-info';
     if ($h['typ_zaznamu'] == 'urgence') $icon = 'glyphicon-flash text-warning';
     if ($h['typ_zaznamu'] == 'poptavka') $icon = 'glyphicon-scale text-info';
     if ($h['typ_zaznamu'] == 'zalozeni') $icon = 'glyphicon-plus text-success';

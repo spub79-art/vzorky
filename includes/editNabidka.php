@@ -5,10 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include_once("db_connect.php");
 
-// 2. Kontrola oprávnění (admin nebo nákup)
-$is_adm    = !empty($_SESSION['adm']);
-$is_orders = !empty($_SESSION['orders']);
-if (!$is_adm && !$is_orders) {
+include_once("permissions.php");
+if (!userCanNakup()) {
     die("<div class='alert alert-danger'>Nepovolený přístup.</div>");
 }
 

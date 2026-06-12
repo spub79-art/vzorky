@@ -5,18 +5,28 @@ include_once("boardOfferRow.php");
 
 @mysqli_query($conn, "SET SESSION group_concat_max_len = 10000");
 
+if (!isset($can_nakup)) {
+    include_once("permissions.php");
+    $perms = loadSessionPermissions();
+    $can_nakup = $perms['can_nakup'];
+    $current_uid = $perms['current_uid'];
+}
 $is_adm = (!empty($_SESSION['adm']) && $_SESSION['adm'] == 1);
 $is_orders = (!empty($_SESSION['orders']) && $_SESSION['orders'] == 1);
 $is_vyvoj = (!empty($_SESSION['vyvoj']) && $_SESSION['vyvoj'] == 1);
 $is_quality = (!empty($_SESSION['kvalita']) && $_SESSION['kvalita'] == 1);
 $is_cumil = (!empty($_SESSION['cumil']) && $_SESSION['cumil'] == 1);
+if (!isset($current_uid)) {
+    $current_uid = (int)($_SESSION['uid'] ?? 0);
+}
+$users_tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
 
 $last_change_time = file_exists('last_change.txt') ? file_get_contents('last_change.txt') : time();
 
 // ==============================================================================
 // 1. ČISTÝ DOTAZ NA POŽADAVKY
 // ==============================================================================
-$sql_req = "SELECT p.*, s.nazev AS surovina_nazev, 
+$sql_req = "SELECT p.*, s.nazev AS surovina_nazev, u_nak.jmeno AS nakupci_jmeno,
         (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ') 
          FROM pozadavky_zakaznici pz 
          JOIN zakaznici z ON pz.id_zakaznik = z.id 
@@ -26,6 +36,7 @@ $sql_req = "SELECT p.*, s.nazev AS surovina_nazev,
          WHERE pz.id_pozadavek = p.id) as zakaznici_ids
         FROM pozadavky p 
         LEFT JOIN suroviny s ON p.id_surovina = s.id 
+        LEFT JOIN $users_tbl u_nak ON p.id_nakupci = u_nak.id
         WHERE p.id_status != 6 ORDER BY p.datumPozadavek DESC";
 
 $res_req = mysqli_query($conn, $sql_req);
@@ -96,7 +107,7 @@ foreach ($pozadavky as $row) {
 
                 if (in_array($s_id, [10, 4])) {
                     $p3_active = true; $p3_visible = true;
-                } elseif (in_array($s_id, [3, 8, 9, 11, 12, 13])) {
+                } elseif (in_array($s_id, nabidkaFaze2Statusy())) {
                     $p2_active = true; $p2_visible = true;
                 } else {
                     $p1_active = true; $p1_visible = true;
@@ -129,7 +140,7 @@ foreach ($pozadavky as $row) {
 ?>
 
 <div class="row" style="margin-bottom: 15px; padding: 0 15px;">
-    <?php if ($is_orders || $is_adm): ?>
+    <?php if ($can_nakup): ?>
         <button id="btnOpenExportModal" class="btn btn-primary btn-sm pull-right" style="font-weight: bold;">
             <i class="glyphicon glyphicon-list-alt"></i> Generátor "Co sháníme"
         </button>
@@ -175,7 +186,7 @@ foreach ($pozadavky as $row) {
                                     $phase_of_offer = 1;
                                     if (!$is_ko) {
                                         if (in_array($s_id, [10, 4])) $phase_of_offer = 3;
-                                        elseif (in_array($s_id, [3, 8, 9, 11, 12, 13])) $phase_of_offer = 2;
+                                        elseif (in_array($s_id, nabidkaFaze2Statusy())) $phase_of_offer = 2;
                                     }
 
                                     if ($is_total_cancel && $col['id'] == 1) {
@@ -191,7 +202,11 @@ foreach ($pozadavky as $row) {
                             continue;
                         }
 
-                        $is_urgent = ($row['buyer_must_act'] && ($is_orders || $is_adm) && $col['id'] == 1 && !$is_total_cancel);
+                        $is_urgent = ($row['buyer_must_act'] && $can_nakup && $col['id'] == 1 && !$is_total_cancel);
+
+                        $id_nakupci = (int)($row['id_nakupci'] ?? 0);
+                        $nakupci_jmeno = trim($row['nakupci_jmeno'] ?? '');
+                        $is_my_nakup_req = ($id_nakupci > 0 && $id_nakupci === $current_uid);
 
                         $is_grey = ($row['color_bg'] == '#e2e6ea');
                         if (!$is_grey) {
@@ -214,7 +229,7 @@ foreach ($pozadavky as $row) {
                         $badge_text_color = getContrastColor($row['color_bg']);
                         ?>
 
-                        <div class="<?= $card_classes ?>" data-req-id="<?= $row['id'] ?>" data-req-name="<?= htmlspecialchars(strtolower($row['surovina_nazev'])) ?>" data-urgent="<?= $row['priorita'] ?>" style="background-color: <?= $card_bg ?>; border-top-color: <?= $border_top_color ?>;">
+                        <div class="<?= $card_classes ?>" data-req-id="<?= $row['id'] ?>" data-req-name="<?= htmlspecialchars(strtolower($row['surovina_nazev'])) ?>" data-urgent="<?= $row['priorita'] ?>" data-nakupci-id="<?= $id_nakupci ?>" style="background-color: <?= $card_bg ?>; border-top-color: <?= $border_top_color ?>;">
 
                             <div class="req-header">
                                 <div class="req-title-row btn-open-detail hover-text-primary" data-id="<?= $row['id'] ?>">
@@ -266,6 +281,23 @@ foreach ($pozadavky as $row) {
                                                title="Vyžádat dohledání další nabídky od Nákupu"></i>
                                         <?php endif; ?>
 
+                                        <?php if ($can_nakup && !$is_total_cancel): ?>
+                                            <?php if (!$is_my_nakup_req): ?>
+                                                <i class="glyphicon glyphicon-hand-up <?= ($id_nakupci > 0) ? 'text-warning' : 'text-primary' ?> btn-claim-request no-detail-trigger"
+                                                   style="pointer-events: auto; cursor: pointer; font-size: 14px; margin-right: 8px;"
+                                                   data-id="<?= $row['id'] ?>"
+                                                   data-resitel-id="<?= $id_nakupci ?>"
+                                                   data-resitel-jmeno="<?= htmlspecialchars($nakupci_jmeno, ENT_QUOTES) ?>"
+                                                   title="<?= $id_nakupci > 0 ? 'Převzít (nyní: ' . htmlspecialchars($nakupci_jmeno, ENT_QUOTES) . ')' : 'Převzít požadavek' ?>"></i>
+                                            <?php endif; ?>
+                                            <?php if ($is_my_nakup_req || ($is_adm && $id_nakupci > 0)): ?>
+                                                <i class="glyphicon glyphicon-log-out text-muted btn-release-request no-detail-trigger"
+                                                   style="pointer-events: auto; cursor: pointer; font-size: 14px; margin-right: 8px;"
+                                                   data-id="<?= $row['id'] ?>"
+                                                   title="Vzdávám to (uvolnit požadavek)"></i>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+
                                         <?php if (($is_vyvoj || $is_adm) && in_array((int)$row['id_status'], [5, 7, 8])): ?>
                                             <i class="glyphicon glyphicon-play text-success btn-revive-req no-detail-trigger"
                                                style="pointer-events: auto; cursor: pointer; margin-right: 8px;"
@@ -311,28 +343,29 @@ foreach ($pozadavky as $row) {
 
                                 <?php renderBadges($row); ?>
 
-                                <?php if (!empty($row['zakaznici_seznam'])): ?>
-                                    <div style="font-size: 11px; color: #8e44ad; font-weight: bold; margin-bottom: 4px; padding-left: 2px;">
-                                        <i class="glyphicon glyphicon-user"></i> Zákazníci: <?= htmlspecialchars($row['zakaznici_seznam']) ?>
-                                    </div>
-                                <?php endif; ?>
-
                                 <?php
                                 $zadane_mnozstvi = formatPozadavekMnozstvi($row);
-                                if ($zadane_mnozstvi): ?>
-                                    <div class="req-mnozstvi-summary">
-                                        <i class="glyphicon glyphicon-scale"></i>
-                                        <strong>Zadání množství:</strong> <?= htmlspecialchars($zadane_mnozstvi) ?>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php
                                 $poptavky_lines = summarizePoptavkyVyvoje($row['nabidky_pole'] ?? []);
-                                if (!empty($poptavky_lines)): ?>
-                                    <div class="req-poptavka-summary">
-                                        <i class="glyphicon glyphicon-shopping-cart"></i>
-                                        <strong>Poptávka vývoje:</strong> <?= implode(' · ', $poptavky_lines) ?>
-                                    </div>
+                                $meta_parts = [];
+                                if (!$is_total_cancel) {
+                                    if ($id_nakupci > 0 && $nakupci_jmeno !== '') {
+                                        $nak_cls = $is_my_nakup_req ? 'meta-nakup meta-nakup-mine' : 'meta-nakup';
+                                        $meta_parts[] = '<span class="' . $nak_cls . '" title="Řeší nákup"><i class="glyphicon glyphicon-briefcase"></i> ' . htmlspecialchars($nakupci_jmeno) . '</span>';
+                                    } else {
+                                        $meta_parts[] = '<span class="meta-nakup meta-nakup-free" title="Nikdo z nákupu nepřevzal"><i class="glyphicon glyphicon-briefcase"></i> volné</span>';
+                                    }
+                                }
+                                if (!empty($row['zakaznici_seznam'])) {
+                                    $meta_parts[] = '<span class="meta-zak" title="Zákazníci"><i class="glyphicon glyphicon-user"></i> ' . htmlspecialchars($row['zakaznici_seznam']) . '</span>';
+                                }
+                                if ($zadane_mnozstvi) {
+                                    $meta_parts[] = '<span class="meta-qty" title="Zadání množství"><i class="glyphicon glyphicon-scale"></i> ' . htmlspecialchars($zadane_mnozstvi) . '</span>';
+                                }
+                                if (!empty($poptavky_lines)) {
+                                    $meta_parts[] = '<span class="meta-pop" title="Poptávka vývoje">' . implode(' · ', $poptavky_lines) . '</span>';
+                                }
+                                if (!empty($meta_parts)): ?>
+                                    <div class="req-meta-compact"><?= implode('<span class="meta-sep">·</span>', $meta_parts) ?></div>
                                 <?php endif; ?>
 
                                 <?php if (!empty(trim($row['poznamka']))): ?>
@@ -355,7 +388,7 @@ foreach ($pozadavky as $row) {
                                 <?php endif; ?>
 
                                 <?php if (!$is_total_cancel): ?>
-                                    <div class="chat-flex-container" style="display: flex; gap: 4px; align-items: center; margin-top: 10px; border-top: 1px solid #eee; padding-top: 8px;">
+                                    <div class="chat-flex-container" style="display: flex; gap: 4px; align-items: center; margin-top: 6px; border-top: 1px solid #eee; padding-top: 5px;">
                                         <button class="btn btn-link btn-inline-comment" data-id="<?= $row['id'] ?>" data-type="pozadavek" data-urgent="1" title="Odeslat jako URGENTNÍ" style="padding: 0 8px; color: #d9534f; font-size: 18px; text-decoration: none; opacity: 1;">
                                             <i class="glyphicon glyphicon-flash"></i>
                                         </button>
@@ -370,7 +403,7 @@ foreach ($pozadavky as $row) {
 
                             <div class="req-body">
                                 <?php if ($is_urgent): ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
                                     <button class="btn btn-sm btn-block btn-warning btn-add-offer btn-search-offer" data-id="<?= $row['id'] ?>">
                                         <i class="glyphicon glyphicon-search"></i> DOHLEDAT DODAVATELE
                                     </button>
@@ -379,13 +412,13 @@ foreach ($pozadavky as $row) {
                                         <?= $is_postponed ? 'Požadavek je odložen (Čeká se na lepší časy).' : ($is_total_cancel ? 'Požadavek byl zrušen.' : 'Čeká se na vložení nabídky...') ?>
                                     </div>
                                 <?php else: ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $is_orders, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
                                     <?php if ($col['id'] == 3 && !$is_total_cancel): ?>
                                         <a href="technologie.php" class="btn btn-sm btn-block btn-primary btn-goto-lab">
                                             <i class="glyphicon glyphicon-flask"></i> PŘEJÍT DO LABORATOŘE
                                         </a>
                                     <?php endif; ?>
-                                    <?php if (($is_orders || $is_adm) && in_array($col['id'], [1, 2]) && !$is_total_cancel): ?>
+                                    <?php if ($can_nakup && in_array($col['id'], [1, 2]) && !$is_total_cancel): ?>
                                         <button class="btn btn-xs btn-link btn-add-offer btn-add-offer-link" data-id="<?= $row['id'] ?>"><i class="glyphicon glyphicon-plus-sign"></i> PŘIDAT DALŠÍ NABÍDKU</button>
                                     <?php endif; ?>
                                 <?php endif; ?>
