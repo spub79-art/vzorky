@@ -11,6 +11,8 @@ include_once("permissions.php");
 $perms = loadSessionPermissions();
 $is_adm = $perms['is_adm'];
 $can_nakup = $perms['can_nakup'];
+$can_claim_nakup = $perms['can_claim_nakup'];
+$can_portfolio = $perms['can_portfolio'];
 $current_uid = $perms['current_uid'];
 $users_tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
 
@@ -54,6 +56,21 @@ if ($q_off) {
         $offers[] = $o;
     }
 }
+
+@include_once(__DIR__ . '/portfolio_helpers.php');
+$pf_ctx = function_exists('pf_request_detail_products_context')
+    ? pf_request_detail_products_context($conn, $id_pozadavek, (int)$req['id_surovina'])
+    : ['products' => [], 'zakaznici' => [], 'has_links' => false];
+
+$pf_from_product = false;
+if (!empty($pf_ctx['products'])) {
+    foreach ($pf_ctx['products'] as $pp) {
+        if (empty($pp['ukonceny']) && !empty($pp['priorita'])) {
+            $pf_from_product = true;
+            break;
+        }
+    }
+}
 ?>
 
 <input type="hidden" id="currentReqDetailId" value="<?= $id_pozadavek ?>">
@@ -90,8 +107,7 @@ if ($q_off) {
                 <?php else: ?>
                     <span class="text-muted" style="font-style:italic;">volné</span>
                 <?php endif; ?>
-                <?php if ($can_nakup): ?>
-                    <?php if (!$is_my_nakup_req): ?>
+                <?php if ($can_claim_nakup && !$is_my_nakup_req): ?>
                         <i class="glyphicon glyphicon-hand-up text-primary btn-claim-request" style="cursor:pointer; margin-left:4px;"
                            data-id="<?= $req['id'] ?>" data-resitel-id="<?= $id_nakupci ?>"
                            data-resitel-jmeno="<?= htmlspecialchars($nakupci_jmeno, ENT_QUOTES) ?>"
@@ -101,7 +117,6 @@ if ($q_off) {
                         <i class="glyphicon glyphicon-log-out text-muted btn-release-request" style="cursor:pointer; margin-left:2px;"
                            data-id="<?= $req['id'] ?>" title="Vzdávám to"></i>
                     <?php endif; ?>
-                <?php endif; ?>
             </small>
         </h2>
 
@@ -112,7 +127,119 @@ if ($q_off) {
             <?php if ($req['kosher'] == 1) echo '<span class="label rd-badge rd-badge-kosher">KOSHER</span>'; ?>
             <?php if ($req['halal'] == 1) echo '<span class="label rd-badge rd-badge-halal">HALAL</span>'; ?>
             <?php if ($req['priorita'] == 1) echo '<span class="label label-danger rd-badge">URGENT</span>'; ?>
+            <?php if ($pf_from_product && (int)$req['priorita'] === 1): ?>
+                <span class="label label-warning rd-badge" title="Urgentní kvůli propojenému produktu"><i class="glyphicon glyphicon-flash"></i> z produktu</span>
+            <?php endif; ?>
         </div>
+
+        <?php if (!empty($pf_ctx['products']) || !empty($pf_ctx['zakaznici'])): ?>
+        <div class="panel panel-default rd-prod-context-panel">
+            <div class="panel-heading" style="background:#f0f7fb; border-color:#bce8f1;">
+                <b><i class="glyphicon glyphicon-briefcase"></i> Kontext vývoje</b>
+                <?php if (count($pf_ctx['products']) > 1): ?>
+                    <span class="text-muted" style="font-size:12px;font-weight:normal;"> — tento požadavek jde do <?= count($pf_ctx['products']) ?> produktů</span>
+                <?php endif; ?>
+            </div>
+            <div class="panel-body" style="padding:10px 12px;">
+                <?php if (!empty($pf_ctx['zakaznici']) && empty($pf_ctx['products'])): ?>
+                    <div class="rd-prod-zak-row text-muted" style="margin-bottom:8px;font-size:13px;">
+                        <i class="glyphicon glyphicon-user"></i>
+                        <strong>Zákazníci požadavku:</strong>
+                        <?= htmlspecialchars(implode(', ', array_column($pf_ctx['zakaznici'], 'nazev'))) ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php foreach ($pf_ctx['products'] as $pp):
+                    $rs = $pp['readiness_summary'] ?? [];
+                    $ended = !empty($pp['ukonceny']);
+                    $sur_total = (int)($rs['total'] ?? count($pp['suroviny']));
+                    $sur_ok = (int)($rs['ok'] ?? 0);
+                    $sur_block = (int)($rs['blocking'] ?? 0);
+                    $zak_label = trim($pp['zakaznik_nazev'] ?? '');
+                    if ($zak_label === '') $zak_label = '—';
+                ?>
+                <div class="rd-prod-card<?= $ended ? ' rd-prod-card-ended' : '' ?><?= !empty($rs['blocks_product']) ? ' rd-prod-card-blocks' : '' ?>">
+                    <div class="rd-prod-card-head">
+                        <div class="rd-prod-card-title">
+                            <span class="rd-prod-zak"><?= htmlspecialchars($zak_label) ?></span>
+                            <span class="rd-prod-arrow">→</span>
+                            <strong class="rd-prod-name"><?= htmlspecialchars($pp['nazev']) ?></strong>
+                            <?php if (!empty($pp['priorita']) && !$ended): ?>
+                                <span class="label label-danger" style="font-size:10px;margin-left:4px;">URGENT</span>
+                            <?php endif; ?>
+                            <?php if ($ended): ?>
+                                <span class="label label-default" style="font-size:10px;margin-left:4px;">ukončeno</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($can_portfolio): ?>
+                        <a href="index.php?Portfolio=1&amp;pf_prod=<?= (int)$pp['id'] ?>" class="btn btn-xs btn-default rd-prod-portfolio-link" target="_blank" title="Otevřít v Portfoliu">
+                            <i class="glyphicon glyphicon-new-window"></i> Portfolio
+                        </a>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if ($sur_total > 0): ?>
+                    <div class="rd-prod-summary text-muted">
+                        <?= $sur_total ?> surovin
+                        <?php if ($sur_ok > 0): ?> · <?= $sur_ok ?> OK<?php endif; ?>
+                        <?php if ($sur_block > 0): ?> · <span class="text-danger"><strong><?= $sur_block ?> brzdí</strong></span><?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($pp['suroviny'])): ?>
+                    <ul class="rd-prod-suroviny list-unstyled">
+                        <?php foreach ($pp['suroviny'] as $sur):
+                            $rd = $sur['readiness'] ?? null;
+                            $st = $rd['state'] ?? 'missing';
+                            $st_label = $rd['label'] ?? '';
+                            $is_cur = !empty($sur['is_current']);
+                            $req_other = !empty($sur['req_id']) && (int)$sur['req_id'] !== $id_pozadavek;
+                        ?>
+                        <li class="rd-prod-sur rd-prod-sur-<?= htmlspecialchars($st) ?><?= $is_cur ? ' rd-prod-sur-current' : '' ?>">
+                            <span class="rd-prod-sur-dot"></span>
+                            <span class="rd-prod-sur-name">
+                                <?php if ($is_cur): ?><i class="glyphicon glyphicon-hand-right text-primary" title="Tato surovina"></i> <?php endif; ?>
+                                <?= htmlspecialchars($sur['nazev']) ?>
+                                <?php if (!empty($sur['nazev_en'])): ?>
+                                    <span class="text-muted" style="font-size:11px;">/ <?= htmlspecialchars($sur['nazev_en']) ?></span>
+                                <?php endif; ?>
+                            </span>
+                            <?php if ($st_label !== ''): ?>
+                            <span class="rd-prod-sur-st"><?= htmlspecialchars($st_label) ?></span>
+                            <?php endif; ?>
+                            <?php if ($req_other && !empty($sur['req_id'])): ?>
+                            <a href="index.php?Pozadavek=1&amp;req_id=<?= (int)$sur['req_id'] ?>" class="rd-prod-sur-req" title="Jiný požadavek">#<?= (int)$sur['req_id'] ?></a>
+                            <?php endif; ?>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <?php else: ?>
+                    <p class="text-muted rd-prod-empty-sur" style="font-size:12px;margin:6px 0 0;">Zatím bez surovin v receptuře produktu.</p>
+                    <?php endif; ?>
+
+                    <?php if (!empty($pp['poznamka'])): ?>
+                    <div class="rd-prod-poznamka">
+                        <i class="glyphicon glyphicon-pushpin"></i>
+                        <span><?= nl2br(htmlspecialchars($pp['poznamka'])) ?></span>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($pp['komentare'])): ?>
+                    <div class="rd-prod-chat">
+                        <div class="rd-prod-chat-label"><i class="glyphicon glyphicon-comment"></i> Diskuze produktu</div>
+                        <?php foreach ($pp['komentare'] as $km): ?>
+                        <div class="rd-prod-chat-row">
+                            <span class="rd-prod-chat-meta"><?= htmlspecialchars($km['jmeno']) ?> · <?= date('j.n. H:i', strtotime($km['vytvoreno'])) ?></span>
+                            <div class="rd-prod-chat-text"><?= nl2br(htmlspecialchars($km['text'])) ?></div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="panel panel-default">
             <div class="panel-heading"><b>Zadání požadavku</b></div>

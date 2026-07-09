@@ -23,7 +23,12 @@ function getEmailsForChannel($channel) {
         if ($channel === 'nakup') {
             $where = "(`$col` = 1 OR IFNULL(nakup_pristup, 0) = 1)";
         }
-        $q = mysqli_query($conn, "SELECT email FROM $tbl WHERE $where AND email IS NOT NULL AND TRIM(email) != ''");
+        $souhrn_filter = '';
+        $chk = @mysqli_query($conn, "SHOW COLUMNS FROM `$tbl` LIKE 'souhrn_email'");
+        if ($chk && mysqli_num_rows($chk) > 0) {
+            $souhrn_filter = ' AND IFNULL(souhrn_email, 0) = 1';
+        }
+        $q = mysqli_query($conn, "SELECT email FROM $tbl WHERE $where$souhrn_filter AND email IS NOT NULL AND TRIM(email) != ''");
         if ($q) {
             while ($row = mysqli_fetch_assoc($q)) {
                 $emails[] = trim($row['email']);
@@ -82,22 +87,30 @@ function renderDigestTable($rows, $baseUrl) {
         $zak = !empty($r['zakaznici_seznam'])
             ? htmlspecialchars($r['zakaznici_seznam'])
             : '<span style="color:#aaa;">—</span>';
+        if (!empty($r['produkty_seznam'])) {
+            $zak .= '<br><span style="color:#8e44ad;font-size:11px;">&#128188; '
+                . htmlspecialchars($r['produkty_seznam']) . '</span>';
+        }
 
         $stari = formatStariPozadavku($r['datumPozadavek']);
         $dni = (int)floor((time() - strtotime($r['datumPozadavek'])) / 86400);
         $stari_color = ($dni >= 3) ? '#d9534f' : (($dni >= 1) ? '#f0ad4e' : '#555');
         $stari_weight = ($dni >= 3) ? 'bold' : 'normal';
 
-        $stav = [];
-        if (!empty($r['vyzadano'])) $stav[] = '🔔 vyžádána nabídka';
-        if (!empty($r['pocet_nabidek'])) {
-            $stav[] = $r['pocet_nabidek'] . '× nabídka (vše KO)';
+        if (!empty($r['stav_text'])) {
+            $stav_text = htmlspecialchars($r['stav_text']);
         } else {
-            $stav[] = 'bez nabídky';
+            $stav = [];
+            if (!empty($r['vyzadano'])) $stav[] = '🔔 vyžádána nabídka';
+            if (!empty($r['pocet_nabidek'])) {
+                $stav[] = $r['pocet_nabidek'] . '× nabídka (vše KO)';
+            } else {
+                $stav[] = 'bez nabídky';
+            }
+            if (!empty($r['bio'])) $stav[] = 'BIO';
+            if (!empty($r['vegan'])) $stav[] = 'Vegan';
+            $stav_text = implode(' · ', $stav);
         }
-        if (!empty($r['bio'])) $stav[] = 'BIO';
-        if (!empty($r['vegan'])) $stav[] = 'Vegan';
-        $stav_text = implode(' · ', $stav);
 
         $resitel = !empty($r['nakupci_jmeno'])
             ? htmlspecialchars($r['nakupci_jmeno'])
@@ -118,15 +131,14 @@ function renderDigestTable($rows, $baseUrl) {
 }
 
 /**
- * Obalí sekce do kompletního HTML e-mailu.
+ * Vnitřní obsah souhrnu (web i e-mail).
  */
-function wrapDigestEmail($title, $subtitle, $sections, $baseUrl) {
-    $html = "<html><body style='font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.5;margin:0;padding:0;background:#f0f0f0;'>";
-    $html .= "<div style='max-width:640px;margin:20px auto;background:#fff;border:1px solid #ddd;border-radius:6px;overflow:hidden;'>";
+function buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer_note = null) {
+    $html = "<div class='digest-email-card' style='max-width:100%;background:#fff;border:1px solid #ddd;border-radius:6px;overflow:hidden;'>";
 
     $html .= "<div style='background:#2c3e50;color:#fff;padding:16px 20px;'>";
-    $html .= "<h2 style='margin:0;font-size:18px;'>$title</h2>";
-    $html .= "<p style='margin:4px 0 0;font-size:13px;color:#bdc3c7;'>$subtitle</p>";
+    $html .= "<h2 style='margin:0;font-size:18px;'>" . htmlspecialchars($title) . "</h2>";
+    $html .= "<p style='margin:4px 0 0;font-size:13px;color:#bdc3c7;'>" . htmlspecialchars($subtitle) . "</p>";
     $html .= "</div>";
 
     $html .= "<div style='padding:20px;'>";
@@ -143,11 +155,25 @@ function wrapDigestEmail($title, $subtitle, $sections, $baseUrl) {
     $html .= "<a href='" . htmlspecialchars($baseUrl) . "' style='display:inline-block;background:#337ab7;color:#fff;padding:10px 24px;text-decoration:none;border-radius:4px;font-weight:bold;font-size:14px;'>Otevřít Vzorkovnu</a>";
     $html .= "</div></div>";
 
-    $html .= "<div style='background:#f8f9fa;text-align:center;padding:10px;font-size:11px;color:#999;border-top:1px solid #e3e3e3;'>";
-    $html .= "Denní souhrn · " . date('j.n.Y H:i') . " · neodpovídejte na tento e-mail";
-    $html .= "</div></div></body></html>";
+    if ($footer_note !== null) {
+        $html .= "<div style='background:#f8f9fa;text-align:center;padding:10px;font-size:11px;color:#999;border-top:1px solid #e3e3e3;'>";
+        $html .= htmlspecialchars($footer_note);
+        $html .= "</div>";
+    }
 
+    $html .= "</div>";
     return $html;
+}
+
+/**
+ * Obalí sekce do kompletního HTML e-mailu.
+ */
+function wrapDigestEmail($title, $subtitle, $sections, $baseUrl) {
+    $footer = 'Denní souhrn · ' . date('j.n.Y H:i') . ' · neodpovídejte na tento e-mail';
+    return "<html><body style='font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.5;margin:0;padding:0;background:#f0f0f0;'>"
+        . "<div style='max-width:640px;margin:20px auto;'>"
+        . buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer)
+        . "</div></body></html>";
 }
 
 /**

@@ -18,7 +18,8 @@ if(isset($_POST['username']) && isset($_POST['password'])){
 
     // ZMĚNA 1: Přidán chybějící sloupec 'cumil' do SELECTu
     // ZMĚNA 2: Tabulka se nyní bere dynamicky z naší konstanty DB_TBL_USERS
-    $sql = "SELECT id, jmeno, login, heslo, admin, vyvoj, orders, kvalita, cumil, IFNULL(nakup_pristup, 0) AS nakup_pristup 
+    $sql = "SELECT id, jmeno, login, heslo, admin, vyvoj, orders, kvalita, cumil,
+                   IFNULL(portfolio, 0) AS portfolio, IFNULL(nakup_pristup, 0) AS nakup_pristup
             FROM " . DB_TBL_USERS . " 
             WHERE login = '$myusername' AND heslo = '$mypassword' 
             LIMIT 1";
@@ -37,6 +38,7 @@ if(isset($_POST['username']) && isset($_POST['password'])){
         $_SESSION["orders"] = (int)$row['orders'];
         $_SESSION["kvalita"] = (int)$row['kvalita'];
         $_SESSION['cumil'] = (int)$row['cumil'];
+        $_SESSION['portfolio'] = (int)($row['portfolio'] ?? 0);
         $_SESSION['nakup_pristup'] = (int)($row['nakup_pristup'] ?? 0);
 
         header("Location: index.php");

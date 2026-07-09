@@ -297,7 +297,17 @@ if ($need_fetch) {
 
                 <div class="form-group">
                     <label>Surovina:</label>
-                    <select id="mAddReqSurovina" class="form-control select2-sur" style="width:100%;"></select>
+                    <select id="mAddReqSurovina" class="form-control select2-sur" style="width:100%;">
+                        <option value="">-- Vyberte surovinu --</option>
+                        <?php
+                        $s_res_add = @mysqli_query($conn, "SELECT id, nazev FROM suroviny ORDER BY nazev ASC");
+                        if ($s_res_add) {
+                            while ($s = mysqli_fetch_assoc($s_res_add)) {
+                                echo "<option value='" . (int)$s['id'] . "'>" . htmlspecialchars($s['nazev']) . "</option>";
+                            }
+                        }
+                        ?>
+                    </select>
                 </div>
 
                 <div class="form-group box-modern box-light">
@@ -318,9 +328,44 @@ if ($need_fetch) {
                 </div>
 
                 <div class="form-group">
-                    <label class="text-success"><i class="glyphicon glyphicon-user"></i> Zákazník (pro koho je surovina určena):</label>
-                    <input type="text" id="mAddReqZakaznik" class="form-control" placeholder="Např. Boon Bar, DM, Lidl... (nepovinné)">
+                    <label class="text-success"><i class="glyphicon glyphicon-user"></i> Zákazníci (pro koho je surovina určena):</label>
+                    <select id="mAddReqZakaznici" class="form-control select2-req-zak" multiple="multiple" style="width:100%;">
+                        <?php
+                        $z_res_add = @mysqli_query($conn, "SELECT id, nazev FROM zakaznici ORDER BY nazev ASC");
+                        if ($z_res_add) {
+                            while ($z = mysqli_fetch_assoc($z_res_add)) {
+                                echo "<option value='" . (int)$z['id'] . "'>" . htmlspecialchars($z['nazev']) . "</option>";
+                            }
+                        }
+                        ?>
+                    </select>
                 </div>
+
+                <?php
+                $pf_produkty_html = '';
+                $has_pf_cols = @mysqli_query($conn, "SHOW COLUMNS FROM produkty LIKE 'ukonceny'");
+                if ($has_pf_cols && mysqli_num_rows($has_pf_cols) > 0) {
+                    $pr_res = @mysqli_query($conn, "SELECT pr.id, pr.nazev, z.nazev AS zakaznik
+                        FROM produkty pr
+                        LEFT JOIN zakaznici z ON pr.id_zakaznik = z.id
+                        WHERE pr.ukonceny = 0
+                        ORDER BY z.nazev ASC, pr.nazev ASC");
+                    if ($pr_res) {
+                        while ($pr = mysqli_fetch_assoc($pr_res)) {
+                            $label = (!empty($pr['zakaznik']) ? htmlspecialchars($pr['zakaznik']) . ' → ' : '') . htmlspecialchars($pr['nazev']);
+                            $pf_produkty_html .= "<option value='" . (int)$pr['id'] . "'>" . $label . "</option>";
+                        }
+                    }
+                }
+                if ($pf_produkty_html !== ''): ?>
+                <div class="form-group">
+                    <label class="text-primary"><i class="glyphicon glyphicon-briefcase"></i> Vývojové produkty (nepovinné):</label>
+                    <select id="mAddReqProdukty" class="form-control select2-req-prod" multiple="multiple" style="width:100%;">
+                        <?= $pf_produkty_html ?>
+                    </select>
+                    <p class="help-block small text-muted" style="margin-bottom:0;">Můžete přiřadit jeden požadavek k více produktům.</p>
+                </div>
+                <?php endif; ?>
 
                 <div class="form-group">
                     <label class="small text-muted label-uppercase">Požadované množství</label>
@@ -379,7 +424,7 @@ if ($need_fetch) {
 
                 <div class="form-group">
                     <label class="text-warning label-uppercase"><i class="glyphicon glyphicon-user"></i> Zákazníci (pro koho to je):</label>
-                    <select id="mEditReqZakaznici" class="form-control" multiple="multiple" style="width:100%;">
+                    <select id="mEditReqZakaznici" class="form-control select2-req-zak" multiple="multiple" style="width:100%;">
                         <?php
                         $z_res_edit = @mysqli_query($conn, "SELECT id, nazev FROM zakaznici ORDER BY nazev ASC");
                         if ($z_res_edit) {
@@ -390,6 +435,15 @@ if ($need_fetch) {
                         ?>
                     </select>
                 </div>
+
+                <?php if (!empty($pf_produkty_html)): ?>
+                <div class="form-group">
+                    <label class="text-primary"><i class="glyphicon glyphicon-briefcase"></i> Vývojové produkty:</label>
+                    <select id="mEditReqProdukty" class="form-control select2-req-prod" multiple="multiple" style="width:100%;">
+                        <?= $pf_produkty_html ?>
+                    </select>
+                </div>
+                <?php endif; ?>
 
                 <div class="form-group">
                     <label class="small text-muted label-uppercase">Požadované množství</label>
@@ -498,11 +552,11 @@ if ($need_fetch) {
             </div>
             <div class="modal-body modal-body-modern">
                 <p id="dupTextBody">Přesně tento požadavek již v systému běží <strong>(Požadavek #<span id="dupExistId"></span>)</strong>.</p>
-                <p>Chcete k němu pouze přidat své zákazníky, nebo natvrdo založit další paralelní požadavek?</p>
+                <p>Chcete k němu pouze připojit své zákazníky a produkty, nebo natvrdo založit další paralelní požadavek?</p>
             </div>
             <div class="modal-footer modal-footer-modern" style="text-align: center;">
                 <button type="button" class="btn btn-default btn-block" id="btnDupGoTo">Zrušit a přejít na existující</button>
-                <button type="button" class="btn btn-success btn-block" id="btnDupAppend" style="margin-top: 5px;">Jen připojit zákazníky</button>
+                <button type="button" class="btn btn-success btn-block" id="btnDupAppend" style="margin-top: 5px;">Jen připojit zákazníky / produkty</button>
                 <button type="button" class="btn btn-warning btn-block" id="btnDupForce" style="margin-top: 5px;">Založit jako ÚPLNĚ NOVÝ</button>
             </div>
         </div>

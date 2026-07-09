@@ -5,10 +5,32 @@ include_once("boardOfferRow.php");
 
 @mysqli_query($conn, "SET SESSION group_concat_max_len = 10000");
 
+$has_pozadavky_produkty = false;
+$pp_check = @mysqli_query($conn, "SHOW TABLES LIKE 'pozadavky_produkty'");
+if ($pp_check && mysqli_num_rows($pp_check) > 0) {
+    $has_pozadavky_produkty = true;
+}
+$produkty_sql_extra = $has_pozadavky_produkty
+    ? "(SELECT GROUP_CONCAT(CONCAT(COALESCE(zp.nazev, '—'), ' → ', pr.nazev) ORDER BY zp.nazev, pr.nazev SEPARATOR ' · ')
+         FROM pozadavky_produkty pp
+         JOIN produkty pr ON pp.id_produkt = pr.id AND pr.ukonceny = 0
+         LEFT JOIN zakaznici zp ON pr.id_zakaznik = zp.id
+         WHERE pp.id_pozadavek = p.id) AS produkty_seznam,
+       (SELECT GROUP_CONCAT(pp.id_produkt ORDER BY pp.id_produkt SEPARATOR ',')
+         FROM pozadavky_produkty pp
+         JOIN produkty pr ON pp.id_produkt = pr.id AND pr.ukonceny = 0
+         WHERE pp.id_pozadavek = p.id) AS produkty_ids,
+       (SELECT MAX(pr.priorita)
+         FROM pozadavky_produkty pp
+         JOIN produkty pr ON pp.id_produkt = pr.id AND pr.ukonceny = 0
+         WHERE pp.id_pozadavek = p.id) AS produkt_urgent,"
+    : "NULL AS produkty_seznam, NULL AS produkty_ids, NULL AS produkt_urgent,";
+
 if (!isset($can_nakup)) {
     include_once("permissions.php");
     $perms = loadSessionPermissions();
     $can_nakup = $perms['can_nakup'];
+    $can_claim_nakup = $perms['can_claim_nakup'];
     $current_uid = $perms['current_uid'];
 }
 $is_adm = (!empty($_SESSION['adm']) && $_SESSION['adm'] == 1);
@@ -27,6 +49,7 @@ $last_change_time = file_exists('last_change.txt') ? file_get_contents('last_cha
 // 1. ČISTÝ DOTAZ NA POŽADAVKY
 // ==============================================================================
 $sql_req = "SELECT p.*, s.nazev AS surovina_nazev, u_nak.jmeno AS nakupci_jmeno,
+        $produkty_sql_extra
         (SELECT GROUP_CONCAT(z.nazev SEPARATOR ', ') 
          FROM pozadavky_zakaznici pz 
          JOIN zakaznici z ON pz.id_zakaznik = z.id 
@@ -281,21 +304,19 @@ foreach ($pozadavky as $row) {
                                                title="Vyžádat dohledání další nabídky od Nákupu"></i>
                                         <?php endif; ?>
 
-                                        <?php if ($can_nakup && !$is_total_cancel): ?>
-                                            <?php if (!$is_my_nakup_req): ?>
+                                        <?php if ($can_claim_nakup && !$is_total_cancel && !$is_my_nakup_req): ?>
                                                 <i class="glyphicon glyphicon-hand-up <?= ($id_nakupci > 0) ? 'text-warning' : 'text-primary' ?> btn-claim-request no-detail-trigger"
                                                    style="pointer-events: auto; cursor: pointer; font-size: 14px; margin-right: 8px;"
                                                    data-id="<?= $row['id'] ?>"
                                                    data-resitel-id="<?= $id_nakupci ?>"
                                                    data-resitel-jmeno="<?= htmlspecialchars($nakupci_jmeno, ENT_QUOTES) ?>"
                                                    title="<?= $id_nakupci > 0 ? 'Převzít (nyní: ' . htmlspecialchars($nakupci_jmeno, ENT_QUOTES) . ')' : 'Převzít požadavek' ?>"></i>
-                                            <?php endif; ?>
-                                            <?php if ($is_my_nakup_req || ($is_adm && $id_nakupci > 0)): ?>
+                                        <?php endif; ?>
+                                        <?php if (!$is_total_cancel && ($is_my_nakup_req || ($is_adm && $id_nakupci > 0))): ?>
                                                 <i class="glyphicon glyphicon-log-out text-muted btn-release-request no-detail-trigger"
                                                    style="pointer-events: auto; cursor: pointer; font-size: 14px; margin-right: 8px;"
                                                    data-id="<?= $row['id'] ?>"
                                                    title="Vzdávám to (uvolnit požadavek)"></i>
-                                            <?php endif; ?>
                                         <?php endif; ?>
 
                                         <?php if (($is_vyvoj || $is_adm) && in_array((int)$row['id_status'], [5, 7, 8])): ?>
@@ -327,6 +348,7 @@ foreach ($pozadavky as $row) {
                                                data-mj="<?= htmlspecialchars($row['mj'] ?? 'kg') ?>"
                                                data-note="<?= htmlspecialchars($row['poznamka'] ?? '') ?>"
                                                data-zakaznici-ids="<?= htmlspecialchars($row['zakaznici_ids'] ?? '') ?>"
+                                               data-produkty-ids="<?= htmlspecialchars($row['produkty_ids'] ?? '') ?>"
                                                title="Editovat požadavek"></i>
 
                                             <i class="glyphicon glyphicon-trash text-danger btn-delete-req no-detail-trigger"
@@ -357,6 +379,12 @@ foreach ($pozadavky as $row) {
                                 }
                                 if (!empty($row['zakaznici_seznam'])) {
                                     $meta_parts[] = '<span class="meta-zak" title="Zákazníci"><i class="glyphicon glyphicon-user"></i> ' . htmlspecialchars($row['zakaznici_seznam']) . '</span>';
+                                }
+                                if (!empty($row['produkty_seznam'])) {
+                                    $meta_parts[] = '<span class="meta-prod" title="Vývojové produkty"><i class="glyphicon glyphicon-briefcase"></i> ' . htmlspecialchars($row['produkty_seznam']) . '</span>';
+                                }
+                                if (!empty($row['produkt_urgent']) && (int)$row['produkt_urgent'] === 1) {
+                                    $meta_parts[] = '<span class="meta-urg-prod" title="Urgentní kvůli propojenému produktu"><i class="glyphicon glyphicon-flash"></i> z produktu</span>';
                                 }
                                 if ($zadane_mnozstvi) {
                                     $meta_parts[] = '<span class="meta-qty" title="Zadání množství"><i class="glyphicon glyphicon-scale"></i> ' . htmlspecialchars($zadane_mnozstvi) . '</span>';
@@ -431,7 +459,6 @@ foreach ($pozadavky as $row) {
     <?php endforeach; ?>
 </div>
 
-<?php include_once("boardModals.php"); ?>
 <script>
     var localLastChange = <?= $last_change_time ?? time() ?>;
 </script>

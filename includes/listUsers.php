@@ -9,6 +9,12 @@ if (!defined('DB_TBL_USERS')) {
     define('DB_TBL_USERS', 'users');
 }
 
+$has_souhrn_email_col = false;
+$col_souhrn_chk = @mysqli_query($conn, "SHOW COLUMNS FROM " . DB_TBL_USERS . " LIKE 'souhrn_email'");
+if ($col_souhrn_chk && mysqli_num_rows($col_souhrn_chk) > 0) {
+    $has_souhrn_email_col = true;
+}
+
 // --- 1. ZPRACOVÁNÍ AKCÍ ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_user'])) {
@@ -25,10 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $orders  = ($role_novy === 'orders') ? 1 : 0;
         $kvalita = ($role_novy === 'kvalita') ? 1 : 0;
         $cumil   = ($role_novy === 'cumil') ? 1 : 0;
+        $portfolio = ($role_novy === 'portfolio') ? 1 : 0;
         $nakup_pristup = !empty($_POST['nakup_pristup_novy']) ? 1 : 0;
+        $souhrn_email = !empty($_POST['souhrn_email_novy']) ? 1 : 0;
 
-        $sqlIn = "INSERT INTO " . DB_TBL_USERS . " (jmeno, login, heslo, email, admin, vyvoj, orders, kvalita, cumil, nakup_pristup) 
-                  VALUES ('$jmeno', '$login', '$heslo', '$email', $admin, $vyvoj, $orders, $kvalita, $cumil, $nakup_pristup)";
+        $cols = "jmeno, login, heslo, email, admin, vyvoj, orders, kvalita, cumil, portfolio, nakup_pristup";
+        $vals = "'$jmeno', '$login', '$heslo', '$email', $admin, $vyvoj, $orders, $kvalita, $cumil, $portfolio, $nakup_pristup";
+        if ($has_souhrn_email_col) {
+            $cols .= ", souhrn_email";
+            $vals .= ", $souhrn_email";
+        }
+        $sqlIn = "INSERT INTO " . DB_TBL_USERS . " ($cols) VALUES ($vals)";
         if(mysqli_query($conn, $sqlIn)) {
             echo "<script>window.location.href='$current_page_url';</script>";
             exit;
@@ -52,10 +65,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $orders  = ($role === 'orders') ? 1 : 0;
         $kvalita = ($role === 'kvalita') ? 1 : 0;
         $cumil   = ($role === 'cumil') ? 1 : 0;
+        $portfolio = ($role === 'portfolio') ? 1 : 0;
         $nakup_pristup = !empty($_POST['nakup_pristup']) ? 1 : 0;
+        $souhrn_email = !empty($_POST['souhrn_email']) ? 1 : 0;
 
         $sqlUpdate = "UPDATE " . DB_TBL_USERS . " SET jmeno='$jmeno', login='$login', heslo='$heslo', email='$email', 
-                      admin=$admin, vyvoj=$vyvoj, orders=$orders, kvalita=$kvalita, cumil=$cumil, nakup_pristup=$nakup_pristup WHERE id=$id";
+                      admin=$admin, vyvoj=$vyvoj, orders=$orders, kvalita=$kvalita, cumil=$cumil, portfolio=$portfolio, nakup_pristup=$nakup_pristup";
+        if ($has_souhrn_email_col) {
+            $sqlUpdate .= ", souhrn_email=$souhrn_email";
+        }
+        $sqlUpdate .= " WHERE id=$id";
         mysqli_query($conn, $sqlUpdate);
     }
 }
@@ -83,6 +102,12 @@ if (!$resUsers) {
             <i class="fa fa-user-plus"></i> Nový uživatel
         </button>
     </div>
+    <?php if (!$has_souhrn_email_col): ?>
+    <div class="alert alert-warning">
+        <i class="glyphicon glyphicon-warning-sign"></i>
+        Chybí sloupec <code>souhrn_email</code> — spusťte migraci <code>migrate_souhrn_email.sql</code> pro volbu denního souhrnu e-mailem.
+    </div>
+    <?php endif; ?>
 
     <div class="table-responsive shadow-sm">
         <table class="table table-bordered table-striped align-middle bg-white">
@@ -97,8 +122,10 @@ if (!$resUsers) {
                 <th class="text-center" title="Vývoj">Výv</th>
                 <th class="text-center" title="Orders">Ord</th>
                 <th class="text-center" title="Kvalita">Kva</th>
+                <th class="text-center" title="Portfolio">Port</th>
                 <th class="text-center" title="Čumil">Čum</th>
                 <th class="text-center" title="Rozšířený přístup k modulu Nákup">Nák+</th>
+                <th class="text-center" title="Denní e-mailový souhrn (vyžaduje e-mail)">Souhrn</th>
                 <th class="text-center" style="width: 120px;">Akce</th>
             </tr>
             </thead>
@@ -114,8 +141,10 @@ if (!$resUsers) {
                     <td class="text-center"><input type="radio" name="role_novy" value="vyvoj"></td>
                     <td class="text-center"><input type="radio" name="role_novy" value="orders"></td>
                     <td class="text-center"><input type="radio" name="role_novy" value="kvalita"></td>
+                    <td class="text-center"><input type="radio" name="role_novy" value="portfolio"></td>
                     <td class="text-center"><input type="radio" name="role_novy" value="cumil" checked></td>
                     <td class="text-center"><input type="checkbox" name="nakup_pristup_novy" value="1" title="Přístup k nákupním funkcím bez role Orders"></td>
+                    <td class="text-center"><input type="checkbox" name="souhrn_email_novy" value="1" <?= $has_souhrn_email_col ? '' : 'disabled' ?> title="Posílat denní souhrn e-mailem (jen s vyplněným e-mailem)"></td>
                     <td class="text-center">
                         <div class="btn-group">
                             <button type="submit" name="save_user" class="btn btn-success btn-sm"><i class="fa fa-check">Uložit</i></button>
@@ -138,8 +167,10 @@ if (!$resUsers) {
                         <td class="text-center"><input type="radio" name="role" value="vyvoj" <?= $u['vyvoj'] ? 'checked' : '' ?>></td>
                         <td class="text-center"><input type="radio" name="role" value="orders" <?= $u['orders'] ? 'checked' : '' ?>></td>
                         <td class="text-center"><input type="radio" name="role" value="kvalita" <?= $u['kvalita'] ? 'checked' : '' ?>></td>
+                        <td class="text-center"><input type="radio" name="role" value="portfolio" <?= !empty($u['portfolio']) ? 'checked' : '' ?>></td>
                         <td class="text-center"><input type="radio" name="role" value="cumil" <?= (isset($u['cumil']) && $u['cumil']) ? 'checked' : '' ?>></td>
                         <td class="text-center"><input type="checkbox" name="nakup_pristup" value="1" <?= !empty($u['nakup_pristup']) ? 'checked' : '' ?> title="Přístup k nákupním funkcím bez role Orders"></td>
+                        <td class="text-center"><input type="checkbox" name="souhrn_email" value="1" <?= !empty($u['souhrn_email']) ? 'checked' : '' ?> <?= $has_souhrn_email_col ? '' : 'disabled' ?> title="Posílat denní souhrn e-mailem (jen s vyplněným e-mailem)"></td>
                         <td class="text-center">
                             <div class="btn-group">
                                 <button type="submit" name="update_user" class="btn btn-success btn-sm"><i class="fa fa-save">Uložit</i></button>

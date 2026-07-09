@@ -4,7 +4,7 @@ include_once("boardFunctions.php");
 include_once("permissions.php");
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-requireNakupAccess();
+requireClaimNakupAccess();
 
 $id = (int)($_POST['id'] ?? 0);
 if ($id <= 0) die('Chybné ID požadavku.');

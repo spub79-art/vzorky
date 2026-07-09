@@ -59,17 +59,17 @@ function applyFilters() {
     });
 
     $('#btnToggleRejected')
-        .html(filters.rejected ? '<i class="glyphicon glyphicon-eye-close"></i> Skrýt KO' : '<i class="glyphicon glyphicon-eye-open"></i> Zamítnuté / Odložené')
+        .html(filters.rejected ? '<i class="glyphicon glyphicon-eye-close"></i> Skrýt' : '<i class="glyphicon glyphicon-eye-open"></i> KO')
         .toggleClass('btn-danger', filters.rejected)
         .toggleClass('btn-default', !filters.rejected);
 
     $('#btnToggleMyTasks')
-        .html(filters.myTasks ? '<i class="glyphicon glyphicon-filter"></i> Zobrazit VŠE' : '<i class="glyphicon glyphicon-filter"></i> Jen k řešení')
+        .html(filters.myTasks ? '<i class="glyphicon glyphicon-filter"></i> Vše' : '<i class="glyphicon glyphicon-filter"></i> K řešení')
         .toggleClass('btn-primary', filters.myTasks)
         .toggleClass('btn-default', !filters.myTasks);
 
     $('#btnToggleUrgent')
-        .html(filters.urgent ? '<i class="glyphicon glyphicon-flash text-white"></i> Zrušit filtr URGENT' : '<i class="glyphicon glyphicon-flash text-danger"></i> Jen URGENTNÍ')
+        .html(filters.urgent ? '<i class="glyphicon glyphicon-flash text-white"></i> ×Urgent' : '<i class="glyphicon glyphicon-flash text-danger"></i> Urgent')
         .toggleClass('btn-danger', filters.urgent)
         .toggleClass('btn-default', !filters.urgent);
 
@@ -80,6 +80,116 @@ function safeReload() {
     $('#board-container').load(window.location.href + ' #board-container > *', function() {
         applyFilters();
         if (typeof $.fn.select2 !== 'undefined') { $('.select2-dod').select2({ dropdownParent: $('#mNN'), tags: true }); }
+        initBoardReqSelect2();
+    });
+}
+
+var pendingNewRequest = null;
+
+function initBoardReqSelect2() {
+    if (typeof $.fn.select2 === 'undefined') return;
+
+    var $sur = $('#mAddReqSurovina');
+    if ($sur.length && !$sur.hasClass('select2-hidden-accessible')) {
+        $sur.select2({
+            dropdownParent: $('#mAddReq'),
+            tags: true,
+            placeholder: 'Vyberte nebo napište novou surovinu...',
+            allowClear: true,
+            createTag: function(params) {
+                return { id: params.term, text: params.term, newTag: true };
+            }
+        });
+    }
+
+    $('.select2-req-zak').each(function() {
+        var $el = $(this);
+        if ($el.hasClass('select2-hidden-accessible')) return;
+        $el.select2({
+            dropdownParent: $el.closest('.modal'),
+            tags: true,
+            placeholder: 'Zákazníci (nepovinné)...',
+            allowClear: true
+        });
+    });
+
+    $('.select2-req-prod').each(function() {
+        var $el = $(this);
+        if ($el.hasClass('select2-hidden-accessible')) return;
+        $el.select2({
+            dropdownParent: $el.closest('.modal'),
+            placeholder: 'Produkty (nepovinné)...',
+            allowClear: true
+        });
+    });
+}
+
+function collectAddRequestPayload() {
+    return {
+        id_surovina: $('#mAddReqSurovina').val(),
+        bio: $('#mAddReqBio').is(':checked') ? 1 : 0,
+        vegan: $('#mAddReqVegan').is(':checked') ? 1 : 0,
+        bezlepek: $('#mAddReqBezlepek').is(':checked') ? 1 : 0,
+        kosher: $('#mAddReqKosher').is(':checked') ? 1 : 0,
+        halal: $('#mAddReqHalal').is(':checked') ? 1 : 0,
+        priorita: $('#mAddReqPrio').val(),
+        mnozstvi: $('#mAddReqMnozstvi').val(),
+        mj: $('#mAddReqMj').val(),
+        poznamka: $('#mAddReqNote').val(),
+        zakaznici: $('#mAddReqZakaznici').val() || [],
+        produkty: $('#mAddReqProdukty').length ? ($('#mAddReqProdukty').val() || []) : []
+    };
+}
+
+function resetAddRequestForm() {
+    $('#mAddReqSurovina').val(null).trigger('change');
+    $('#mAddReqBio, #mAddReqVegan, #mAddReqBezlepek, #mAddReqKosher, #mAddReqHalal').prop('checked', false);
+    $('#mAddReqPrio').val('0');
+    $('#mAddReqMnozstvi').val('');
+    $('#mAddReqMj').val('kg');
+    $('#mAddReqNote').val('');
+    if ($('#mAddReqZakaznici').length) $('#mAddReqZakaznici').val(null).trigger('change');
+    if ($('#mAddReqProdukty').length) $('#mAddReqProdukty').val(null).trigger('change');
+}
+
+function handleAddRequestResponse(r, btn, successModal) {
+    var msg = (typeof r === 'string') ? r.trim() : '';
+    if (msg === 'OK') {
+        $(successModal).modal('hide');
+        pendingNewRequest = null;
+        safeReload();
+        return;
+    }
+    if (msg.indexOf('EXACT_DUP|') === 0) {
+        var existId = msg.split('|')[1];
+        pendingNewRequest = collectAddRequestPayload();
+        $('#dupExistId').text(existId);
+        $('#mDuplicateWarning').data('exist-id', existId);
+        $(successModal).modal('hide');
+        $('#mDuplicateWarning').modal('show');
+        if (btn) {
+            btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK');
+        }
+        return;
+    }
+    if (typeof sysAlert === 'function') sysAlert(msg, 'danger'); else alert(msg);
+    if (btn) btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK');
+}
+
+function submitAddRequest(extraData, btn) {
+    var payload = collectAddRequestPayload();
+    if (extraData) {
+        $.extend(payload, extraData);
+    }
+    if (!payload.id_surovina) {
+        sysAlert('Musíte vybrat surovinu!', 'warning');
+        return;
+    }
+    if (btn) {
+        btn.prop('disabled', true).text('Zakládám...');
+    }
+    $.post('includes/ajax_add_request.php', payload, function(r) {
+        handleAddRequestResponse(r, btn, '#mAddReq');
     });
 }
 
@@ -98,6 +208,18 @@ $(document).ready(function() {
     if (typeof $.fn.select2 !== 'undefined') {
         $('.select2-dod').select2({ dropdownParent: $('#mNN'), tags: true, placeholder: "Napište nebo vyberte...", allowClear: true });
     }
+    initBoardReqSelect2();
+
+    $(document).on('click', '.btn-new-req', function(e) {
+        e.preventDefault();
+        if (!$('#mAddReq').length) {
+            if (typeof sysAlert === 'function') sysAlert('Modal není k dispozici na této stránce.', 'warning');
+            return;
+        }
+        resetAddRequestForm();
+        $('#mAddReq').modal('show');
+        initBoardReqSelect2();
+    });
 
     // --- Export ---
     $(document).on('click', '#btnOpenExportModal', function() {
@@ -345,6 +467,10 @@ $(document).ready(function() {
         $('#mEditReqNote').val((b.data('note') === null || b.data('note') === 'null') ? '' : b.data('note'));
         var zakIdsRaw = b.data('zakaznici-ids'), selectedIds = (zakIdsRaw && zakIdsRaw.toString().trim() !== "") ? zakIdsRaw.toString().split(',') : [];
         $('#mEditReqZakaznici').val(selectedIds).trigger('change');
+        var prodIdsRaw = b.data('produkty-ids'), selectedProdIds = (prodIdsRaw && prodIdsRaw.toString().trim() !== "") ? prodIdsRaw.toString().split(',') : [];
+        if ($('#mEditReqProdukty').length) {
+            $('#mEditReqProdukty').val(selectedProdIds).trigger('change');
+        }
         $('#mEditReq').modal('show');
     });
 
@@ -354,7 +480,8 @@ $(document).ready(function() {
             id: $('#mEditReqId').val(), bio: $('#mEditReqBio').is(':checked') ? 1 : 0, vegan: $('#mEditReqVegan').is(':checked') ? 1 : 0,
             bezlepek: $('#mEditReqBezlepek').is(':checked') ? 1 : 0, kosher: $('#mEditReqKosher').is(':checked') ? 1 : 0, halal: $('#mEditReqHalal').is(':checked') ? 1 : 0,
             priorita: $('#mEditReqPrio').val(), mnozstvi: $('#mEditReqMnozstvi').val(), mj: $('#mEditReqMj').val(),
-            poznamka: $('#mEditReqNote').val(), zakaznici: $('#mEditReqZakaznici').val()
+            poznamka: $('#mEditReqNote').val(), zakaznici: $('#mEditReqZakaznici').val(),
+            produkty: $('#mEditReqProdukty').length ? ($('#mEditReqProdukty').val() || []) : []
         }, function(r) {
             if(r.trim() == "OK") { $('#mEditReq').modal('hide'); safeReload(); }
             else { if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r); }
@@ -378,18 +505,54 @@ $(document).ready(function() {
     });
 
     $('#mAddReqSave').on('click', function() {
-        var btn = $(this), idSurovina = $('#mAddReqSurovina').val();
-        if (!idSurovina) { sysAlert("Musíte vybrat surovinu!", "warning"); return; }
-        btn.prop('disabled', true).text('Zakládám...');
-        $.post('includes/ajax_add_request.php', {
-            id_surovina: idSurovina, bio: $('#mAddReqBio').is(':checked') ? 1 : 0, vegan: $('#mAddReqVegan').is(':checked') ? 1 : 0,
-            bezlepek: $('#mAddReqBezlepek').is(':checked') ? 1 : 0, kosher: $('#mAddReqKosher').is(':checked') ? 1 : 0, halal: $('#mAddReqHalal').is(':checked') ? 1 : 0,
-            priorita: $('#mAddReqPrio').val(), mnozstvi: $('#mAddReqMnozstvi').val(), mj: $('#mAddReqMj').val(),
-            poznamka: $('#mAddReqNote').val(), zakaznik: $('#mAddReqZakaznik').val()
+        submitAddRequest(null, $(this));
+    });
+
+    $('#btnDupAppend').on('click', function() {
+        if (!pendingNewRequest) return;
+        var existId = $('#mDuplicateWarning').data('exist-id');
+        var btn = $(this).prop('disabled', true);
+        $.post('includes/ajax_append_request_links.php', {
+            id: existId,
+            zakaznici: pendingNewRequest.zakaznici || [],
+            produkty: pendingNewRequest.produkty || []
         }, function(r) {
-            if(r.trim() == "OK") { $('#mAddReq').modal('hide'); safeReload(); }
-            else { sysAlert(r, "danger"); btn.prop('disabled', false).text('ZALOŽIT POŽADAVEK'); }
+            btn.prop('disabled', false);
+            if ((r || '').trim() === 'OK') {
+                $('#mDuplicateWarning').modal('hide');
+                pendingNewRequest = null;
+                safeReload();
+            } else {
+                if (typeof sysAlert === 'function') sysAlert(r, 'danger'); else alert(r);
+            }
         });
+    });
+
+    $('#btnDupForce').on('click', function() {
+        if (!pendingNewRequest) return;
+        $('#mDuplicateWarning').modal('hide');
+        var payload = pendingNewRequest;
+        payload.force_create = 1;
+        var btn = $('#mAddReqSave');
+        btn.prop('disabled', true).text('Zakládám...');
+        $.post('includes/ajax_add_request.php', payload, function(r) {
+            handleAddRequestResponse(r, btn, '#mAddReq');
+        });
+    });
+
+    $('#btnDupGoTo').on('click', function() {
+        var existId = $('#mDuplicateWarning').data('exist-id');
+        $('#mDuplicateWarning').modal('hide');
+        pendingNewRequest = null;
+        if (existId) {
+            filters.search = '#' + existId;
+            $('#searchInput').val('#' + existId);
+            applyFilters();
+            var $card = $('.req-card[data-req-id="' + existId + '"]');
+            if ($card.length) {
+                $('html, body').animate({ scrollTop: $card.offset().top - 120 }, 300);
+            }
+        }
     });
 
     // --- Změny stavů a workflow ---

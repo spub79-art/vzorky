@@ -7,11 +7,16 @@ include_once("includes/permissions.php");
 $perms = loadSessionPermissions();
 $is_adm           = $perms['is_adm'];
 $is_vyvoj         = $perms['is_vyvoj'];
+$is_portfolio     = $perms['is_portfolio'];
 $is_orders        = $perms['is_orders'];
 $is_kvalita       = $perms['is_kvalita'];
 $is_nakup_pristup = $perms['is_nakup_pristup'];
 $can_nakup        = $perms['can_nakup'];
+$can_claim_nakup  = $perms['can_claim_nakup'];
+$can_portfolio    = $perms['can_portfolio'];
 $current_uid      = $perms['current_uid'];
+
+$portfolio_pages = ['Portfolio'];
 
 // 2. Detekce aktuální stránky
 $page = 'Pozadavek';
@@ -25,6 +30,8 @@ if (isset($_GET['Vzorek']))        $page = 'Vzorek';
 if (isset($_GET['Produkt']))       $page = 'Produkt';
 if (isset($_GET['Technologie']))   $page = 'Technologie';
 if (isset($_GET['Aktuality']))     $page = 'Aktuality';
+if (isset($_GET['Portfolio']))     $page = 'Portfolio';
+if (isset($_GET['Souhrn']))        $page = 'Souhrn';
 
 function btnActive($current, $targetArray) {
     return in_array($current, $targetArray) ? ' active' : '';
@@ -36,9 +43,15 @@ $mapping = [
     'Pozadavek' => 'pozadavky', 'Archiv' => 'pozadavky',
     'Zakaznik' => 'zakaznik', 'Suroviny' => 'suroviny', 'Users' => 'users',
     'Vzorek' => 'vzorky', 'Produkt' => 'produkt', 'Dodavatele' => 'dodavatele',
-    'Technologie' => 'technologie', 'Aktuality' => 'aktuality'
+    'Technologie' => 'technologie', 'Aktuality' => 'aktuality',
+    'Portfolio' => 'portfolio',
+    'Souhrn' => 'souhrn'
 ];
 $jsTableAction = $mapping[$page] ?? strtolower($page);
+
+include_once("includes/digest_helpers.php");
+$digest_channels = digest_channels_for_user($perms);
+$digest_count = !empty($digest_channels) ? digest_count_for_user($conn, $perms) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="cs">
@@ -60,6 +73,9 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="js/main.js?v=<?php echo filemtime('js/main.js'); ?>"></script>
     <script src="js/board.js?v=<?php echo filemtime('js/board.js'); ?>"></script>
+    <?php if ($page === 'Portfolio'): ?>
+    <script src="js/portfolio.js?v=<?php echo filemtime('js/portfolio.js'); ?>"></script>
+    <?php endif; ?>
 </head>
 <body data-current-uid="<?= (int)$current_uid ?>">
 
@@ -67,52 +83,35 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     <div class="top-header-bar">
 
         <div class="top-header-left">
-            <a class="btn btn-primary<?php echo btnActive($page, ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik']); ?>" href="./index.php?Pozadavek=1">
-                <i class="glyphicon glyphicon-tasks"></i> Požadavky & Nákup
+            <a class="btn btn-primary btn-nav<?php echo btnActive($page, ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik']); ?>" title="Požadavky a nákup" href="./index.php?Pozadavek=1">
+                <i class="glyphicon glyphicon-tasks"></i> Požadavky
             </a>
-            <a class="btn btn-primary<?php echo btnActive($page, ['Vzorek']); ?>" href="./index.php?Vzorek=1">
-                <i class="glyphicon glyphicon-compressed"></i> Vzorky k testování
+            <a class="btn btn-primary btn-nav<?php echo btnActive($page, ['Vzorek']); ?>" title="Vzorky k testování" href="./index.php?Vzorek=1">
+                <i class="glyphicon glyphicon-compressed"></i> Vzorky
             </a>
-            <?php if ($is_adm || $is_vyvoj): ?>
-                <a class="btn btn-primary btn-lab<?php echo btnActive($page, ['Technologie']); ?>" href="./index.php?Technologie=1">
-                    <i class="glyphicon glyphicon-flask"></i> Laboratoř (Testy)
+            <?php if ($can_portfolio): ?>
+                <a class="btn btn-primary btn-nav<?php echo btnActive($page, $portfolio_pages); ?>" href="./index.php?Portfolio=1">
+                    <i class="glyphicon glyphicon-briefcase"></i> Portfolio
                 </a>
             <?php endif; ?>
-            <a class="btn btn-primary<?php echo btnActive($page, ['Produkt']); ?>" href="./index.php?Produkt=1">
-                <i class="glyphicon glyphicon-th-list"></i> Produkty (Katalog)
-            </a>
-        </div>
-
-        <div class="top-header-center">
-            <?php if ($page === 'Pozadavek'): ?>
-                <div style="display:flex; gap: 5px; align-items: center;">
-                    <div class="input-group input-group-sm" style="width:200px;">
-                        <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control" placeholder="Hledat surovinu nebo #id...">
-                    </div>
-                    <button id="btnToggleRejected" class="btn btn-sm btn-default" style="font-weight: bold;">
-                        <i class="glyphicon glyphicon-eye-open"></i> Zamítnuté / Odložené
-                    </button>
-                    <button id="btnToggleMyTasks" class="btn btn-sm btn-default" style="font-weight: bold;">
-                        <i class="glyphicon glyphicon-filter"></i> Jen k řešení
-                    </button>
-                    <button id="btnToggleUrgent" class="btn btn-sm btn-default" style="font-weight: bold;">
-                        <i class="glyphicon glyphicon-flash text-danger"></i> Jen URGENTNÍ
-                    </button>
-                </div>
+            <?php if ($is_adm || $is_vyvoj): ?>
+                <a class="btn btn-primary btn-nav btn-lab<?php echo btnActive($page, ['Technologie']); ?>" title="Laboratoř — testy" href="./index.php?Technologie=1">
+                    <i class="glyphicon glyphicon-flask"></i> Lab
+                </a>
             <?php endif; ?>
+            <a class="btn btn-primary btn-nav<?php echo btnActive($page, ['Produkt']); ?>" title="Produkty — katalog LF" href="./index.php?Produkt=1">
+                <i class="glyphicon glyphicon-th-list"></i> Katalog
+            </a>
         </div>
 
         <div class="top-header-right">
             <?php
-            // Přesná detekce prostředí podle adresy URL
             $is_dev_env = ($_SERVER['SERVER_NAME'] === 'localhost' || strpos($_SERVER['REQUEST_URI'], 'dev-vzorky') !== false);
             if ($is_dev_env): ?>
-                <span class="dev-badge"><i class="glyphicon glyphicon-warning-sign"></i> DEV PROSTŘEDÍ</span>
+                <span class="dev-badge" title="DEV prostředí"><i class="glyphicon glyphicon-warning-sign"></i> DEV</span>
             <?php endif; ?>
 
             <?php
-            // Bezpečné zjištění počtu nepřečtených novinek s potlačením chyby
             $neprectene = 0;
             $uid_safe = (isset($_SESSION['uid'])) ? (int)$_SESSION['uid'] : 0;
             $res_count = @mysqli_query($conn, "SELECT COUNT(*) FROM aktuality WHERE id NOT IN (SELECT id_aktualita FROM aktuality_cteni WHERE id_uzivatel = '{$uid_safe}')");
@@ -123,18 +122,26 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
                     $neprectene = (int)$row[0];
                 }
             }
+            $user_display = is_array($_SESSION['username']) ? $_SESSION['username'][0] : $_SESSION['username'];
             ?>
 
-            <button class="btn btn-news" id="btnOpenNews">
+            <button class="btn btn-news btn-nav" id="btnOpenNews">
                 <i class="glyphicon glyphicon-bullhorn"></i> Novinky
-                <span class="badge" style="background:#d9534f;"><?= $neprectene > 0 ? $neprectene : '' ?></span>
+                <?php if ($neprectene > 0): ?><span class="badge nav-badge"><?= (int)$neprectene ?></span><?php endif; ?>
             </button>
 
-            <?php if ($is_adm || $is_kvalita): ?>
-                <a class="btn btn-info<?php echo btnActive($page, ['Users']); ?>" href="./index.php?Users=1">Uživatelé</a>
+            <?php if (!empty($digest_channels)): ?>
+            <a class="btn btn-info btn-nav<?php echo btnActive($page, ['Souhrn']); ?>" href="./index.php?Souhrn=1" title="Přehled k řešení podle vaší role">
+                <i class="glyphicon glyphicon-dashboard"></i> Souhrn
+                <?php if ($digest_count > 0): ?><span class="badge nav-badge"><?= (int)$digest_count ?></span><?php endif; ?>
+            </a>
             <?php endif; ?>
-            <a class="btn btn-danger" href="includes/logout.php">
-                Odhlásit (<?php echo is_array($_SESSION['username']) ? $_SESSION['username'][0] : $_SESSION['username']; ?>)
+
+            <?php if ($is_adm || $is_kvalita): ?>
+                <a class="btn btn-info btn-nav<?php echo btnActive($page, ['Users']); ?>" href="./index.php?Users=1">Uživatelé</a>
+            <?php endif; ?>
+            <a class="btn btn-danger btn-nav btn-logout" href="includes/logout.php" title="Odhlásit (<?= htmlspecialchars($user_display, ENT_QUOTES) ?>)">
+                <i class="glyphicon glyphicon-log-out"></i><span class="btn-logout-name"><?= htmlspecialchars($user_display) ?></span>
             </a>
         </div>
     </div>
@@ -146,7 +153,7 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
             <a href="index.php?Pozadavek=1" class="btn btn-sm btn-success<?php echo btnActive($page, ['Pozadavek']); ?>" style="background-color: #28a745; border-color: #218838;">
                 <i class="glyphicon glyphicon-list-alt"></i> Správa požadavků
             </a>
-            <a href="index.php?Archiv=1" class="btn btn-sm btn-default<?php echo btnActive($page, ['Archiv']); ?>" style="margin-left:5px;">
+            <a href="index.php?Archiv=1" class="btn btn-sm btn-default<?php echo btnActive($page, ['Archiv']); ?>">
                 <i class="glyphicon glyphicon-folder-close"></i> Archiv
             </a>
             <span class="submenu-divider">|</span>
@@ -156,6 +163,32 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
             <?php if ($can_nakup): ?>
                 <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Dodavatele']); ?>" href="./index.php?Dodavatele=1">Dodavatelé</a>
             <?php endif; ?>
+            <?php if ($page === 'Pozadavek'): ?>
+            <span class="submenu-divider">|</span>
+            <div class="submenu-board-filters">
+                <div class="input-group input-group-sm submenu-search">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Hledat…">
+                </div>
+                <button id="btnToggleRejected" class="btn btn-xs btn-default" title="Zamítnuté / odložené">
+                    <i class="glyphicon glyphicon-eye-open"></i> KO
+                </button>
+                <button id="btnToggleMyTasks" class="btn btn-xs btn-default" title="Jen k řešení">
+                    <i class="glyphicon glyphicon-filter"></i> K řešení
+                </button>
+                <button id="btnToggleUrgent" class="btn btn-xs btn-default" title="Jen urgentní">
+                    <i class="glyphicon glyphicon-flash text-danger"></i> Urgent
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($can_portfolio && $page === 'Portfolio'): ?>
+        <div id="submenu" class="pf-submenu-minimal">
+            <span class="text-muted" style="font-size:12px; padding: 4px 8px;">
+                <i class="glyphicon glyphicon-briefcase"></i> Portfolio — suroviny úzce · detail se roztáhne · sirotčinec v liště
+            </span>
         </div>
     <?php endif; ?>
 </div>
@@ -171,6 +204,8 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
             case 'Vzorek':        include("includes/listVzorky.php"); break;
             case 'Produkt':       include("includes/listProdukty.php"); break;
             case 'Technologie':   if ($is_adm || $is_vyvoj) include("includes/listTechnologie.php"); break;
+            case 'Portfolio':     if ($can_portfolio) include("includes/listPortfolioHome.php"); break;
+            case 'Souhrn':        include("includes/listSouhrn.php"); break;
             case 'Users':         if ($is_adm || $is_kvalita) include("includes/listUsers.php"); break;
             case 'Aktuality':     include("includes/aktuality.php"); break;
             default:              include("includes/listPozadavky.php"); break;
@@ -179,90 +214,12 @@ $jsTableAction = $mapping[$page] ?? strtolower($page);
     </div>
 </div>
 
-<div class="modal fade" id="mNR" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:#f0ad4e; color:#fff;">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title">Nový požadavek na surovinu</h4>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Surovina:</label>
-                    <select id="mNRSur" class="form-control select2-sur" style="width:100%;">
-                        <option value="">-- Vyberte surovinu --</option>
-                        <?php
-                        $s_res = mysqli_query($conn, "SELECT id, nazev FROM suroviny ORDER BY nazev ASC");
-                        while($s = mysqli_fetch_assoc($s_res)) echo "<option value='".$s['id']."'>".htmlspecialchars($s['nazev'])."</option>";
-                        ?>
-                    </select>
-                </div>
+<?php
+$nakup_pages_with_modals = ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik'];
+if (in_array($page, $nakup_pages_with_modals, true)) {
+    include_once("includes/boardModals.php");
+}
+?>
 
-                <div class="form-group" style="background:#f9f9f9; padding:10px; border:1px solid #eee; border-radius:4px;">
-                    <label style="display:block; margin-bottom:5px;">Požadované certifikáty:</label>
-                    <label class="checkbox-inline"><input type="checkbox" id="mNRBio" checked> BIO</label>
-                    <label class="checkbox-inline"><input type="checkbox" id="mNRVegan"> Vegan</label>
-                    <label class="checkbox-inline"><input type="checkbox" id="mNRBezlepek"> Bezlepek</label>
-                    <label class="checkbox-inline"><input type="checkbox" id="mNRKosher"> Kosher</label>
-                    <label class="checkbox-inline"><input type="checkbox" id="mNRHalal"> Halal</label>
-                </div>
-
-                <div class="form-group">
-                    <label>Priorita:</label>
-                    <select id="mNRPrio" class="form-control">
-                        <option value="0">Normální</option>
-                        <option value="1">Urgentní</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Poznámka (např. očekávané množství, specifikace):</label>
-                    <textarea id="mNRNote" class="form-control" rows="3"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-warning" id="mNRSave">Vytvořit požadavek</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    $(document).ready(function() {
-        $('.select2-sur').select2({
-            dropdownParent: $('#mNR'),
-            tags: true,
-            createTag: function (params) {
-                return { id: params.term, text: params.term, newTag: true }
-            }
-        });
-
-        $('#mNRSave').on('click', function() {
-            var sur = $('#mNRSur').val();
-            if(!sur) { alert("Vyberte surovinu!"); return; }
-
-            $.post('includes/ajax_add_request.php', {
-                id_surovina: sur,
-                poznamka: $('#mNRNote').val(),
-                priorita: $('#mNRPrio').val(),
-                bio: $('#mNRBio').is(':checked') ? 1 : 0,
-                vegan: $('#mNRVegan').is(':checked') ? 1 : 0,
-                bezlepek: $('#mNRBezlepek').is(':checked') ? 1 : 0,
-                kosher: $('#mNRKosher').is(':checked') ? 1 : 0,
-                halal: $('#mNRHalal').is(':checked') ? 1 : 0
-            }, function(r) {
-                if(r.trim() == "OK") {
-                    $('#mNR').modal('hide');
-                    if (typeof safeReload === "function") safeReload();
-                    else window.location.reload();
-                } else { alert(r); }
-            });
-        });
-
-        $(document).on('click', '.btn-new-req', function(e) {
-            e.preventDefault();
-            $('#mNR').modal('show');
-        });
-    });
-</script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 <?php
 include_once("db_connect.php");
+include_once("portfolio_helpers.php");
 session_start();
 
 if (empty($_SESSION['username'])) die("Nepřihlášen");
@@ -7,6 +8,8 @@ if (empty($_SESSION['username'])) die("Nepřihlášen");
 $sur_raw = $_POST['id_surovina'];
 $poznamka = mysqli_real_escape_string($conn, $_POST['poznamka'] ?? '');
 $priorita = intval($_POST['priorita']);
+$produkty_ids_pre = pf_parse_post_ids($_POST['produkty'] ?? []);
+$priorita = pf_effective_request_priorita($conn, $priorita, $produkty_ids_pre);
 $bio = !empty($_POST['bio']) ? 1 : 0;
 $vegan = !empty($_POST['vegan']) ? 1 : 0;
 $bezlepek = !empty($_POST['bezlepek']) ? 1 : 0;
@@ -53,6 +56,7 @@ $zadavatel_jmeno_db = mysqli_real_escape_string($conn, $zadavatel_jmeno);
 
 $zadavatel_role = 'cumil';
 if (!empty($_SESSION['vyvoj'])) $zadavatel_role = 'vyvoj';
+if (!empty($_SESSION['portfolio'])) $zadavatel_role = 'portfolio';
 if (!empty($_SESSION['orders'])) $zadavatel_role = 'orders';
 if (!empty($_SESSION['kvalita'])) $zadavatel_role = 'kvalita';
 if (!empty($_SESSION['adm'])) $zadavatel_role = 'adm';
@@ -63,26 +67,8 @@ $sql = "INSERT INTO pozadavky (id_surovina, id_status, bio, vegan, bezlepek, kos
 if (mysqli_query($conn, $sql)) {
     $new_req_id = mysqli_insert_id($conn);
 
-    // ========================================================
-    // NOVÉ: Uložení zákazníků (vazební tabulka) + vytvoření nových
-    // ========================================================
-    $zakaznici = isset($_POST['zakaznici']) && is_array($_POST['zakaznici']) ? $_POST['zakaznici'] : [];
-    foreach ($zakaznici as $zak_raw) {
-        if (trim($zak_raw) === '') continue;
-
-        if (!is_numeric($zak_raw)) {
-            // Vytvoříme nového zákazníka v číselníku
-            $z_name = mysqli_real_escape_string($conn, $zak_raw);
-            mysqli_query($conn, "INSERT INTO zakaznici (nazev) VALUES ('$z_name')");
-            $id_zakaznik = mysqli_insert_id($conn);
-        } else {
-            $id_zakaznik = intval($zak_raw);
-        }
-
-        if ($id_zakaznik > 0) {
-            mysqli_query($conn, "INSERT INTO pozadavky_zakaznici (id_pozadavek, id_zakaznik) VALUES ($new_req_id, $id_zakaznik)");
-        }
-    }
+    pf_save_request_zakaznici($conn, $new_req_id, pf_parse_post_zakaznici($_POST));
+    pf_sync_request_produkty($conn, $new_req_id, pf_parse_post_ids($_POST['produkty'] ?? []), $id_surovina);
 
     // První zápis do sjednocené historie požadavku
     $uid = $_SESSION['uid'] ?? 0;
