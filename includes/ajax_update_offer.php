@@ -43,16 +43,14 @@ $row_cur = mysqli_fetch_assoc($res_cur);
 if (!$row_cur) die('Nabídka nenalezena.');
 
 $cur_st = (int)$row_cur['id_status'];
-$allowed = [2, 3, STATUS_NABIDKA_BEZ_CENY, 12, 13];
+$allowed = [2, 3, STATUS_NABIDKA_BEZ_CENY, 9, 12, 13];
 if (!in_array($cur_st, $allowed)) die('Tuto nabídku v tomto stavu nelze upravit.');
 
-if ($cur_st == STATUS_NABIDKA_BEZ_CENY && $cena_clean > 0) {
-    $new_status = 2;
-} elseif (in_array($cur_st, [12, 13])) {
-    $new_status = $cur_st;
-} else {
-    $new_status = 2;
+// Úprava ceny vždy vrátí nabídku vývoji ke schválení (CENA OK)
+if ($cena_clean <= 0) {
+    die('Zadejte cenu větší než nula.');
 }
+$new_status = 2;
 
 $status_list = implode(',', $allowed);
 
@@ -103,7 +101,7 @@ if ($stmt->execute()) {
         $dod_nazev = $r_info['dod_nazev'] ? $r_info['dod_nazev'] : $dodavatel_raw;
     }
 
-    if ($id_pozadavek > 0 && $new_status == 2 && in_array($cur_st, [2, 3, STATUS_NABIDKA_BEZ_CENY])) {
+    if ($id_pozadavek > 0 && $new_status == 2 && in_array($cur_st, [2, 3, STATUS_NABIDKA_BEZ_CENY, 9, 12, 13])) {
         mysqli_query($conn, "UPDATE pozadavky SET id_status = 2 WHERE id = $id_pozadavek");
     }
 
@@ -113,14 +111,14 @@ if ($stmt->execute()) {
     $kdo = is_array($_SESSION['username']) ? $_SESSION['username'][0] : ($_SESSION['username'] ?? 'Někdo z nákupu');
     $cena_formatovana = number_format($cena_clean, (floor($cena_clean) == $cena_clean ? 0 : 2), ',', ' ') . " " . $mena;
 
-    if (in_array($cur_st, [12, 13]) && $cena_clean > 0) {
-        $msg = "💰 <b>VÝVOJ: Nákup doplnil cenu k nabídce ve fázi dokumentace</b>\n\n";
+    if (in_array($cur_st, [9, 12, 13, STATUS_NABIDKA_BEZ_CENY]) && $cena_clean > 0) {
+        $msg = "💰 <b>VÝVOJ: Nákup doplnil/změnil cenu — čeká se na CENA OK</b>\n\n";
         $msg .= "📌 <b>ID:</b> Požadavek #$id_pozadavek | Nabídka #$id_nabidka\n";
         $msg .= "<b>Surovina:</b> " . htmlspecialchars($sur_nazev) . "\n";
         $msg .= "<b>Dodavatel:</b> " . htmlspecialchars($dod_nazev) . "\n";
         $msg .= "<b>Cena:</b> " . $cena_formatovana . "\n";
         $msg .= "<b>Upravil/a:</b> " . htmlspecialchars($kdo) . "\n";
-        $msg .= "\n<i>Před objednávkou vzorku je potřeba schválit cenu a množství (CENA OK / NUTRIČNÍ OK).</i>";
+        $msg .= "\n<i>Schválení ceny vývojem (CENA OK + množství) je povinné před dalším postupem.</i>";
     } else {
         $msg = "✏️ <b>VÝVOJ: Nabídka byla upravena a vrácena ke schválení!</b>\n\n";
         $msg .= "📌 <b>ID:</b> Požadavek #$id_pozadavek | Nabídka #$id_nabidka\n";

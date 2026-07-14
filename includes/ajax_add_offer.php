@@ -93,7 +93,7 @@ if ($stmt_off->execute()) {
         $msg .= "<b>Surovina:</b> " . htmlspecialchars($sur_nazev) . "\n";
         $msg .= "<b>Dodavatel:</b> " . htmlspecialchars($dodavatel_raw) . "\n";
         $msg .= "<b>Přidal/a:</b> " . htmlspecialchars($kdo) . "\n";
-        $msg .= "\n<i>Cena zatím není — lze nahrát TDS a posoudit dokumentaci. Cena a schválení vývojem před objednávkou vzorku.</i>";
+        $msg .= "\n<i>Cena zatím není — lze nahrát TDS. Před předáním kvalitě musí Nákup doplnit cenu a vývoj schválit CENA OK.</i>";
         $msg .= "\n\n👉 <a href='" . $link . "'>Zobrazit nabídku v systému</a>";
         sendTelegram($msg, 'vyvoj');
         sendTelegram($msg, 'kvalita');

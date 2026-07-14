@@ -54,6 +54,22 @@ function nabidkaPotrebujePoptavku($status_id) {
     return in_array((int)$status_id, [3, 4, 6, 8, 9, 10, 11, 12, 13]);
 }
 
+/** Vývoj schválil cenu tlačítkem CENA OK (množství vzorku). */
+function nabidkaMaCenuSchvalenouVyvojem($pozadovane_mnozstvi) {
+    return formatPozadovaneMnozstvi($pozadovane_mnozstvi) !== null;
+}
+
+/** Kam se vrátit po doplnění dokumentace (status 9). */
+function nabidkaStatusPoDoplneniDokumentace($poznamka_cena) {
+    if (preg_match('/\[WF_RETURN:(\d+)\]/', (string)$poznamka_cena, $m)) {
+        $st = (int)$m[1];
+        if (in_array($st, [3, 12, 13], true)) {
+            return $st;
+        }
+    }
+    return 3;
+}
+
 /**
  * Shrnutí poptávek vývoje z pole nabídek (včetně chybějících hodnot).
  */

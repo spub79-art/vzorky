@@ -88,7 +88,9 @@ function renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $filter
     elseif ($can_nakup) { $show_manage = true; }
     elseif ($is_vyvoj && $filter_phase == 3) $show_manage = true;
 
-    $wf_attrs = "class='offer-file-badge is-dashed btn-wf' data-id='$p_id' data-status='".($p_status_id == 9 ? 3 : 'no_change')."' data-upload='1' data-sarze='".htmlspecialchars($p_sarze)."' data-files='".htmlspecialchars($p_files_str)."'";
+    $poznamka_cena = $p['poznamka_cena'] ?? '';
+    $wf_return_st = ($p_status_id == 9) ? nabidkaStatusPoDoplneniDokumentace($poznamka_cena) : 'no_change';
+    $wf_attrs = "class='offer-file-badge is-dashed btn-wf' data-id='$p_id' data-status='".($p_status_id == 9 ? $wf_return_st : 'no_change')."' data-upload='1' data-sarze='".htmlspecialchars($p_sarze)."' data-files='".htmlspecialchars($p_files_str)."'";
 
     $tds_badge = $has_spec
         ? "<a href='#' class='offer-file-badge btn-open-files-modal' data-id='$p_id' style='color:#337ab7; border-color:#337ab7; background-color:#eef5fa;' title='Zobrazit soubory'><i class='glyphicon glyphicon-file'></i> TDS</a>"
@@ -102,7 +104,7 @@ function renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $filter
         ? "<a href='#' class='offer-file-badge btn-open-files-modal' data-id='$p_id' style='color:#777; border-color:#999;' title='Ostatní soubory'><i class='glyphicon glyphicon-paperclip'></i></a>" : "";
 
     ob_start();
-    if ($can_nakup && in_array($p_status_id, [2, 3, STATUS_NABIDKA_BEZ_CENY, 12, 13])): ?>
+    if ($can_nakup && in_array($p_status_id, [2, 3, STATUS_NABIDKA_BEZ_CENY, 9, 12, 13])): ?>
         <button class="btn btn-xs btn-block btn-info btn-edit-offer" data-id="<?= $p_id ?>" data-dodavatel="<?= htmlspecialchars($dodavatel_nazev) ?>" data-cena="<?= $vlozena_cena ?>" data-moq-qty="<?= $p_moq_qty ?>" data-moq-mj="<?= $p_moq_mj ?>" data-poznamka="">
             <i class="glyphicon glyphicon-pencil"></i> UPRAVIT CENU
         </button>
@@ -127,8 +129,14 @@ function renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $filter
         <button class="btn btn-xs btn-block btn-danger btn-prompt-reason" data-id="<?= $p_id ?>" data-status="7">KO</button>
     <?php endif; ?>
 
-    <?php if (in_array($p_status_id, [3, STATUS_NABIDKA_BEZ_CENY]) && $can_nakup && $has_spec): ?>
+    <?php if ($p_status_id == 3 && $can_nakup && $has_spec): ?>
         <button class="btn btn-xs btn-block btn-primary btn-wf-direct" data-id="<?= $p_id ?>" data-status="12">PŘEDAT KVALITĚ</button>
+    <?php endif; ?>
+
+    <?php if ($p_status_id == STATUS_NABIDKA_BEZ_CENY && $has_spec): ?>
+        <div class="text-muted" style="font-size:9px; margin:2px 0; line-height:1.3;">
+            TDS nahráno — Nákup doplní cenu, vývoj schválí <strong>CENA OK</strong>, pak lze předat kvalitě.
+        </div>
     <?php endif; ?>
 
     <?php if ($p_status_id == 12 && ($is_quality || $is_adm) && $has_spec): ?>
@@ -142,7 +150,7 @@ function renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $filter
         <button class="btn btn-xs btn-block btn-success btn-wf-nutri-deferred" data-id="<?= $p_id ?>">NUTRIČNÍ OK</button>
         <div class="text-muted" style="font-size:9px; margin:2px 0;">Bez ceny — vzorek až po doplnění ceny Nákupu</div>
         <?php elseif (!$has_poptavka): ?>
-        <button class="btn btn-xs btn-block btn-success btn-prompt-qty-note" data-id="<?= $p_id ?>" data-status="8">NUTRIČNÍ OK → VZOREK</button>
+        <div class="text-danger" style="font-size:9px; margin:2px 0;">Chybí schválení ceny vývojem (CENA OK). Nákup doplní cenu → vývoj schválí.</div>
         <?php else: ?>
         <button class="btn btn-xs btn-block btn-success btn-wf-check" data-id="<?= $p_id ?>" data-status="8">NUTRIČNÍ OK</button>
         <?php endif; ?>
@@ -164,7 +172,7 @@ function renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $filter
             else { $btn_class = 'btn-warning'; }
         }
         ?>
-        <button class="btn btn-xs btn-block <?= $btn_class ?> btn-wf" data-id="<?= $p_id ?>" data-status="<?= ($p_status_id == 9 ? 3 : 'no_change') ?>" data-upload="1" data-sarze="<?= htmlspecialchars($p_sarze) ?>" data-note="" data-files="<?= htmlspecialchars($p_files_str) ?>"><?= $btn_text ?></button>
+        <button class="btn btn-xs btn-block <?= $btn_class ?> btn-wf" data-id="<?= $p_id ?>" data-status="<?= ($p_status_id == 9 ? nabidkaStatusPoDoplneniDokumentace($poznamka_cena) : 'no_change') ?>" data-upload="1" data-sarze="<?= htmlspecialchars($p_sarze) ?>" data-note="" data-files="<?= htmlspecialchars($p_files_str) ?>"><?= $btn_text ?></button>
     <?php endif;
     $action_buttons = ob_get_clean();
     ?>

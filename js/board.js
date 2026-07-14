@@ -7,10 +7,80 @@ var filters = {
     search: '',
     rejected: false,
     myTasks: false,
-    urgent: false
+    urgent: false,
+    showSysHistory: false
 };
 
+var SYS_HIST_KEY = 'vzorky_show_sys_history';
+
+function applySysHistoryVisibility() {
+    $('#board-container').toggleClass('board-hide-sys-history', !filters.showSysHistory);
+    try { localStorage.setItem(SYS_HIST_KEY, filters.showSysHistory ? '1' : '0'); } catch (e) {}
+    $('#btnToggleSysHistory')
+        .toggleClass('btn-info', filters.showSysHistory)
+        .toggleClass('btn-default', !filters.showSysHistory);
+    refreshHistoryPreviews();
+}
+
+/** Náhled historie na kartě — bez zbytečného ořezu krátkých diskuzí. */
+function refreshHistoryPreviews() {
+    var contentCap = 76;
+    var footerH = 20;
+
+    $('#board-container .offer-comments-wrapper:not(.is-expanded), #board-container .offer-sys-msg-container:not(.is-expanded)').each(function() {
+        var $wrap = $(this);
+        $wrap.find('.history-expand-hint').remove();
+
+        var hasVisible = false;
+        $wrap.children('.history-row').each(function() {
+            if ($(this).css('display') !== 'none') hasVisible = true;
+        });
+
+        $wrap.removeClass('history-preview-fit history-preview-overflow history-preview-empty');
+        $wrap.css('max-height', '');
+
+        if (!hasVisible) {
+            $wrap.addClass('history-preview-empty').hide();
+            return;
+        }
+
+        $wrap.show();
+        var natural = this.scrollHeight;
+        if (natural <= contentCap) {
+            $wrap.addClass('history-preview-fit').removeAttr('title');
+        } else {
+            $wrap.addClass('history-preview-overflow')
+                .css('max-height', (contentCap + footerH) + 'px')
+                .append(
+                    '<div class="history-expand-hint">' +
+                    '<i class="glyphicon glyphicon-resize-full"></i> Celá diskuze' +
+                    '</div>'
+                );
+        }
+    });
+}
+
 var cur = { id: 0, st: 0, hasLab: false };
+
+function openRequestDetail(reqId) {
+    reqId = parseInt(reqId, 10);
+    if (!reqId || !$('#mReqDetail').length) return;
+    $('#mReqDetailContent').html(
+        '<div style="padding:50px; text-align:center; color:#777;">' +
+        '<i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Načítám detail požadavku...' +
+        '</div>'
+    );
+    $('#mReqDetail').modal('show');
+    $.post('includes/ajax_request_detail.php', { id: reqId }, function(data) {
+        $('#mReqDetailContent').html(data);
+    }).fail(function() {
+        $('#mReqDetailContent').html('<div class="alert alert-danger" style="margin:20px;">Chyba při načítání dat.</div>');
+    });
+}
+
+function digestReturnUrl() {
+    return window.location.search.indexOf('Souhrn') >= 0 ? 'index.php?Souhrn=1' : 'index.php?Pozadavek=1';
+}
 
 // 2. HLAVNÍ FUNKCE FILTROVÁNÍ
 function applyFilters() {
@@ -73,12 +143,14 @@ function applyFilters() {
         .toggleClass('btn-danger', filters.urgent)
         .toggleClass('btn-default', !filters.urgent);
 
+    refreshHistoryPreviews();
 }
 
 function safeReload() {
     if ($('.modal.in').length > 0) return;
     $('#board-container').load(window.location.href + ' #board-container > *', function() {
         applyFilters();
+        applySysHistoryVisibility();
         if (typeof $.fn.select2 !== 'undefined') { $('.select2-dod').select2({ dropdownParent: $('#mNN'), tags: true }); }
         initBoardReqSelect2();
     });
@@ -202,7 +274,18 @@ $(document).ready(function() {
     $(document).on('click', '#btnToggleMyTasks', function(e) { e.preventDefault(); filters.myTasks = !filters.myTasks; applyFilters(); });
     $(document).on('click', '#btnToggleRejected', function(e) { e.preventDefault(); filters.rejected = !filters.rejected; applyFilters(); });
     $(document).on('click', '#btnToggleUrgent', function(e) { e.preventDefault(); filters.urgent = !filters.urgent; applyFilters(); });
+    $(document).on('click', '#btnToggleSysHistory', function(e) {
+        e.preventDefault();
+        filters.showSysHistory = !filters.showSysHistory;
+        applySysHistoryVisibility();
+    });
     $(document).on('input', '#searchInput', function() { filters.search = $(this).val(); applyFilters(); });
+
+    try {
+        filters.showSysHistory = localStorage.getItem(SYS_HIST_KEY) === '1';
+    } catch (e) {}
+    applySysHistoryVisibility();
+    $(window).on('load', refreshHistoryPreviews);
 
     // --- Inicializace Select2 ---
     if (typeof $.fn.select2 !== 'undefined') {
@@ -265,6 +348,51 @@ $(document).ready(function() {
             } else {
                 if (typeof sysAlert === "function") sysAlert(r, "danger"); else alert(r);
                 originalBtn.removeClass('glyphicon-refresh spinning text-muted').addClass('glyphicon-flash text-warning');
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-digest-snooze', function(e) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        var b = $(this);
+        $('#mDigestSnoozeId').val(b.data('id'));
+        $('#mDigestSnoozeNote').val(b.data('snooze-note') || '');
+        $('#mDigestSnoozeDays').val('7');
+        $('#mDigestSnooze').modal('show');
+    });
+
+    $('#mDigestSnoozeSave').on('click', function() {
+        var btn = $(this);
+        btn.prop('disabled', true).text('Ukládám…');
+        $.post('includes/ajax_digest_snooze.php', {
+            id: $('#mDigestSnoozeId').val(),
+            days: $('#mDigestSnoozeDays').val(),
+            poznamka: $('#mDigestSnoozeNote').val(),
+            action: 'set'
+        }, function(r) {
+            btn.prop('disabled', false).text('Uložit');
+            if ((r || '').trim() === 'OK') {
+                $('#mDigestSnooze').modal('hide');
+                safeReload();
+            } else {
+                if (typeof sysAlert === 'function') sysAlert(r, 'danger'); else alert(r);
+            }
+        });
+    });
+
+    $('#mDigestSnoozeClear').on('click', function() {
+        var btn = $('#mDigestSnoozeSave');
+        btn.prop('disabled', true);
+        $.post('includes/ajax_digest_snooze.php', {
+            id: $('#mDigestSnoozeId').val(),
+            action: 'clear'
+        }, function(r) {
+            btn.prop('disabled', false);
+            if ((r || '').trim() === 'OK') {
+                $('#mDigestSnooze').modal('hide');
+                safeReload();
+            } else {
+                if (typeof sysAlert === 'function') sysAlert(r, 'danger'); else alert(r);
             }
         });
     });
@@ -694,23 +822,47 @@ $(document).ready(function() {
 
     // --- Otevření detailu požadavku ---
     $(document).on('click', '.btn-open-detail', function(e) {
-        if ($(e.target).closest('.btn-edit-req, .btn-delete-req, .btn-ping-purchasing, .btn-urge-task, .btn-toggle-priority, .btn-postpone-req, .btn-revive-req').length > 0) return;
-        var reqId = $(this).data('id');
-        $('#mReqDetailContent').html('<div style="padding:50px; text-align:center; color:#777;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Načítám detail požadavku...</div>');
-        $('#mReqDetail').modal('show');
-        $.post('includes/ajax_request_detail.php', { id: reqId }, function(data) { $('#mReqDetailContent').html(data); }).fail(function() { $('#mReqDetailContent').html('<div class="alert alert-danger" style="margin:20px;">Chyba při načítání dat.</div>'); });
+        if ($(e.target).closest('.btn-edit-req, .btn-delete-req, .btn-ping-purchasing, .btn-urge-task, .btn-toggle-priority, .btn-postpone-req, .btn-revive-req, .btn-digest-snooze').length > 0) return;
+        openRequestDetail($(this).data('id'));
+    });
+
+    // Souhrn — celý řádek otevře detail (e-mail náhled stále používá odkaz v buňce)
+    $(document).on('click', '.digest-row', function(e) {
+        var reqId = parseInt($(this).data('req-id'), 10);
+        if (!reqId || !$('#mReqDetail').length) return;
+        e.preventDefault();
+        openRequestDetail(reqId);
+        window.history.replaceState(null, null, 'index.php?Souhrn=1&req_id=' + reqId);
+    });
+    $(document).on('keydown', '.digest-row', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            $(this).trigger('click');
+        }
+    });
+
+    $(document).on('click', '.digest-page a[href*="req_id="]', function(e) {
+        var match = (this.getAttribute('href') || '').match(/[?&]req_id=(\d+)/);
+        if (!match || !$('#mReqDetail').length) return;
+        e.preventDefault();
+        openRequestDetail(match[1]);
+        window.history.replaceState(null, null, 'index.php?Souhrn=1&req_id=' + match[1]);
+    });
+
+    $('#mReqDetail').on('hidden.bs.modal', function() {
+        if (/[?&]req_id=/.test(window.location.search)) {
+            window.history.replaceState(null, null, digestReturnUrl());
+        }
     });
 
     var urlParams = new URLSearchParams(window.location.search);
     var autoOpenId = urlParams.get('req_id');
-    if (autoOpenId) {
+    if (autoOpenId && $('#mReqDetail').length) {
+        var delay = urlParams.has('Souhrn') ? 80 : 500;
         setTimeout(function() {
-            if ($('#mReqDetail').length === 0) return;
-            $('#mReqDetailContent').html('<div style="padding:50px; text-align:center; color:#777;"><i class="glyphicon glyphicon-refresh spinning" style="font-size: 30px;"></i><br><br>Načítám detail...</div>');
-            $('#mReqDetail').modal('show');
-            $.post('includes/ajax_request_detail.php', { id: autoOpenId }, function(data) { $('#mReqDetailContent').html(data); });
-            window.history.replaceState(null, null, 'index.php?Pozadavek=1');
-        }, 500);
+            openRequestDetail(autoOpenId);
+            window.history.replaceState(null, null, digestReturnUrl());
+        }, delay);
     }
 
     // --- Dev Feedback Modál (Původní plovoucí tlačítko na nápady dole) ---
@@ -791,14 +943,18 @@ $(document).ready(function() {
 
         // 4. Rozbalit aktuální
         if (!isExpanded) {
-            $this.addClass('is-expanded');
+            $this.addClass('is-expanded').css('max-height', '').find('.history-expand-hint').remove();
+        } else {
+            refreshHistoryPreviews();
         }
     });
 
     // 5. Automatické zavření klikem mimo
     $(document).on('click', function(e) {
         if ($(e.target).closest('.offer-comments-wrapper, .offer-sys-msg-container').length === 0) {
+            var hadExpanded = $('.offer-comments-wrapper.is-expanded, .offer-sys-msg-container.is-expanded').length > 0;
             $('.offer-comments-wrapper.is-expanded, .offer-sys-msg-container.is-expanded').removeClass('is-expanded');
+            if (hadExpanded) refreshHistoryPreviews();
         }
     });
 

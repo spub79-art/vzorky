@@ -179,6 +179,9 @@ $digest_count = !empty($digest_channels) ? digest_count_for_user($conn, $perms) 
                 <button id="btnToggleUrgent" class="btn btn-xs btn-default" title="Jen urgentní">
                     <i class="glyphicon glyphicon-flash text-danger"></i> Urgent
                 </button>
+                <button id="btnToggleSysHistory" class="btn btn-xs btn-default" title="Zobrazit systémové záznamy (změny stavů, přiřazení…)">
+                    <i class="glyphicon glyphicon-cog"></i> Systém
+                </button>
             </div>
             <?php endif; ?>
         </div>
@@ -215,8 +218,8 @@ $digest_count = !empty($digest_channels) ? digest_count_for_user($conn, $perms) 
 </div>
 
 <?php
-$nakup_pages_with_modals = ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik'];
-if (in_array($page, $nakup_pages_with_modals, true)) {
+$pages_with_board_modals = ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik', 'Souhrn'];
+if (in_array($page, $pages_with_board_modals, true)) {
     include_once("includes/boardModals.php");
 }
 ?>

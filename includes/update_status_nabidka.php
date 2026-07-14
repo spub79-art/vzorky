@@ -44,18 +44,77 @@ if ($id > 0) {
         $id_surovina = $row_sur['id_surovina'] ?? 0;
     }
 
-    // Tvrdá brána: objednávka vzorku (8) jen se schválenou cenou a množstvím
+    $gate_q = mysqli_query($conn, "SELECT id_status, cena_nabidka, pozadovane_mnozstvi, poznamka_cena FROM pozadavky_nabidky WHERE id = $id");
+    $gate_row = mysqli_fetch_assoc($gate_q) ?: [];
+    $cur_st = (int)($gate_row['id_status'] ?? 0);
+
+    // Tvrdá brána: CENA OK (2→3) jen s cenou a množstvím
+    if ((int)$status === 3) {
+        if ((float)($gate_row['cena_nabidka'] ?? 0) <= 0) {
+            ob_end_clean();
+            die('Nelze schválit cenu: chybí cena. Nákup musí cenu doplnit.');
+        }
+        if ($qty === '' && !nabidkaMaCenuSchvalenouVyvojem($gate_row['pozadovane_mnozstvi'] ?? '')) {
+            ob_end_clean();
+            die('CENA OK vyžaduje zadání množství vzorku.');
+        }
+        if (!in_array($cur_st, [2, 9], true)) {
+            ob_end_clean();
+            die('Schválení ceny jen ze stavu „čeká na schválení ceny“.');
+        }
+        if ($cur_st === 9 && !nabidkaMaCenuSchvalenouVyvojem($gate_row['pozadovane_mnozstvi'] ?? '')) {
+            ob_end_clean();
+            die('Nejdřív musí vývoj schválit cenu (CENA OK).');
+        }
+    }
+
+    // Předat kvalitě jen po CENA OK (stav 3)
+    if ((int)$status === 12) {
+        if ($cur_st === STATUS_NABIDKA_BEZ_CENY) {
+            ob_end_clean();
+            die('Nejdřív doplnit cenu a nechat schválit vývojem (CENA OK).');
+        }
+        if (!nabidkaMaCenuSchvalenouVyvojem($gate_row['pozadovane_mnozstvi'] ?? '')) {
+            ob_end_clean();
+            die('Nejdřív musí vývoj schválit cenu (CENA OK) — chybí požadované množství.');
+        }
+        if (!in_array($cur_st, [3, 9], true)) {
+            ob_end_clean();
+            die('Předání kvalitě jen po schválení ceny vývojem.');
+        }
+    }
+
+    // Kvalita OK jen pokud vývoj cenu už schválil
+    if ((int)$status === 13) {
+        if (!in_array($cur_st, [12, 9], true)) {
+            ob_end_clean();
+            die('Schválení kvality jen ze stavu kontroly TDS.');
+        }
+        if (!nabidkaMaCenuSchvalenouVyvojem($gate_row['pozadovane_mnozstvi'] ?? '')) {
+            ob_end_clean();
+            die('Nejdřív musí vývoj schválit cenu (CENA OK).');
+        }
+    }
+
+    // Senzorika OK (8) jen z kontroly nutri ve stavu 13, po CENA OK
     if ((int)$status === 8) {
-        $gate_q = mysqli_query($conn, "SELECT cena_nabidka, pozadovane_mnozstvi FROM pozadavky_nabidky WHERE id = $id");
-        $gate = mysqli_fetch_assoc($gate_q);
-        if (!$gate || (float)$gate['cena_nabidka'] <= 0) {
+        if ($cur_st !== 13) {
             ob_end_clean();
-            die('Nelze pokračovat: chybí cena. Nákup musí doplnit cenu a vývoj ji schválit.');
+            die('Schválení nutričních hodnot jen ze stavu kontroly TDS vývojem.');
         }
-        if (empty(trim($gate['pozadovane_mnozstvi'] ?? ''))) {
+        if ((float)($gate_row['cena_nabidka'] ?? 0) <= 0) {
             ob_end_clean();
-            die('Nelze pokračovat: chybí požadované množství. Vývoj musí schválit cenu (CENA OK / NUTRIČNÍ OK).');
+            die('Nelze pokračovat: chybí cena. Nákup musí doplnit cenu a vývoj ji schválit (CENA OK).');
         }
+        if (!nabidkaMaCenuSchvalenouVyvojem($gate_row['pozadovane_mnozstvi'] ?? '')) {
+            ob_end_clean();
+            die('Nelze pokračovat: chybí množství ze schválení ceny. Vývoj musí nejdřív dát CENA OK.');
+        }
+    }
+
+    // Návrat z DOPLNIT: zapamatovat, odkud jsme přišli (12 nebo 13)
+    if ((int)$status === 9 && in_array($cur_st, [12, 13], true)) {
+        $poznamka_final .= mysqli_real_escape_string($conn, "\n[WF_RETURN:$cur_st]");
     }
 
     // 1. AKTUALIZACE NABÍDKY

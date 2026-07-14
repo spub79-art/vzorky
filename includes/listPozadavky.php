@@ -296,6 +296,18 @@ foreach ($pozadavky as $row) {
                                                title="Urgovat řešitele (Pošle upozornění zodpovědnému oddělení na Telegram)"></i>
                                         <?php endif; ?>
 
+                                        <?php if ($can_nakup && !$is_total_cancel): ?>
+                                            <?php
+                                            $snooze_active = !empty($row['souhrn_snooze_do']) && strtotime($row['souhrn_snooze_do']) > time();
+                                            ?>
+                                            <i class="glyphicon glyphicon-time <?= $snooze_active ? 'text-primary' : 'text-muted' ?> btn-digest-snooze no-detail-trigger"
+                                               style="pointer-events: auto; cursor: pointer; font-size: 14px; margin-right: 8px;"
+                                               data-id="<?= $row['id'] ?>"
+                                               data-snooze-until="<?= htmlspecialchars($row['souhrn_snooze_do'] ?? '', ENT_QUOTES) ?>"
+                                               data-snooze-note="<?= htmlspecialchars($row['souhrn_snooze_poznamka'] ?? '', ENT_QUOTES) ?>"
+                                               title="<?= $snooze_active ? 'Souhrn: dlouhé dodání do ' . date('j.n.', strtotime($row['souhrn_snooze_do'])) : 'Souhrn: snížit prioritu (dlouhé dodání)' ?>"></i>
+                                        <?php endif; ?>
+
                                         <?php if (!$is_orders && !$is_total_cancel): ?>
                                             <i class="glyphicon glyphicon-bell text-info btn-ping-purchasing no-detail-trigger"
                                                style="pointer-events: auto; cursor: pointer; font-size: 14px; margin-right: 8px;"

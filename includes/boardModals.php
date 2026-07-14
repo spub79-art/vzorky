@@ -209,7 +209,7 @@ if ($need_fetch) {
                 <div class="checkbox" id="mNNBezCenyWrapper" style="margin: 8px 0 0;">
                     <label style="font-weight: normal; font-size: 13px;">
                         <input type="checkbox" id="mNNBezCeny">
-                        <strong>Zatím bez ceny</strong> — máme dokumentaci k posouzení (TDS/COA)
+                        <strong>Zatím bez ceny</strong> — lze nahrát TDS; před kvalitou musí vývoj schválit cenu (CENA OK)
                     </label>
                 </div>
 
@@ -579,6 +579,38 @@ if ($need_fetch) {
             <div class="modal-footer modal-footer-modern">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
                 <button type="button" class="btn btn-info" id="btnConfirmPing">Ano, odeslat žádost</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mDigestSnooze" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content modal-modern">
+            <div class="modal-header modal-header-modern header-default">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-time"></i> Souhrn: dlouhé dodání</h4>
+            </div>
+            <div class="modal-body modal-body-modern">
+                <p class="text-muted small">Sníží prioritu v <strong>Souhrnu</strong> (e-mail i web). Požadavek zůstane otevřený, URG vlajka se nemění. Vhodné pro JP / dlouhé lead times.</p>
+                <input type="hidden" id="mDigestSnoozeId">
+                <div class="form-group">
+                    <label>Platnost snížení</label>
+                    <select id="mDigestSnoozeDays" class="form-control">
+                        <option value="7">7 dní</option>
+                        <option value="14">14 dní</option>
+                        <option value="30">30 dní</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Poznámka (volitelně)</label>
+                    <input type="text" id="mDigestSnoozeNote" class="form-control" maxlength="250" placeholder="např. JP dodavatel, čekáme na vzorek…">
+                </div>
+                <button type="button" class="btn btn-default btn-sm" id="mDigestSnoozeClear">Zrušit snížení</button>
+            </div>
+            <div class="modal-footer modal-footer-modern">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zavřít</button>
+                <button type="button" class="btn btn-primary" id="mDigestSnoozeSave">Uložit</button>
             </div>
         </div>
     </div>
