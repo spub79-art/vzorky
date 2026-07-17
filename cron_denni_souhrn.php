@@ -2,11 +2,10 @@
 
 // cron_denni_souhrn.php — denní e-mailový souhrn (Nákup, Vývoj, Kvalita)
 //
-// Crontab (/etc/crontab — POZOR na sloupec USER!):
-//   0 8 * * 1-5 root cd /DATA/docs/vzorky && /usr/bin/php cron_denni_souhrn.php >> /DATA/docs/vzorky/logs/cron_souhrn.log 2>&1
+// Cron (/etc/cron.d/vzorky-souhrn):
+//   0 8 * * 1-5 root cd /DATA/docs/vzorky && mkdir -p logs && /usr/bin/php8.2 cron_denni_souhrn.php >> logs/cron_souhrn.log 2>&1
 //
-// Špatně (chybí user → cron spouští jako uživatel „php“):
-//   0 8 * * 1-5 php /DATA/docs/vzorky/cron_denni_souhrn.php
+// Log: skript zapisuje sám do logs/cron_souhrn.log — 2>&1 jen pro neodchycené PHP chyby (bez duplicitního řádku).
 
 if (php_sapi_name() === 'cli') {
     chdir(__DIR__);
@@ -19,9 +18,6 @@ function cron_souhrn_log($msg) {
         @mkdir($log_dir, 0755, true);
     }
     @file_put_contents($log_dir . '/cron_souhrn.log', $line, FILE_APPEND | LOCK_EX);
-    if (php_sapi_name() === 'cli') {
-        fwrite(STDERR, $line);
-    }
 }
 
 register_shutdown_function(function () {
@@ -79,17 +75,27 @@ foreach ($email_channels as $ch) {
 
 
     $meta = $digest['meta'];
+    $prev_state = digest_load_channel_state($ch);
+    $sig = digest_signature($digest);
+
+    if (!$is_preview && $prev_state['sig'] !== '' && hash_equals($prev_state['sig'], $sig)) {
+        $skipped[] = $ch . ' (beze změny)';
+        continue;
+    }
+
+    $delta_stats = digest_apply_delta($digest['sections'], $prev_state['items']);
+    $digest['subject'] = digest_subject_with_delta(
+        $digest['sections'],
+        $meta['subject_role'] ?? $meta['label'] ?? $ch,
+        $delta_stats
+    );
 
     $html = wrapDigestEmail(
-
         $meta['title'],
-
         $meta['subtitle'],
-
         $digest['sections'],
-
-        $BASE_URL
-
+        $BASE_URL,
+        $delta_stats
     );
 
 
@@ -108,6 +114,9 @@ foreach ($email_channels as $ch) {
             echo htmlspecialchars(implode(', ', $recipients));
         }
         echo ' · položek: ' . (int)$digest['total'];
+        if (!empty($delta_stats['has_prev'])) {
+            echo ' · nové: ' . (int)$delta_stats['new'] . ', změny: ' . (int)$delta_stats['changed'];
+        }
         echo '</div>';
         echo $html;
         $sent[] = $ch;
@@ -131,8 +140,13 @@ foreach ($email_channels as $ch) {
 
 
     if (sendEmailTo($recipients, $digest['subject'], $html)) {
+        digest_save_channel_state($ch, $digest);
 
-        $sent[] = $ch . ' → ' . implode(', ', $recipients) . " ({$digest['total']})";
+        $delta_note = '';
+        if (!empty($delta_stats['has_prev'])) {
+            $delta_note = ' [+' . (int)$delta_stats['new'] . ' nových, ' . (int)$delta_stats['changed'] . ' změn]';
+        }
+        $sent[] = $ch . ' → ' . implode(', ', $recipients) . " ({$digest['total']})" . $delta_note;
 
     } else {
 

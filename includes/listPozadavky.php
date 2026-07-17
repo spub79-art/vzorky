@@ -119,13 +119,20 @@ foreach ($pozadavky as $row) {
 
     // Odloženo nebo zrušeno
     $is_req_cancelled = in_array((int)$row['id_status'], [5, 7, 8]);
+    $row['req_nab_led'] = 0;
 
     if (!empty($row['nabidky_pole'])) {
         foreach ($row['nabidky_pole'] as $pts) {
             if (empty($pts['id'])) continue;
+            if (nabidkaJeOdlozena((int)$pts['id_status'])) {
+                $row['req_nab_led']++;
+            }
+        }
+        foreach ($row['nabidky_pole'] as $pts) {
+            if (empty($pts['id'])) continue;
 
             $s_id = (int)$pts['id_status'];
-            if (!in_array($s_id, [5, 7, 8])) {
+            if (!nabidkaJeSkryta($s_id)) {
                 $has_any_active = true;
 
                 if (in_array($s_id, [10, 4])) {
@@ -204,7 +211,7 @@ foreach ($pozadavky as $row) {
                             foreach($row['nabidky_pole'] as $pts) {
                                 if (!empty($pts['id'])) {
                                     $s_id = (int)$pts['id_status'];
-                                    $is_ko = in_array($s_id, [5, 7, 8]);
+                                    $is_ko = nabidkaJeSkryta($s_id);
 
                                     $phase_of_offer = 1;
                                     if (!$is_ko) {
@@ -242,7 +249,7 @@ foreach ($pozadavky as $row) {
                         $border_top_color = $is_total_cancel ? '#ccc' : ($is_grey ? '#d1d5da' : $row['color_bg']);
 
                         $all_ko = (!empty($all_offers_for_this));
-                        foreach ($all_offers_for_this as $pt) { if (!in_array((int)$pt['id_status'], [5, 7, 8])) $all_ko = false; }
+                        foreach ($all_offers_for_this as $pt) { if (!nabidkaJeSkryta((int)$pt['id_status'])) $all_ko = false; }
                         $card_classes = "req-card " . ($is_urgent ? 'req-card-urgent needs-my-action ' : '');
                         if ($is_total_cancel || ($col['id'] == 1 && $all_ko && !$is_urgent && empty($all_offers_for_this) == false)) {
                             $card_classes .= ' offer-rejected';
@@ -404,6 +411,15 @@ foreach ($pozadavky as $row) {
                                 if (!empty($poptavky_lines)) {
                                     $meta_parts[] = '<span class="meta-pop" title="Poptávka vývoje">' . implode(' · ', $poptavky_lines) . '</span>';
                                 }
+                                if (!empty($row['req_nab_led'])) {
+                                    $led_n = (int)$row['req_nab_led'];
+                                    $meta_parts[] = '<span class="meta-led" title="Nabídky odložené k ledu — zapnout filtr KO/Led">'
+                                        . '<i class="glyphicon glyphicon-pause"></i> '
+                                        . '<a href="#" class="btn-show-led-offers no-detail-trigger" data-req-id="' . (int)$row['id'] . '">'
+                                        . $led_n . ' na ledu</a>'
+                                        . ' · <a href="#" class="btn-revive-all-offers no-detail-trigger text-success" data-req-id="' . (int)$row['id'] . '" title="Odledovat všechny">odledovat vše</a>'
+                                        . '</span>';
+                                }
                                 if (!empty($meta_parts)): ?>
                                     <div class="req-meta-compact"><?= implode('<span class="meta-sep">·</span>', $meta_parts) ?></div>
                                 <?php endif; ?>
@@ -443,7 +459,12 @@ foreach ($pozadavky as $row) {
 
                             <div class="req-body">
                                 <?php if ($is_urgent): ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p):
+                                        $sib = nabidka_sibling_counts($row['nabidky_pole'], $p['id']);
+                                        $p['_sib_active'] = $sib['active'];
+                                        $p['_sib_frozen'] = $sib['frozen'];
+                                        renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []);
+                                    endforeach; ?>
                                     <button class="btn btn-sm btn-block btn-warning btn-add-offer btn-search-offer" data-id="<?= $row['id'] ?>">
                                         <i class="glyphicon glyphicon-search"></i> DOHLEDAT DODAVATELE
                                     </button>
@@ -452,7 +473,12 @@ foreach ($pozadavky as $row) {
                                         <?= $is_postponed ? 'Požadavek je odložen (Čeká se na lepší časy).' : ($is_total_cancel ? 'Požadavek byl zrušen.' : 'Čeká se na vložení nabídky...') ?>
                                     </div>
                                 <?php else: ?>
-                                    <?php foreach ($all_offers_for_this as $p) renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []); ?>
+                                    <?php foreach ($all_offers_for_this as $p):
+                                        $sib = nabidka_sibling_counts($row['nabidky_pole'], $p['id']);
+                                        $p['_sib_active'] = $sib['active'];
+                                        $p['_sib_frozen'] = $sib['frozen'];
+                                        renderOfferRow($p, $is_adm, $can_nakup, $is_vyvoj, $is_quality, $col['id'], $row['color_bg'], $history_off[$p['id']] ?? []);
+                                    endforeach; ?>
                                     <?php if ($col['id'] == 3 && !$is_total_cancel): ?>
                                         <a href="technologie.php" class="btn btn-sm btn-block btn-primary btn-goto-lab">
                                             <i class="glyphicon glyphicon-flask"></i> PŘEJÍT DO LABORATOŘE

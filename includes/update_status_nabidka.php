@@ -139,6 +139,13 @@ if ($id > 0) {
         die('Chyba DB při ukládání nabídky: ' . mysqli_error($conn));
     }
 
+    if ($status !== 'no_change' && function_exists('wf_delegace_has_columns') && wf_delegace_has_columns($conn)) {
+        mysqli_query($conn, "UPDATE pozadavky_nabidky SET
+            wf_delegace_komu = NULL, wf_delegace_od = NULL,
+            wf_delegace_duvod = NULL, wf_delegace_vytvoreno = NULL
+            WHERE id = $id");
+    }
+
     // Zápis množství do historie (viditelné v timeline)
     if ($qty !== '' && $id_pozadavek) {
         zapis_do_historie($conn, $id_pozadavek, $id, 'poptavka', "Požadované množství vzorku: $qty");
@@ -159,10 +166,17 @@ if ($id > 0) {
     $new_main_status = null;
     if (in_array((int)$status, nabidkaFaze2Statusy())) $new_main_status = 3;
     elseif (in_array((int)$status, [10, 4])) $new_main_status = 10;
-    elseif ((int)$status == 6) $new_main_status = 6;
+    elseif ((int)$status == 6) $new_main_status = 6; // TEST OK → požadavek do archivu (hotovo)
 
     if ($new_main_status !== null && $id_pozadavek) {
-        mysqli_query($conn, "UPDATE pozadavky SET id_status = $new_main_status WHERE id = $id_pozadavek");
+        $ok_main = mysqli_query($conn, "UPDATE pozadavky SET id_status = $new_main_status WHERE id = $id_pozadavek");
+        if (!$ok_main) {
+            ob_end_clean();
+            die('Chyba DB při uzavření požadavku: ' . mysqli_error($conn));
+        }
+        if ((int)$status === 6) {
+            zapis_do_historie($conn, $id_pozadavek, $id, 'status', 'Požadavek uzavřen (TEST OK) — přesun do archivu', '', '6');
+        }
     }
 
     // --- START: CHYTRÉ TELEGRAM NOTIFIKACE ---

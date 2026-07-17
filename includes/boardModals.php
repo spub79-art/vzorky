@@ -616,6 +616,40 @@ if ($need_fetch) {
     </div>
 </div>
 
+<div class="modal fade" id="mWorkflowDelegace" tabindex="-1" role="dialog" style="z-index: 9999;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content modal-modern">
+            <div class="modal-header modal-header-modern" style="background:#f0ad4e;color:#fff;">
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff;">&times;</button>
+                <h4 class="modal-title"><i class="glyphicon glyphicon-share-alt"></i> Předat — jiný důvod než workflow</h4>
+            </div>
+            <div class="modal-body modal-body-modern">
+                <p class="text-muted small" style="margin-top:0;">
+                    Stav nabídky se <strong>nemění</strong> (není to KO ani CENA OK).
+                    V Souhrnu se úkol přesune na zvolené oddělení — u vás zmizí z „Teď vy“.
+                </p>
+                <input type="hidden" id="mWfDelegaceId">
+                <div class="form-group">
+                    <label>Předat komu</label>
+                    <select id="mWfDelegaceKomu" class="form-control">
+                        <option value="nakup">Nákup — vyjasnit u dodavatele / jiný dodavatel</option>
+                        <option value="kvalita">Kvalita — parametr v dokumentaci</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Co brání / co je potřeba vyřešit</label>
+                    <textarea id="mWfDelegaceDuvod" class="form-control textarea-modern" rows="4" maxlength="500"
+                        placeholder="např. Barva prachu není oranžová — vyjasnit u Bioservice nebo dohledat jiného dodavatele"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-modern">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-warning" id="mWfDelegaceSave">Předat úkol</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="mUrgeTaskModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-sm" role="document">
         <div class="modal-content modal-modern">

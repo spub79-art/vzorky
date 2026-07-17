@@ -149,37 +149,38 @@ $digest_count = !empty($digest_channels) ? digest_count_for_user($conn, $perms) 
     <?php
     $nakup_pages = ['Pozadavek', 'Archiv', 'Suroviny', 'Dodavatele', 'Zakaznik'];
     if (in_array($page, $nakup_pages)): ?>
-        <div id="submenu">
-            <a href="index.php?Pozadavek=1" class="btn btn-sm btn-success<?php echo btnActive($page, ['Pozadavek']); ?>" style="background-color: #28a745; border-color: #218838;">
-                <i class="glyphicon glyphicon-list-alt"></i> Správa požadavků
-            </a>
-            <a href="index.php?Archiv=1" class="btn btn-sm btn-default<?php echo btnActive($page, ['Archiv']); ?>">
-                <i class="glyphicon glyphicon-folder-close"></i> Archiv
-            </a>
-            <span class="submenu-divider">|</span>
-            <button class="btn btn-sm btn-warning btn-new-req"><i class="glyphicon glyphicon-plus"></i> Nový požadavek</button>
-            <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Zakaznik']); ?>" href="./index.php?Zakaznik=1">Zákazník</a>
-            <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Suroviny']); ?>" href="./index.php?Suroviny=1">Suroviny</a>
-            <?php if ($can_nakup): ?>
-                <a class="btn btn-sm btn-warning<?php echo btnActive($page, ['Dodavatele']); ?>" href="./index.php?Dodavatele=1">Dodavatelé</a>
-            <?php endif; ?>
+        <div id="submenu" class="submenu-nakup">
+            <div class="submenu-nav">
+                <a href="index.php?Pozadavek=1" class="btn btn-sm<?= $page === 'Pozadavek' ? ' btn-success active' : ' btn-default' ?>">
+                    <i class="glyphicon glyphicon-list-alt"></i> Správa požadavků
+                </a>
+                <a href="index.php?Archiv=1" class="btn btn-sm<?= $page === 'Archiv' ? ' btn-primary active' : ' btn-default' ?>">
+                    <i class="glyphicon glyphicon-folder-close"></i> Archiv
+                </a>
+                <span class="submenu-divider">|</span>
+                <button type="button" class="btn btn-sm btn-warning btn-new-req"><i class="glyphicon glyphicon-plus"></i> Nový požadavek</button>
+                <a class="btn btn-sm<?= $page === 'Zakaznik' ? ' btn-warning active' : ' btn-default' ?>" href="./index.php?Zakaznik=1">Zákazník</a>
+                <a class="btn btn-sm<?= $page === 'Suroviny' ? ' btn-warning active' : ' btn-default' ?>" href="./index.php?Suroviny=1">Suroviny</a>
+                <?php if ($can_nakup): ?>
+                    <a class="btn btn-sm<?= $page === 'Dodavatele' ? ' btn-warning active' : ' btn-default' ?>" href="./index.php?Dodavatele=1">Dodavatelé</a>
+                <?php endif; ?>
+            </div>
             <?php if ($page === 'Pozadavek'): ?>
-            <span class="submenu-divider">|</span>
             <div class="submenu-board-filters">
                 <div class="input-group input-group-sm submenu-search">
                     <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
                     <input type="text" id="searchInput" class="form-control" placeholder="Hledat…">
                 </div>
-                <button id="btnToggleRejected" class="btn btn-xs btn-default" title="Zamítnuté / odložené">
-                    <i class="glyphicon glyphicon-eye-open"></i> KO
+                <button type="button" id="btnToggleRejected" class="btn btn-xs btn-default" title="Zamítnuté / odložené k ledu">
+                    <i class="glyphicon glyphicon-eye-open"></i> KO / Led
                 </button>
-                <button id="btnToggleMyTasks" class="btn btn-xs btn-default" title="Jen k řešení">
+                <button type="button" id="btnToggleMyTasks" class="btn btn-xs btn-default" title="Jen k řešení">
                     <i class="glyphicon glyphicon-filter"></i> K řešení
                 </button>
-                <button id="btnToggleUrgent" class="btn btn-xs btn-default" title="Jen urgentní">
+                <button type="button" id="btnToggleUrgent" class="btn btn-xs btn-default" title="Jen urgentní">
                     <i class="glyphicon glyphicon-flash text-danger"></i> Urgent
                 </button>
-                <button id="btnToggleSysHistory" class="btn btn-xs btn-default" title="Zobrazit systémové záznamy (změny stavů, přiřazení…)">
+                <button type="button" id="btnToggleSysHistory" class="btn btn-xs btn-default" title="Zobrazit systémové záznamy (změny stavů, přiřazení…)">
                     <i class="glyphicon glyphicon-cog"></i> Systém
                 </button>
             </div>

@@ -2,6 +2,7 @@
 session_start();
 include_once("db_connect.php");
 include_once("boardFunctions.php");
+include_once("boardOfferActions.php");
 @mysqli_query($conn, "SET SESSION group_concat_max_len = 10000");
 
 if (!isset($_POST['id'])) exit;
@@ -13,11 +14,15 @@ $is_adm = $perms['is_adm'];
 $can_nakup = $perms['can_nakup'];
 $can_claim_nakup = $perms['can_claim_nakup'];
 $can_portfolio = $perms['can_portfolio'];
-$current_uid = $perms['current_uid'];
+$is_vyvoj = $perms['is_vyvoj'];
+$is_kvalita = $perms['is_kvalita'];
+$is_orders = $perms['is_orders'];
+$current_uid = (int)$perms['current_uid'];
 $users_tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
 
 // 1. Načtení detailu požadavku
-$q_req = mysqli_query($conn, "SELECT p.*, s.nazev AS surovina_nazev, cs.nazev as status_nazev, cs.barva_hex, u_nak.jmeno AS nakupci_jmeno
+$q_req = mysqli_query($conn, "SELECT p.*, s.nazev AS surovina_nazev, cs.nazev as status_nazev, cs.barva_hex, u_nak.jmeno AS nakupci_jmeno,
+        (SELECT GROUP_CONCAT(pz.id_zakaznik SEPARATOR ',') FROM pozadavky_zakaznici pz WHERE pz.id_pozadavek = p.id) AS zakaznici_ids
                               FROM pozadavky p 
                               LEFT JOIN suroviny s ON p.id_surovina = s.id 
                               LEFT JOIN ciselnik_statusu cs ON p.id_status = cs.id
@@ -131,6 +136,8 @@ if (!empty($pf_ctx['products'])) {
                 <span class="label label-warning rd-badge" title="Urgentní kvůli propojenému produktu"><i class="glyphicon glyphicon-flash"></i> z produktu</span>
             <?php endif; ?>
         </div>
+
+        <?= renderRequestDetailToolbar($req, $perms) ?>
 
         <?php if (!empty($pf_ctx['products']) || !empty($pf_ctx['zakaznici'])): ?>
         <div class="panel panel-default rd-prod-context-panel">
@@ -252,19 +259,17 @@ if (!empty($pf_ctx['products'])) {
             </div>
         </div>
 
-        <?php $poptavky_detail = summarizePoptavkyVyvoje($offers); ?>
-        <div class="panel panel-default" style="border-color: #8e44ad;">
-            <div class="panel-heading" style="background: #f9f5fc; color: #6f42c1;"><b><i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje (po schválení ceny)</b></div>
-            <div class="panel-body" style="font-size: 13px; padding: 10px 15px;">
-                <?php if (!empty($poptavky_detail)): ?>
-                    <?php foreach ($poptavky_detail as $line): ?>
-                        <div style="margin-bottom: 4px;"><?= $line ?></div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <span class="text-muted">Zatím žádná nabídka ve fázi schvalování.</span>
-                <?php endif; ?>
+        <?php if (!empty($offers)): ?>
+        <div class="panel panel-default rd-wf-panel" style="border-color: #8e44ad;">
+            <div class="panel-heading" style="background: #f9f5fc; color: #6f42c1;">
+                <b><i class="glyphicon glyphicon-road"></i> Průběh nabídek</b>
+                <span class="rd-wf-panel-hint">TDS → CENA OK → Kvalita → Nutri → Vzorek → COA → Test</span>
+            </div>
+            <div class="panel-body rd-wf-panel-body">
+                <?= render_detail_workflow_matrix($offers) ?>
             </div>
         </div>
+        <?php endif; ?>
 
         <h4 class="rd-disc-title"><i class="glyphicon glyphicon-time" style="color:#999; font-size:12px;"></i> Historie požadavku</h4>
         <div class="rd-disc-scroll" style="background: #fff; border: 1px solid #eee; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto;">
@@ -324,16 +329,17 @@ if (!empty($pf_ctx['products'])) {
                 <i class="glyphicon glyphicon-info-sign"></i> K tomuto požadavku zatím nebyla vložena žádná nabídka.
             </div>
         <?php else: ?>
-            <div class="row">
+            <div class="rd-offers-grid">
                 <?php
-                $off_counter = 0;
                 foreach ($offers as $off):
-                    $off_counter++;
-                    $is_ko = in_array($off['id_status'], [5, 7]);
+                    $is_ko = nabidkaJeZamitnuta($off['id_status']);
+                    $is_frozen = nabidkaJeOdlozena($off['id_status']);
+                    $off_st = (int)$off['id_status'];
+                    $sib = nabidka_sibling_counts($offers, $off['id']);
                     $border_color = $off['barva_hex'] ?: '#ccc';
-
-                    $bg_color = $is_ko ? '#fafafa' : '#fff';
-                    $opacity = $is_ko ? '0.6' : '1';
+                    $card_colors = nabidka_offer_card_colors($off);
+                    $bg_color = $card_colors['bg'];
+                    $opacity = $card_colors['opacity'];
 
                     $files_tds = []; $files_coa = []; $files_other = [];
                     if (!empty($off['seznam_souboru'])) {
@@ -350,7 +356,7 @@ if (!empty($pf_ctx['products'])) {
                         }
                     }
                     ?>
-                    <div class="col-md-6" style="margin-bottom: 20px;">
+                    <div class="rd-offer-grid-item">
                         <div class="rd-offer-card" style="background-color: <?= $bg_color ?>; border-top-color: <?= $border_color ?>; opacity: <?= $opacity ?>;">
 
                             <div class="rd-offer-header" style="flex-wrap: wrap;">
@@ -364,14 +370,14 @@ if (!empty($pf_ctx['products'])) {
                                     </span>
                                 </div>
                                 <div class="rd-offer-price-col" style="text-align: left; width: 100%;">
-                                    <div class="rd-offer-price-main">
-                                        <?= number_format($off['cena_nabidka'], 2, ',', ' ') ?> <?= htmlspecialchars($off['mena']) ?>
-                                    </div>
-
                                     <?php
-                                    $cena_czk = $off['cena_nabidka'];
-                                    if (strtoupper($off['mena']) === 'EUR') {
+                                    $cena_czk = (float)$off['cena_nabidka'];
+                                    $mena_off = strtoupper($off['mena'] ?? 'CZK');
+                                    if ($mena_off === 'EUR') {
                                         $kurz = defined('CNB_EUR_RATE') ? CNB_EUR_RATE : 25.0;
+                                        $cena_czk = $off['cena_nabidka'] * $kurz;
+                                    } elseif ($mena_off === 'USD') {
+                                        $kurz = defined('CNB_USD_RATE') ? CNB_USD_RATE : 23.5;
                                         $cena_czk = $off['cena_nabidka'] * $kurz;
                                     }
 
@@ -381,23 +387,29 @@ if (!empty($pf_ctx['products'])) {
                                     }
 
                                     $celkem_czk = $cena_czk + $dopravne;
-
-                                    if ($celkem_czk > 0 && (strtoupper($off['mena']) !== 'CZK' || $dopravne > 0)):
-                                        ?>
-                                        <div class="rd-offer-price-czk" title="Přepočteno kurzem + přičteno dopravné">
-                                            ∑ <?= number_format($celkem_czk, 2, ',', ' ') ?> CZK <span class="rd-offer-price-note">(vč. dopravy)</span>
-                                        </div>
-                                    <?php endif; ?>
+                                    $price_tip = 'Cena do receptury vč. dopravy (CZK/MJ)';
+                                    if ($mena_off !== 'CZK' && (float)$off['cena_nabidka'] > 0) {
+                                        $price_tip .= ' · nabídka '
+                                            . number_format((float)$off['cena_nabidka'], 2, ',', ' ')
+                                            . ' ' . $mena_off;
+                                    }
+                                    ?>
+                                    <div class="rd-offer-price-main" title="<?= htmlspecialchars($price_tip) ?>">
+                                        <?= number_format($celkem_czk, 2, ',', ' ') ?> CZK
+                                    </div>
 
                                     <div class="rd-offer-moq">
                                         MOQ: <?= $off['moq_mnozstvi'] ? $off['moq_mnozstvi'].' '.htmlspecialchars($off['moq_mj']) : '-' ?>
                                     </div>
                                     <?php
                                     $popt_qty = formatPozadovaneMnozstvi($off['pozadovane_mnozstvi'] ?? '');
-                                    $off_st = (int)$off['id_status'];
                                     ?>
                                     <?php if ($off_st == 2): ?>
+                                    <?php if (function_exists('wf_delegace_is_active') && wf_delegace_is_active($off)): ?>
+                                    <div class="rd-offer-poptavka" style="color:#f0ad4e;">↪ Odbočka: řeší <?= htmlspecialchars(wf_delegace_dept_label($off['wf_delegace_komu'])) ?></div>
+                                    <?php else: ?>
                                     <div class="rd-offer-poptavka rd-offer-poptavka-pending">Poptávka: <em>po schválení ceny (CENA OK)</em></div>
+                                    <?php endif; ?>
                                     <?php elseif ($popt_qty !== null): ?>
                                     <div class="rd-offer-poptavka">
                                         <i class="glyphicon glyphicon-shopping-cart"></i> Poptávka vývoje: <?= htmlspecialchars($popt_qty) ?>
@@ -416,6 +428,21 @@ if (!empty($pf_ctx['products'])) {
                                     <?= nl2br(htmlspecialchars(trim($off['poznamka_nakup']))) ?>
                                 </div>
                             <?php endif; ?>
+
+                            <?php if (function_exists('wf_delegace_banner_html')) echo wf_delegace_banner_html($off); ?>
+
+                            <?php
+                            $off['_sib_active'] = $sib['active'];
+                            echo renderOfferActionButtons($off, [
+                                'is_adm' => $is_adm,
+                                'can_nakup' => $can_nakup,
+                                'is_vyvoj' => $is_vyvoj,
+                                'is_quality' => $is_kvalita,
+                                'filter_phase' => 0,
+                                'history_off' => $history_off[$off['id']] ?? [],
+                                'layout' => 'detail',
+                            ]);
+                            ?>
 
                             <?php if (!empty($files_tds) || !empty($files_coa) || !empty($files_other)):
                                 $link_doc = trim($off['link_dokumentace']);
@@ -536,7 +563,6 @@ if (!empty($pf_ctx['products'])) {
 
                         </div>
                     </div>
-                    <?php if ($off_counter % 2 == 0) echo '<div class="clearfix visible-md visible-lg"></div>'; ?>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

@@ -30,7 +30,7 @@ foreach ($channels as $ch) {
                 </h3>
                 <p class="text-muted" style="margin:0; font-size:13px;">
                     <?= htmlspecialchars($datum_cs) ?> · položek k řešení: <strong><?= (int)$total_all ?></strong>
-                    · řazeno podle priority a aktivity
+                    · fronta A/B/C + dávky · řazeno podle priority a aktivity
                 </p>
             </div>
             <?php if ($is_adm): ?>

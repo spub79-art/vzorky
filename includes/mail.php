@@ -22,7 +22,8 @@ function getEmailsForChannel($channel) {
         $tbl = defined('DB_TBL_USERS') ? DB_TBL_USERS : 'users';
         $where = "`$col` = 1";
         $souhrn_filter = '';
-        $chk = @mysqli_query($conn, "SHOW COLUMNS FROM `$tbl` LIKE 'souhrn_email'");
+        // Bez backticků kolem celého $tbl — vzorky.users by se jinak četlo jako tabulka „vzorky.users“ v DB vzorky
+        $chk = @mysqli_query($conn, "SHOW COLUMNS FROM $tbl LIKE 'souhrn_email'");
         if ($chk && mysqli_num_rows($chk) > 0) {
             $souhrn_filter = ' AND IFNULL(souhrn_email, 0) = 1';
         }
@@ -130,12 +131,34 @@ function renderDigestTable($rows, $baseUrl, $forEmail = false) {
     $html .= "<th style='padding:8px 6px;text-align:center;border-bottom:2px solid #ddd;width:56px;'>Čeká</th>";
     $html .= "<th style='padding:8px 6px;text-align:center;border-bottom:2px solid #ddd;width:72px;'>Priorita</th>";
     $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Řeší</th>";
-    $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Stav</th>";
+    $html .= "<th style='padding:8px 6px;text-align:left;border-bottom:2px solid #ddd;'>Čeká se</th>";
     $html .= "</tr>";
 
     foreach ($rows as $r) {
         $link = htmlspecialchars(digest_request_url($baseUrl, $r['id']));
+        $delta = $r['digest_delta'] ?? '';
+        $delta_badge = '';
+        $row_style = 'border-bottom:1px solid #eee;';
+        if ($delta === 'new') {
+            $delta_badge = "<span style='display:inline-block;background:#27ae60;color:#fff;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:3px;margin-right:4px;'>NOVÉ</span>";
+            $row_style .= 'background:#eefaf3;';
+        } elseif ($delta === 'changed') {
+            $delta_badge = "<span style='display:inline-block;background:#f0ad4e;color:#fff;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:3px;margin-right:4px;'>ZMĚNA</span>";
+            $row_style .= 'background:#fff8eb;';
+        }
+
         $sur = htmlspecialchars($r['surovina_nazev']);
+        if (!empty($r['digest_primary_nabidka'])) {
+            $dod = htmlspecialchars($r['digest_primary_dod'] ?? '—');
+            $sur .= '<br><span class="digest-offer-line" style="color:#555;font-size:11px;font-weight:normal;">'
+                . $dod . ' · #' . (int)$r['digest_primary_nabidka'] . '</span>';
+        }
+        if (!empty($r['digest_kontext'])) {
+            $sur .= '<br><span class="digest-kontext">' . htmlspecialchars($r['digest_kontext']) . '</span>';
+        }
+        if (function_exists('digest_cert_badges_html')) {
+            $sur .= digest_cert_badges_html($r);
+        }
         $zak = !empty($r['zakaznici_seznam'])
             ? htmlspecialchars($r['zakaznici_seznam'])
             : '<span style="color:#aaa;">—</span>';
@@ -162,18 +185,21 @@ function renderDigestTable($rows, $baseUrl, $forEmail = false) {
         $stari_weight = ($dni >= 30) ? 'bold' : 'normal';
 
         if (!empty($r['stav_text'])) {
-            $stav_text = htmlspecialchars($r['stav_text']);
+            $stav_plain = $r['stav_text'];
         } else {
-            $stav = [];
-            if (!empty($r['vyzadano'])) $stav[] = '🔔 vyžádána nabídka';
-            if (!empty($r['pocet_nabidek'])) {
-                $stav[] = $r['pocet_nabidek'] . '× nabídka (vše KO)';
-            } else {
-                $stav[] = 'bez nabídky';
+            $stav_plain = digest_ceka_label('nakup', $r);
+        }
+        $ceka_tip = trim($r['ceka_detail'] ?? '');
+        if ($forEmail) {
+            $stav_text = htmlspecialchars($stav_plain);
+            if ($ceka_tip !== '') {
+                $stav_text .= '<br><span style="color:#999;font-size:10px;">' . htmlspecialchars($ceka_tip) . '</span>';
             }
-            if (!empty($r['bio'])) $stav[] = 'BIO';
-            if (!empty($r['vegan'])) $stav[] = 'Vegan';
-            $stav_text = implode(' · ', $stav);
+        } else {
+            $stav_text = htmlspecialchars($stav_plain);
+            if ($ceka_tip !== '') {
+                $stav_text = '<span title="' . htmlspecialchars($ceka_tip, ENT_QUOTES, 'UTF-8') . '">' . $stav_text . '</span>';
+            }
         }
 
         $resitel = !empty($r['nakupci_jmeno'])
@@ -181,8 +207,8 @@ function renderDigestTable($rows, $baseUrl, $forEmail = false) {
             : '<span style="color:#d9534f;">Nepřevzato</span>';
 
         if ($forEmail) {
-            $html .= "<tr style='border-bottom:1px solid #eee;'>";
-            $html .= "<td style='padding:8px 6px;'><a href='$link' style='color:#2c3e50;font-weight:bold;text-decoration:none;'>$sur</a>";
+            $html .= "<tr style='$row_style'>";
+            $html .= "<td style='padding:8px 6px;'>" . $delta_badge . "<a href='$link' style='color:#2c3e50;font-weight:bold;text-decoration:none;'>$sur</a>";
             $html .= "<br><span style='color:#999;font-size:11px;'>#$r[id]</span></td>";
             $html .= "<td style='padding:8px 6px;font-size:12px;'>$zak</td>";
             $html .= "<td style='padding:8px 6px;text-align:center;font-size:11px;white-space:nowrap;'>$aktivita</td>";
@@ -194,8 +220,10 @@ function renderDigestTable($rows, $baseUrl, $forEmail = false) {
         } else {
             $rid = (int)$r['id'];
             $tip = htmlspecialchars(implode('; ', $r['digest_breakdown'] ?? []), ENT_QUOTES, 'UTF-8');
-            $html .= "<tr class='digest-row' data-req-id='$rid' tabindex='0' role='link' title='Otevřít detail #$rid · $tip'>";
-            $html .= "<td class='digest-cell-sur'><strong>$sur</strong><br><span class='digest-req-id'>#$rid</span></td>";
+            $band = !empty($r['digest_band']) ? ' digest-row-band-' . strtolower($r['digest_band']) : '';
+            $delta_class = ($delta === 'new') ? ' digest-row-new' : (($delta === 'changed') ? ' digest-row-changed' : '');
+            $html .= "<tr class='digest-row{$band}{$delta_class}' data-req-id='$rid' tabindex='0' role='link' title='Otevřít detail #$rid · $tip'>";
+            $html .= "<td class='digest-cell-sur'>" . $delta_badge . "<strong>$sur</strong><br><span class='digest-req-id'>#$rid</span></td>";
             $html .= "<td class='digest-cell-zak'>$zak</td>";
             $html .= "<td class='digest-cell-activity' style='text-align:center;font-size:11px;white-space:nowrap;'>$aktivita</td>";
             $html .= "<td class='digest-cell-stari' style='color:$stari_color;font-weight:$stari_weight;text-align:center;'>$stari</td>";
@@ -213,7 +241,7 @@ function renderDigestTable($rows, $baseUrl, $forEmail = false) {
 /**
  * Vnitřní obsah souhrnu (web i e-mail).
  */
-function buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer_note = null, $forEmail = false) {
+function buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer_note = null, $forEmail = false, array $delta_stats = []) {
     $html = "<div class='digest-email-card' style='max-width:100%;background:#fff;border:1px solid #ddd;border-radius:6px;overflow:hidden;'>";
 
     $html .= "<div style='background:#2c3e50;color:#fff;padding:16px 20px;'>";
@@ -222,9 +250,59 @@ function buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer_note = 
     $html .= "</div>";
 
     $html .= "<div style='padding:20px;'>";
+
+    $band_counts = ['A' => 0, 'B' => 0, 'C' => 0];
     foreach ($sections as $sec) {
-        $html .= "<div style='margin-bottom:24px;'>";
-        $html .= "<h3 style='margin:0 0 10px;padding-bottom:6px;font-size:15px;color:{$sec['color']};border-bottom:2px solid {$sec['color']};'>";
+        if (!empty($sec['band']) && empty($sec['dimmed'])) {
+            $band_counts[$sec['band']] = count($sec['rows']);
+        }
+    }
+    if (!empty($delta_stats['has_prev']) && (($delta_stats['new'] ?? 0) + ($delta_stats['changed'] ?? 0)) > 0) {
+        $html .= "<div style='background:#fff3cd;border:1px solid #f0ad4e;border-radius:4px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#8a6d3b;'>";
+        $html .= "<strong>Od minulého mailu:</strong> ";
+        $dparts = [];
+        if (!empty($delta_stats['new'])) {
+            $dparts[] = (int)$delta_stats['new'] . ' nov' . ($delta_stats['new'] === 1 ? 'á' : ($delta_stats['new'] < 5 ? 'é' : 'ých'));
+        }
+        if (!empty($delta_stats['changed'])) {
+            $dparts[] = (int)$delta_stats['changed'] . ' změn' . ($delta_stats['changed'] === 1 ? 'a' : ($delta_stats['changed'] < 5 ? 'y' : ''));
+        }
+        $html .= htmlspecialchars(implode(', ', $dparts));
+        if (!empty($delta_stats['same'])) {
+            $html .= ' · ' . (int)$delta_stats['same'] . ' beze změny';
+        }
+        $html .= "</div>";
+    }
+
+    if ($band_counts['A'] + $band_counts['B'] + $band_counts['C'] > 0) {
+        $html .= "<div class='digest-band-stats' style='display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;font-size:12px;'>";
+        $html .= "<span style='background:#fdecea;color:#c0392b;padding:4px 10px;border-radius:4px;font-weight:bold;'>"
+            . "Teď vy: " . $band_counts['A'] . "</span>";
+        if ($band_counts['B'] > 0) {
+            $html .= "<span style='background:#fef5e7;color:#d68910;padding:4px 10px;border-radius:4px;'>"
+                . "Čeká na ostatní: " . $band_counts['B'] . "</span>";
+        }
+        if ($band_counts['C'] > 0) {
+            $html .= "<span style='background:#ebf5fb;color:#2980b9;padding:4px 10px;border-radius:4px;'>"
+                . "U vás potom: " . $band_counts['C'] . "</span>";
+        }
+        $html .= "</div>";
+    }
+
+    foreach ($sections as $sec) {
+        $is_dimmed = !empty($sec['dimmed']);
+        $band = !empty($sec['band']) ? strtolower($sec['band']) : '';
+        $sec_class = 'digest-section';
+        if ($is_dimmed) {
+            $sec_class .= ' digest-section-dimmed';
+        }
+        if ($band !== '') {
+            $sec_class .= ' digest-band-' . $band;
+        }
+        $title_color = $is_dimmed ? '#95a5a6' : $sec['color'];
+        $border_color = $is_dimmed ? '#ddd' : $sec['color'];
+        $html .= "<div class='$sec_class' style='margin-bottom:24px;'>";
+        $html .= "<h3 style='margin:0 0 10px;padding-bottom:6px;font-size:" . ($is_dimmed ? '13px' : '15px') . ";color:$title_color;border-bottom:2px solid $border_color;'>";
         $html .= htmlspecialchars($sec['title']) . " <span style='font-weight:normal;color:#999;'>(" . count($sec['rows']) . ")</span>";
         $html .= "</h3>";
         $html .= renderDigestTable($sec['rows'], $baseUrl, $forEmail);
@@ -246,11 +324,11 @@ function buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer_note = 
 /**
  * Obalí sekce do kompletního HTML e-mailu.
  */
-function wrapDigestEmail($title, $subtitle, $sections, $baseUrl) {
+function wrapDigestEmail($title, $subtitle, $sections, $baseUrl, array $delta_stats = []) {
     $footer = 'Denní souhrn · ' . date('j.n.Y H:i') . ' · neodpovídejte na tento e-mail';
     return "<html><body style='font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.5;margin:0;padding:0;background:#f0f0f0;'>"
         . "<div style='max-width:720px;margin:20px auto;'>"
-        . buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer, true)
+        . buildDigestBody($title, $subtitle, $sections, $baseUrl, $footer, true, $delta_stats)
         . "</div></body></html>";
 }
 

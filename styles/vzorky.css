@@ -381,8 +381,17 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 	white-space: nowrap;
 }
 #submenu {
-	margin: 6px 0 8px;
-	padding: 0 10px;
+	margin: 0;
+	padding: 8px 15px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	border-bottom: 1px solid #eee;
+	background: #fafafa;
+	min-height: 46px;
+}
+.submenu-nakup .submenu-nav {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -393,13 +402,13 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 	align-items: center;
 	gap: 4px;
 	flex-wrap: wrap;
+	margin-left: auto;
 }
 .submenu-board-filters .submenu-search { width: 150px; }
 .submenu-divider { margin: 0 4px; color: #ccc; }
 #sticky-header.is-scrolled { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-#sticky-header.is-scrolled .top-header-bar { padding: 5px 15px; border-bottom: none; }
-#sticky-header.is-scrolled .top-header-bar .btn-nav { padding: 4px 8px; font-size: 13px; }
-#sticky-header.is-scrolled #submenu { display: none; }
+#sticky-header.is-scrolled .top-header-bar { padding: 5px 15px; }
+/* Submenu při scrollu neschovávat — skákání layoutu */
 
 /* =========================================================
    VELKÝ DETAIL POŽADAVKU (MODAL)
@@ -412,6 +421,148 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .rd-badge-kosher { background-color: #6f42c1; color: white; }
 .rd-badge-halal { background-color: #17a2b8; color: white; }
 .rd-task-body { font-size: 14px; line-height: 1.6; }
+
+/* Stepper průběhu nabídek (levý panel detailu) — horizontální */
+.rd-wf-panel-hint {
+	display: block;
+	font-size: 10px;
+	font-weight: normal;
+	color: #9b7dc7;
+	margin-top: 2px;
+	letter-spacing: 0.2px;
+}
+.rd-wf-panel-body {
+	padding: 10px 12px;
+}
+.rd-wf-matrix {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.rd-wf-row-accent {
+	border-left: 4px solid #ccc;
+	border-radius: 4px;
+	padding: 8px 8px 8px 10px;
+}
+.rd-wf-row-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 8px;
+	margin-bottom: 8px;
+	line-height: 1.3;
+}
+.rd-wf-row-name {
+	font-size: 12px;
+	color: #2c3e50;
+}
+.rd-wf-row-sub {
+	font-size: 11px;
+	color: #888;
+}
+.rd-wf-track {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	width: 100%;
+	overflow-x: auto;
+	padding-bottom: 2px;
+	-webkit-overflow-scrolling: touch;
+}
+.rd-wf-step {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 34px;
+	max-width: 48px;
+	text-align: center;
+}
+.rd-wf-step-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: #e9ecef;
+	color: #adb5bd;
+	font-size: 11px;
+	border: 2px solid #dee2e6;
+	transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.rd-wf-step-label {
+	font-size: 7px;
+	color: #aaa;
+	margin-top: 3px;
+	line-height: 1.1;
+	text-transform: uppercase;
+	letter-spacing: 0.1px;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.rd-wf-connector {
+	flex: 1 1 6px;
+	height: 2px;
+	min-width: 4px;
+	background: #dee2e6;
+	margin-top: 12px;
+	align-self: flex-start;
+}
+.rd-wf-connector-done {
+	background: #6f42c1;
+}
+.rd-wf-step-done .rd-wf-step-icon {
+	background: #6f42c1;
+	border-color: #6f42c1;
+	color: #fff;
+}
+.rd-wf-step-current .rd-wf-step-icon {
+	background: #fff;
+	border-color: #f0ad4e;
+	color: #f0ad4e;
+	box-shadow: 0 0 0 2px rgba(240, 173, 78, 0.35);
+}
+.rd-wf-step-current .rd-wf-step-label { color: #d68910; font-weight: bold; }
+.rd-wf-step-delegated .rd-wf-step-icon {
+	background: #fff;
+	border-color: #f0ad4e;
+	color: #f0ad4e;
+}
+.rd-wf-step-warn .rd-wf-step-icon {
+	background: #fff3cd;
+	border-color: #d9534f;
+	color: #d9534f;
+	animation: rd-wf-pulse 1.5s ease-in-out infinite;
+}
+.rd-wf-step-warn .rd-wf-step-label { color: #d9534f; font-weight: bold; }
+.rd-wf-step-ko .rd-wf-step-icon {
+	background: #f2dede;
+	border-color: #d9534f;
+	color: #d9534f;
+}
+.rd-wf-step-led .rd-wf-step-icon {
+	background: #ecf0f1;
+	border-color: #95a5a6;
+	color: #7f8c8d;
+}
+@keyframes rd-wf-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.4); }
+	50% { box-shadow: 0 0 0 4px rgba(217, 83, 79, 0); }
+}
+
+.rd-offers-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 20px;
+	align-items: start;
+}
+.rd-offer-grid-item { min-width: 0; }
+@media (max-width: 991px) {
+	.rd-offers-grid { grid-template-columns: 1fr; }
+}
 
 /* Kontext produktů v detailu požadavku (modal) */
 .rd-prod-context-panel { border-color: #bce8f1; margin-bottom: 15px; }
@@ -502,6 +653,25 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .rd-offer-poptavka-pending { color: #777; font-weight: normal; }
 .rd-offer-poptavka-missing { color: #d9534f; }
 .rd-zadani-mnozstvi { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #ddd; color: #2980b9; font-size: 13px; }
+
+.rd-request-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0 16px;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border: 1px solid #e3e3e3;
+    border-radius: 6px;
+}
+.rd-offer-wf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0;
+    align-items: flex-start;
+}
+.rd-offer-wf-actions .btn-block { width: auto; display: inline-block; }
 
 .rd-offer-note-buyer { background: #fffdfa; padding: 8px 12px; border-left: 3px solid #f0ad4e; font-size: 12px; margin-bottom: 15px; color: #666; border-radius: 0 4px 4px 0; }
 .rd-offer-syslog { background: #f9f9f9; border: 1px solid #e3e3e3; padding: 6px 10px; font-size: 11px; color: #555; margin-bottom: 15px; border-radius: 4px; white-space: pre-wrap; font-family: Consolas, monospace; line-height: 1.4; max-height: 150px; overflow-y: auto; }
@@ -649,7 +819,15 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
 .panel-title-modern { margin: 0; font-size: 13px; font-weight: bold; }
 .panel-body-modern { padding: 10px; }
 .btn-xs-modern { border-radius: 4px; }
-.input-group-addon-transparent { padding: 0; border: none; border-radius: 0 8px 8px 0; background: transparent; }
+.input-group-addon-transparent { padding: 0; border: none; border-radius: 0 8px 8px 0; background: transparent; overflow: visible; }
+.input-group-addon-transparent .select-currency-modern {
+    height: 46px;
+    line-height: 46px;
+    padding: 0 8px;
+    cursor: pointer;
+    -webkit-appearance: menulist;
+    appearance: menulist;
+}
 .input-group-addon-modern { border-radius: 0 8px 8px 0; background: #eee; }
 .select-currency-modern { border-radius: 0 8px 8px 0; border-left: 1px solid #ddd; background: #f0f7ff; color: var(--color-kosher); font-weight: bold; width: 90px; box-shadow: none; }
 
@@ -1209,6 +1387,72 @@ tbody tr td.poznamka { overflow: hidden; text-overflow: ellipsis; display: -webk
     border-radius: 2px;
 }
 .digest-cell-resitel { font-size: 12px; }
+.digest-offer-line { color: #555; font-size: 11px; font-weight: normal; }
+.digest-kontext {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #c0392b;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.digest-section-dimmed {
+    opacity: 0.92;
+    padding: 8px 10px 4px;
+    background: #fafbfc;
+    border-radius: 4px;
+    border: 1px dashed #e0e0e0;
+}
+.digest-section-dimmed .digest-table tbody tr.digest-row:hover {
+    background: #f0f4f8 !important;
+}
+.digest-band-a h3 { letter-spacing: 0.02em; }
+.digest-row-band-a { border-left: 3px solid #d9534f; }
+.digest-row-band-b { border-left: 3px solid #f0ad4e; }
+.digest-row-band-c { border-left: 3px solid #5bc0de; }
+.digest-row-new { background: #eefaf3 !important; }
+.digest-row-changed { background: #fff8eb !important; }
+.digest-cell-stav { font-weight: 500; }
+
+/* Archiv — stejný hover / klik jako Souhrn */
+.archiv-toolbar { margin-bottom: 16px; }
+.archiv-table tbody tr.archiv-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.archiv-table tbody tr.archiv-row:hover,
+.archiv-table tbody tr.archiv-row:focus {
+    background: #e8eef3 !important;
+    outline: none;
+}
+.archiv-table tbody tr.archiv-row:active {
+    background: #d5dee8 !important;
+}
+.archiv-table.table-striped > tbody > tr.archiv-row:nth-of-type(odd) {
+    background-color: #fafbfc;
+}
+.archiv-table.table-striped > tbody > tr.archiv-row:nth-of-type(odd):hover,
+.archiv-table.table-striped > tbody > tr.archiv-row:nth-of-type(odd):focus {
+    background: #e8eef3 !important;
+}
+.archiv-row.is-filtered-out { display: none !important; }
+.archiv-status-btn .badge { margin-left: 4px; background: rgba(0,0,0,0.15); }
+.archiv-status-btn.btn-primary .badge { background: rgba(255,255,255,0.35); }
+.digest-cell-sur strong { font-size: 13px; }
+.offer-delegace-banner {
+    background: #fff8e6;
+    border: 1px solid #f0ad4e;
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin: 6px 0 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #8a6d3b;
+}
+.offer-delegace-banner .glyphicon { margin-right: 4px; }
+.meta-led a { color: #5bc0de; text-decoration: underline; }
+.meta-led a.btn-revive-all-offers { color: #3c763d; }
+.offer-frozen .offer-title-group { color: #777; }
 .pf-card-dimmed {
 	opacity: 0.3;
 	filter: grayscale(15%);

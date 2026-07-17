@@ -4,6 +4,7 @@
  */
 
 include_once(__DIR__ . '/boardFunctions.php');
+include_once(__DIR__ . '/digest_pipeline.php');
 
 function digest_base_url() {
     if (defined('APP_BASE_URL') && APP_BASE_URL !== '') {
@@ -473,6 +474,9 @@ function digest_load_nakup_faze1($conn) {
 
             $row['vyzadano'] = !empty($ping_ids[(int)$row['id']]);
             $row['pocet_nabidek'] = (int)$row['pocet_nabidek'];
+            $row['pocet_aktivnich'] = (int)($row['pocet_aktivnich'] ?? 0);
+            $row['stav_text'] = digest_ceka_label('nakup', $row);
+            $row['ceka_detail'] = digest_ceka_detail('nakup', $row);
             $rows[] = $row;
         }
     }
@@ -481,15 +485,73 @@ function digest_load_nakup_faze1($conn) {
 }
 
 function digest_vyvoj_stav_label($status_id) {
-    $st = (int)$status_id;
-    if ($st === 2) return 'Schválit cenu (CENA OK / KO)';
-    if ($st === 13) return 'Nutriční hodnocení';
-    if (in_array($st, [10, 4], true)) return 'Test vzorku (OK / KO)';
-    return 'K řešení';
+    return digest_ceka_label('vyvoj', ['nabidka_status' => $status_id]);
 }
 
 function digest_kvalita_stav_label() {
-    return 'Schválit dokumentaci (KVALITA OK / Doplnit / KO)';
+    return digest_ceka_label('kvalita', []);
+}
+
+/**
+ * Lidsky: na co se v daném kanálu čeká (akce pro uživatele).
+ */
+function digest_ceka_label($channel, array $row) {
+    if ($channel === 'portfolio') {
+        return 'Portfolio: propojit požadavek k vývojovému produktu';
+    }
+
+    if ($channel === 'nakup') {
+        if (!empty($row['vyzadano'])) {
+            return 'Nákup: dohledat další nabídku (ping od vývoje/kvality)';
+        }
+        $pocet = (int)($row['pocet_nabidek'] ?? 0);
+        $aktivni = (int)($row['pocet_aktivnich'] ?? 0);
+        if ($pocet > 0 && $aktivni === 0) {
+            return 'Nákup: vložit novou nabídku (předchozí zamítnuty)';
+        }
+        if (empty($row['nakupci_jmeno'])) {
+            return 'Nákup: převzít požadavek a vložit nabídku';
+        }
+        return 'Nákup: vložit nabídku dodavatele';
+    }
+
+    if ($channel === 'kvalita') {
+        return 'Kvalita: zkontrolovat TDS a schválit (KVALITA OK)';
+    }
+
+    if ($channel === 'vyvoj') {
+        $st = (int)($row['nabidka_status'] ?? 0);
+        if ($st === 2) {
+            return 'Vývoj: schválit cenu a množství vzorku (CENA OK)';
+        }
+        if ($st === 13) {
+            return 'Vývoj: zkontrolovat nutriční hodnoty v TDS';
+        }
+        if (in_array($st, [10, 4], true)) {
+            return 'Vývoj: technologický test doručeného vzorku';
+        }
+        return 'Vývoj: další krok u nabídky';
+    }
+
+    return 'K řešení';
+}
+
+/** Doplňující kontext do tooltipu (technický stav — ne do hlavní buňky). */
+function digest_ceka_detail($channel, array $row) {
+    if ($channel === 'portfolio' && !empty($row['status_nazev'])) {
+        return 'Stav požadavku v systému: ' . $row['status_nazev']
+            . ' — v portfoliu chybí propojení na aktivní produkt.';
+    }
+    if ($channel === 'nakup' && digest_is_snooze_active($row)) {
+        $until = date('j.n.Y', strtotime($row['souhrn_snooze_do']));
+        $note = trim($row['souhrn_snooze_poznamka'] ?? '');
+        $detail = 'V Souhrnu snížena priorita (dlouhé dodání) do ' . $until . '.';
+        if ($note !== '') {
+            $detail .= ' ' . $note;
+        }
+        return $detail;
+    }
+    return '';
 }
 
 function digest_load_offer_tasks($conn, $channel) {
@@ -536,9 +598,8 @@ function digest_load_offer_tasks($conn, $channel) {
         $row['surovina_nazev'] = $row['surovina_nazev']
             . ($dod !== '' ? ' · ' . $dod : '')
             . ' (nab. #' . (int)$row['id_nabidka'] . ')';
-        $row['stav_text'] = $channel === 'kvalita'
-            ? digest_kvalita_stav_label()
-            : digest_vyvoj_stav_label($st);
+        $row['stav_text'] = digest_ceka_label($channel, $row);
+        $row['ceka_detail'] = digest_ceka_detail($channel, $row);
         $rows[] = $row;
     }
 
@@ -579,9 +640,8 @@ function digest_load_portfolio_orphans($conn) {
     $res = mysqli_query($conn, $sql);
     if ($res) {
         while ($r = mysqli_fetch_assoc($res)) {
-            $r['stav_text'] = !empty($r['status_nazev'])
-                ? 'Fáze: ' . $r['status_nazev'] . ' · bez produktu'
-                : 'Bez propojení na produkt';
+            $r['stav_text'] = digest_ceka_label('portfolio', $r);
+            $r['ceka_detail'] = digest_ceka_detail('portfolio', $r);
             $rows[] = $r;
         }
     }
@@ -593,28 +653,28 @@ function digest_channel_meta() {
         'nakup' => [
             'label' => 'Nákup',
             'title' => 'Přehled pro Nákup',
-            'subtitle' => date('j.n.Y') . ' · Požadavky ve Fázi 1 (čeká se na vaši nabídku)',
+            'subtitle' => date('j.n.Y') . ' · Fronta úkolů, co brzdí sehnání vzorků',
             'email_channel' => 'nakup',
             'subject_role' => 'čeká Nákup',
         ],
         'vyvoj' => [
             'label' => 'Vývoj',
             'title' => 'Přehled pro Vývoj',
-            'subtitle' => date('j.n.Y') . ' · Nabídky čekající na vaši akci',
+            'subtitle' => date('j.n.Y') . ' · Co je na vás, co visí jinde a co přijde potom',
             'email_channel' => 'vyvoj',
             'subject_role' => 'čeká Vývoj',
         ],
         'kvalita' => [
             'label' => 'Kvalita',
             'title' => 'Přehled pro Kvalitu',
-            'subtitle' => date('j.n.Y') . ' · Dokumentace ke schválení',
+            'subtitle' => date('j.n.Y') . ' · Dokumentace a schvalování v kontextu celého požadavku',
             'email_channel' => 'kvalita',
             'subject_role' => 'čeká Kvalita',
         ],
         'portfolio' => [
             'label' => 'Portfolio',
             'title' => 'Přehled Portfolio',
-            'subtitle' => date('j.n.Y') . ' · Sirotčinec (požadavky bez aktivního produktu)',
+            'subtitle' => date('j.n.Y') . ' · Požadavky bez propojení na vývojový produkt',
             'email_channel' => null,
             'subject_role' => 'Portfolio',
         ],
@@ -650,43 +710,42 @@ function digest_build($conn, $channel) {
     $meta = $meta_all[$channel];
     $sections = [];
 
-    if ($channel === 'nakup') {
-        $rows = digest_load_nakup_faze1($conn);
-        digest_enrich_rows($conn, $rows, $channel);
+    if ($channel === 'portfolio') {
+        $rows = digest_load_portfolio_orphans($conn);
+        digest_enrich_rows($conn, $rows, 'portfolio');
         digest_sort_rows($rows);
         $sections = [
-            ['title' => 'K řešení', 'color' => '#337ab7', 'rows' => $rows],
+            ['title' => 'K řešení — propojit k produktu', 'color' => '#8e44ad', 'rows' => $rows, 'band' => 'A'],
         ];
-    } elseif ($channel === 'vyvoj' || $channel === 'kvalita') {
-        $rows = digest_load_offer_tasks($conn, $channel);
-        digest_enrich_rows($conn, $rows, $channel);
-        if ($channel === 'vyvoj') {
-            $split = digest_split_f3_rows($rows);
-            digest_sort_rows($split['main']);
-            digest_sort_rows($split['f3']);
-            $sections = [
-                ['title' => 'K řešení', 'color' => '#337ab7', 'rows' => $split['main']],
-            ];
-            if (!empty($split['f3'])) {
-                $sections[] = ['title' => 'Ve testování (F3)', 'color' => '#2980b9', 'rows' => $split['f3']];
+    } else {
+        $pipeline = digest_build_pipeline($conn, $channel);
+        $band_meta = [
+            'A' => ['title' => 'K řešení — teď vy', 'color' => '#d9534f'],
+            'B' => ['title' => 'Čeká na ostatní', 'color' => '#f0ad4e'],
+            'C' => ['title' => 'U vás potom', 'color' => '#5bc0de'],
+        ];
+        foreach (['A', 'B', 'C'] as $b) {
+            $rows = $pipeline['bands'][$b] ?? [];
+            if (empty($rows) && $b !== 'A') {
+                continue;
             }
-        } else {
-            digest_sort_rows($rows);
-            $sections = [
-                ['title' => 'K řešení', 'color' => '#337ab7', 'rows' => $rows],
+            $sections[] = [
+                'title' => $band_meta[$b]['title'],
+                'color' => $band_meta[$b]['color'],
+                'rows' => $rows,
+                'band' => $b,
             ];
         }
-    } elseif ($channel === 'portfolio') {
-        $rows = digest_load_portfolio_orphans($conn);
-        digest_enrich_rows($conn, $rows, $channel);
-        digest_sort_rows($rows);
-        $sections = [
-            ['title' => 'Sirotci bez produktu', 'color' => '#8e44ad', 'rows' => $rows],
-        ];
+        foreach ($pipeline['batches'] as $batch) {
+            $sections[] = $batch;
+        }
     }
 
     $total = 0;
     foreach ($sections as $sec) {
+        if (!empty($sec['dimmed'])) {
+            continue;
+        }
         $total += count($sec['rows']);
     }
 
@@ -705,6 +764,9 @@ function digest_subject_line(array $sections, $role_label) {
     $total = 0;
     $top_score = 0;
     foreach ($sections as $sec) {
+        if (!empty($sec['dimmed'])) {
+            continue;
+        }
         $total += count($sec['rows']);
         foreach ($sec['rows'] as $row) {
             $top_score = max($top_score, (int)($row['digest_score'] ?? 0));
@@ -725,4 +787,170 @@ function digest_count_for_user($conn, array $perms) {
         $sum += digest_build($conn, $ch)['total'];
     }
     return $sum;
+}
+
+/** Adresář pro stav odeslaných souhrnů (cron). */
+function digest_state_dir() {
+    $dir = dirname(__DIR__) . '/logs';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    return $dir;
+}
+
+function digest_state_path($channel) {
+    $safe = preg_replace('/[^a-z0-9_-]/i', '_', (string)$channel);
+    return digest_state_dir() . '/digest_state_' . $safe . '.json';
+}
+
+function digest_signature(array $digest) {
+    $payload = json_encode([
+        'subject' => (string)($digest['subject'] ?? ''),
+        'sections' => $digest['sections'] ?? [],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return sha1((string)$payload);
+}
+
+/**
+ * @return array{sig:string,sent_at:?string,items:array<string,string>}
+ */
+function digest_load_channel_state($channel) {
+    $empty = ['sig' => '', 'sent_at' => null, 'items' => []];
+    $path = digest_state_path($channel);
+    if (!is_file($path)) {
+        $legacy = digest_state_dir() . '/digest_state_' . preg_replace('/[^a-z0-9_-]/i', '_', (string)$channel) . '.txt';
+        if (is_file($legacy)) {
+            $empty['sig'] = trim((string)file_get_contents($legacy));
+        }
+        return $empty;
+    }
+    $raw = @file_get_contents($path);
+    if ($raw === false || $raw === '') {
+        return $empty;
+    }
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        return $empty;
+    }
+    return [
+        'sig' => (string)($data['sig'] ?? ''),
+        'sent_at' => $data['sent_at'] ?? null,
+        'items' => is_array($data['items'] ?? null) ? $data['items'] : [],
+    ];
+}
+
+function digest_save_channel_state($channel, array $digest) {
+    $data = [
+        'sig' => digest_signature($digest),
+        'sent_at' => date('Y-m-d H:i:s'),
+        'items' => digest_snapshot_from_sections($digest['sections'] ?? []),
+    ];
+    @file_put_contents(digest_state_path($channel), json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+}
+
+function digest_row_key(array $row) {
+    $rid = (int)($row['id'] ?? 0);
+    $nid = (int)($row['digest_primary_nabidka'] ?? $row['id_nabidka'] ?? 0);
+    $band = strtoupper((string)($row['digest_band'] ?? ''));
+    return $rid . ':' . $nid . ':' . $band;
+}
+
+function digest_row_fingerprint(array $row) {
+    $parts = [
+        (string)($row['stav_text'] ?? ''),
+        (string)($row['ceka_detail'] ?? ''),
+        (string)($row['digest_kontext'] ?? ''),
+        (string)($row['nakupci_jmeno'] ?? ''),
+        (string)($row['digest_score'] ?? ''),
+        (string)($row['priorita'] ?? ''),
+        (string)($row['digest_band'] ?? ''),
+    ];
+    return sha1(implode('|', $parts));
+}
+
+/**
+ * @return array<string,string>
+ */
+function digest_snapshot_from_sections(array $sections) {
+    $items = [];
+    foreach ($sections as $sec) {
+        if (!empty($sec['dimmed'])) {
+            continue;
+        }
+        foreach ($sec['rows'] ?? [] as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $items[digest_row_key($row)] = digest_row_fingerprint($row);
+        }
+    }
+    return $items;
+}
+
+/**
+ * Označí řádky digest_delta = new|changed|same a seřadí nové/změněné nahoru.
+ *
+ * @return array{new:int,changed:int,same:int,has_prev:bool}
+ */
+function digest_apply_delta(array &$sections, array $prev_items) {
+    $stats = ['new' => 0, 'changed' => 0, 'same' => 0, 'has_prev' => !empty($prev_items)];
+
+    if (empty($prev_items)) {
+        return $stats;
+    }
+
+    foreach ($sections as &$sec) {
+        if (!empty($sec['dimmed'])) {
+            continue;
+        }
+        foreach ($sec['rows'] as &$row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $key = digest_row_key($row);
+            $fp = digest_row_fingerprint($row);
+            if (!isset($prev_items[$key])) {
+                $row['digest_delta'] = 'new';
+                $stats['new']++;
+            } elseif ($prev_items[$key] !== $fp) {
+                $row['digest_delta'] = 'changed';
+                $stats['changed']++;
+            } else {
+                $row['digest_delta'] = 'same';
+                $stats['same']++;
+            }
+        }
+        unset($row);
+
+        usort($sec['rows'], function ($a, $b) {
+            $order = ['new' => 0, 'changed' => 1, 'same' => 2];
+            $oa = $order[$a['digest_delta'] ?? 'same'] ?? 2;
+            $ob = $order[$b['digest_delta'] ?? 'same'] ?? 2;
+            if ($oa !== $ob) {
+                return $oa <=> $ob;
+            }
+            return ((int)($b['digest_score'] ?? 0)) <=> ((int)($a['digest_score'] ?? 0));
+        });
+    }
+    unset($sec);
+
+    return $stats;
+}
+
+function digest_subject_with_delta(array $sections, $role_label, array $delta_stats = []) {
+    $subject = digest_subject_line($sections, $role_label);
+    if (empty($delta_stats['has_prev'])) {
+        return $subject;
+    }
+    $parts = [];
+    if (!empty($delta_stats['new'])) {
+        $parts[] = $delta_stats['new'] . ' nov' . ($delta_stats['new'] === 1 ? 'á' : ($delta_stats['new'] < 5 ? 'é' : 'ých'));
+    }
+    if (!empty($delta_stats['changed'])) {
+        $parts[] = $delta_stats['changed'] . ' změn' . ($delta_stats['changed'] === 1 ? 'a' : ($delta_stats['changed'] < 5 ? 'y' : ''));
+    }
+    if (!empty($parts)) {
+        $subject = 'Vzorkovna: ' . implode(', ', $parts) . ' — ' . $role_label;
+    }
+    return $subject;
 }
